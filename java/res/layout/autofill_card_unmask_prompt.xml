@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2014 The Chromium Authors. All rights reserved.
+
+     Use of this source code is governed by a BSD-style license that can be
+     found in the LICENSE file.
+-->
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/instructions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginTop="10dp"
+        android:gravity="start" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <!-- TODO(estade): add accessibility content descriptions. -->
+        <Spinner
+            android:id="@+id/expiration_month"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:visibility="gone" />
+
+        <Spinner
+            android:id="@+id/expiration_year"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:visibility="gone" />
+
+        <EditText
+            android:id="@+id/card_unmask_input"
+            android:inputType="number"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:layout_marginStart="16dp"
+            android:ems="4"
+            android:hint="@string/card_unmask_input_hint" />
+
+        <ImageView
+            android:id="@+id/cvc_hint_image"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="16dp" />
+
+        <ProgressBar
+            style="@android:style/Widget.ProgressBar.Small"
+            android:id="@+id/verification_progress_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/verification_success"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/verify_checkmark"
+            android:layout_gravity="center_vertical"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/verification_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:gravity="start"
+            android:visibility="gone" />
+     </LinearLayout>
+
+</LinearLayout>
