@@ -123,7 +123,13 @@ public class ChromeApplication extends ContentApplication {
     private static final String PREF_LOCALE = "locale";
     private static final float FLOAT_EPSILON = 0.001f;
     private static final String PRIVATE_DATA_DIRECTORY_SUFFIX = "chrome";
-    private static final String DEV_TOOLS_SERVER_SOCKET_PREFIX = "chrome";
+    /**
+     * Keep socket name format to be of form "webview_devtools_server_pid"
+     * which is required to work with Chrome devtools and Chromedriver.
+     * Pass prefix string "webview" to DevToolsServer which will append
+     * "_devtools_server_%pid", where %pid is process id of running app.
+     */
+    private static final String DEV_TOOLS_SERVER_SOCKET_PREFIX = "webview";
     private static final String SESSIONS_UUID_PREF_KEY = "chromium.sync.sessions.id";
 
     private static DocumentTabModelSelector sDocumentTabModelSelector;
