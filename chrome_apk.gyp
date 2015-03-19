@@ -6,6 +6,7 @@
     '../../chrome/chrome_android_paks.gypi', # Included for the list of pak resources.
     '../../build/util/version.gypi',
     '../../components/web_refiner/web_refiner_vars.gypi',
+    '../../third_party/libsweadrenoext/libsweadrenoext_vars.gypi',
    ],
   'variables': {
     'chromium_code': 1,
@@ -160,7 +161,10 @@
         'app_manifest_version_name': '<(swe_app_manifest_version_name)',
         'java_in_dir': 'java',
         'resource_dir': '../../chrome/android/java/res_chromium',
-        'extra_native_libs': ['<@(web_refiner_native_libs)'],
+        'extra_native_libs': [
+          '<@(web_refiner_native_libs)',
+          '<@(libsweadrenoext_native_libs)',
+        ],
         'res_extra_dirs': ['<!@pymod_do_main(swe_channels_dirs --swe-channels <(swe_channels) \
                            -d <(DEPTH) --channel-res-folder)',],
         'conditions': [
@@ -178,6 +182,7 @@
         'chrome_public_template_resources',
         '../chrome.gyp:chrome_java',
         '<@(web_refiner_dependencies)',
+        '../<@(libsweadrenoext_dependencies)',
       ],
       'includes': [ 'chrome_apk.gypi' ],
     },
