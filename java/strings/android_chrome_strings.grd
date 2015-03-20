@@ -1522,6 +1522,26 @@ Hit the back button to exit.
         Use Night mode to make browsing easier on your eyes in the dark.
       </message>
 
+      <!-- power save mode messages -->
+      <message name="IDS_POWERSAVE_MODE_TITLE" desc="The title of a preference which controls whether power saving mode is enabled or not. [CHAR-LIMIT=32]">
+        Power saving mode
+      </message>
+      <message name="IDS_POWERSAVE_MODE_TIP_TEXT" desc="Text to remind user the effects of changing the setting">
+        Power saving mode setting will potentially affect user experience in order to improve battery life for your browser
+      </message>
+      <message name="IDS_POWERSAVE_MODE_TURN_OFF_TITLE" desc="A message shown as a title of a confirmation dialog to turn off a power saving improvements">
+        Disable Power-saving mode
+      </message>
+      <message name="IDS_POWERSAVE_MODE_TURN_ON_TITLE" desc="A message shown as a title of a confirmation dialog to turn off a power saving improvements">
+        Enable Power-saving mode
+      </message>
+      <message name="IDS_POWERSAVE_MODE_OPT_OUT_CONFIRMATION" desc="The confirmation message shown when the user opts out of having apps and tabs together in recents">
+        Power saving improvements will be turned off.
+      </message>
+      <message name="IDS_POWERSAVE_MODE_OPT_IN_CONFIRMATION" desc="The confirmation message shown when the user opts in to have apps and tabs together in recents">
+        Power saving improvements will be turned on.
+      </message>
+
       <!-- Document mode messages -->
       <message name="IDS_CLOSE_ALL_INCOGNITO_NOTIFICATION" desc="Message on the notification that closes all incognito tabs in document mode">
         Close all incognito tabs

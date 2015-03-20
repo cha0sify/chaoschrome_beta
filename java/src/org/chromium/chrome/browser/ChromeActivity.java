@@ -10,6 +10,7 @@ import android.app.SearchManager;
 import android.app.assist.AssistContent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
@@ -23,6 +24,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.os.MessageQueue;
+import android.os.PowerManager;
 import android.os.Process;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
@@ -184,6 +186,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     private TabContentManager mTabContentManager;
     private UmaSessionStats mUmaSessionStats;
     private ContextReporter mContextReporter;
+    private PowerConnectionReceiver mPowerChangeReceiver;
+    private PowerConnectionReceiver mLowPowerReceiver;
     protected GSAServiceClient mGSAServiceClient;
 
     private boolean mPartnerBrowserRefreshNeeded = false;
@@ -289,6 +293,17 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             };
             manager.addTouchExplorationStateChangeListener(mTouchExplorationStateChangeListener);
         }
+
+        mPowerChangeReceiver = new PowerConnectionReceiver();
+        mLowPowerReceiver = new PowerConnectionReceiver();
+
+        IntentFilter filter = new IntentFilter();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            // Power save mode only exists in Lollipop and above
+            filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
+        }
+        filter.addAction(Intent.ACTION_BATTERY_OKAY);
+        this.registerReceiver(mPowerChangeReceiver, filter);
 
         // Make the activity listen to policy change events
         getChromeApplication().addPolicyChangeListener(this);
@@ -607,6 +622,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         super.onResumeWithNative();
         markSessionResume();
 
+        this.registerReceiver(mLowPowerReceiver, new IntentFilter(Intent.ACTION_BATTERY_LOW));
+
         if (getActivityTab() != null) {
             LaunchMetrics.commitLaunchMetrics(getActivityTab().getWebContents());
         }
@@ -650,6 +667,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     @Override
     public void onPauseWithNative() {
         markSessionEnd();
+
+        this.unregisterReceiver(mLowPowerReceiver);
+
         super.onPauseWithNative();
     }
 
@@ -834,6 +854,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             manager.removeTouchExplorationStateChangeListener(mTouchExplorationStateChangeListener);
         }
+
+        this.unregisterReceiver(mPowerChangeReceiver);
 
         super.onDestroy();
 

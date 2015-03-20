@@ -1051,6 +1051,20 @@ public final class PrefServiceBridge {
         return nativeGetNightModeEnabled();
     }
 
+    /**
+     * Sets whether the Power save Mode should be enabled.
+     */
+    public void setPowersaveModeEnabled(boolean enabled) {
+        nativeSetPowersaveModeEnabled(enabled);
+    }
+
+    /**
+     * @return whether the Power save Mode is enabled.
+     */
+    public boolean getPowersaveModeEnabled() {
+        return nativeGetPowersaveModeEnabled();
+    }
+
     private native boolean nativeGetAcceptCookiesEnabled();
     private native boolean nativeGetAcceptCookiesManaged();
     private native boolean nativeGetBlockThirdPartyCookiesEnabled();
@@ -1151,4 +1165,6 @@ public final class PrefServiceBridge {
     private native void nativeSetNightModeEnabled(boolean enabled);
     private native boolean nativeGetNightModeEnabled();
 // SWE-feature-NightMode
+    private native void nativeSetPowersaveModeEnabled(boolean enabled);
+    private native boolean nativeGetPowersaveModeEnabled();
 }
