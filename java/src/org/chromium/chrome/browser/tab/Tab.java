@@ -23,6 +23,7 @@ import android.widget.FrameLayout;
 import org.chromium.base.ActivityState;
 import org.chromium.base.ApplicationState;
 import org.chromium.base.ApplicationStatus;
+import org.chromium.base.PerflockController;
 import org.chromium.base.ObserverList;
 import org.chromium.base.ObserverList.RewindableIterator;
 import org.chromium.base.TraceEvent;
@@ -57,6 +58,7 @@ import org.chromium.chrome.browser.metrics.UmaSessionStats;
 import org.chromium.chrome.browser.metrics.UmaUtils;
 import org.chromium.chrome.browser.printing.TabPrinter;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ssl.ConnectionSecurity;
 import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
@@ -69,6 +71,7 @@ import org.chromium.components.navigation_interception.InterceptNavigationDelega
 import org.chromium.content.browser.ContentView;
 import org.chromium.content.browser.ContentViewClient;
 import org.chromium.content.browser.ContentViewCore;
+import org.chromium.content_public.browser.GestureStateListener;
 import org.chromium.content_public.browser.InvalidateTypes;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
@@ -171,6 +174,8 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     /** {@link ContentViewCore} showing the current page, or {@code null} if the tab is frozen. */
     private ContentViewCore mContentViewCore;
 
+    private GestureStateListener mGestureStateListener;
+
     /** The parent view of the ContentView and the InfoBarContainer. */
     private FrameLayout mContentViewParent;
 
@@ -186,6 +191,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     // Content layer Observers and Delegates
     private ContentViewClient mContentViewClient;
     private WebContentsObserver mWebContentsObserver;
+    private WebContentsObserver mPerfLockWebContentsObserver;
     private TabChromeWebContentsDelegateAndroid mWebContentsDelegate;
 
     /**
@@ -328,6 +334,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     private int mThemeColor;
 
     protected TabContentManager mTabContentManager;
+    protected PerflockController mLightLoad;
 
     /**
      * A default {@link ChromeContextMenuItemDelegate} that supports some of the context menu
@@ -822,6 +829,9 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
             assert type == TabLaunchType.FROM_RESTORE;
             restoreFieldsFromState(frozenState);
         }
+
+        int[] lightLoadConfig = { 0x3DFF };
+        mLightLoad = new PerflockController(4000, lightLoadConfig);
     }
 
     /**
@@ -1003,6 +1013,13 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      */
     protected Context getApplicationContext() {
         return mApplicationContext;
+    }
+
+    /**
+     * @return The boolean for whether power saving mode is enabled
+     */
+    protected boolean getEnableLightLoad() {
+        return PrefServiceBridge.getInstance().getPowersaveModeEnabled();
     }
 
     /**
@@ -1690,6 +1707,43 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
         mWebContentsDelegate = createWebContentsDelegate();
         mWebContentsObserver = new TabWebContentsObserver(mContentViewCore.getWebContents());
+        mPerfLockWebContentsObserver = new WebContentsObserver(mContentViewCore.getWebContents()) {
+            @Override
+            public void didStartProvisionalLoadForFrame(
+                    long frameId,
+                    long parentFrameId,
+                    boolean isMainFrame,
+                    String validatedUrl,
+                    boolean isErrorPage,
+                    boolean isIframeSrcdoc) {
+                if (getEnableLightLoad()) {
+                    mLightLoad.acquirePerfLock();
+                }
+            }
+            @Override
+            public void didFinishLoad(long frameId, String validatedUrl, boolean isMainFrame) {
+                if (getEnableLightLoad()) {
+                    mLightLoad.releasePerfLock();
+                }
+            }
+        };
+        if (mGestureStateListener == null) {
+            mGestureStateListener = new GestureStateListener() {
+                @Override
+                public void onFlingStartGesture(int vx, int vy, int scrollOffsetY, int scrollExtentY) {
+                    if (getEnableLightLoad()) {
+                        mLightLoad.acquirePerfLock();
+                    }
+                }
+                @Override
+                public void onFlingEndGesture(int scrollOffsetY, int scrollExtentY) {
+                    if (getEnableLightLoad()) {
+                        mLightLoad.releasePerfLock();
+                    }
+                }
+            };
+        }
+        cvc.addGestureStateListener(mGestureStateListener);
 
         if (mContentViewClient != null) mContentViewCore.setContentViewClient(mContentViewClient);
 
@@ -2147,6 +2201,10 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     protected final void destroyContentViewCore(boolean deleteNativeWebContents) {
         if (mContentViewCore == null) return;
 
+        if (mGestureStateListener != null) {
+            mContentViewCore.removeGestureStateListener(mGestureStateListener);
+        }
+
         destroyContentViewCoreInternal(mContentViewCore);
 
         if (mInfoBarContainer != null && mInfoBarContainer.getParent() != null) {
@@ -2166,6 +2224,11 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
         if (mWebContentsObserver != null) {
             mWebContentsObserver.destroy();
             mWebContentsObserver = null;
+        }
+
+        if (mPerfLockWebContentsObserver != null) {
+            mPerfLockWebContentsObserver.destroy();
+            mPerfLockWebContentsObserver = null;
         }
 
         assert mNativeTabAndroid != 0;
