@@ -9,6 +9,7 @@ import static org.chromium.base.test.util.Restriction.RESTRICTION_TYPE_PHONE;
 
 import android.content.Context;
 import android.graphics.PointF;
+import android.test.InstrumentationTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -21,7 +22,6 @@ import org.chromium.base.library_loader.LibraryProcessType;
 import org.chromium.base.library_loader.ProcessInitException;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Restriction;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.compositor.layouts.components.LayoutTab;
 import org.chromium.chrome.browser.compositor.layouts.eventfilter.EdgeSwipeEventFilter.ScrollDirection;
 import org.chromium.chrome.browser.compositor.layouts.eventfilter.EdgeSwipeHandler;
@@ -30,11 +30,11 @@ import org.chromium.chrome.browser.compositor.layouts.phone.StackLayout;
 import org.chromium.chrome.browser.compositor.layouts.phone.stack.Stack;
 import org.chromium.chrome.browser.compositor.layouts.phone.stack.StackTab;
 import org.chromium.chrome.browser.tab.ChromeTab;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.browser.util.MathUtils;
-import org.chromium.chrome.test.RestrictedInstrumentationTestCase;
 import org.chromium.chrome.test.util.browser.tabmodel.MockTabModel.MockTabModelDelegate;
 import org.chromium.chrome.test.util.browser.tabmodel.MockTabModelSelector;
 import org.chromium.content.browser.BrowserStartupController;
@@ -42,7 +42,7 @@ import org.chromium.content.browser.BrowserStartupController;
 /**
  * Unit tests for {@link org.chromium.chrome.browser.compositor.layouts.LayoutManagerChrome}
  */
-public class LayoutManagerTest extends RestrictedInstrumentationTestCase
+public class LayoutManagerTest extends InstrumentationTestCase
         implements MockTabModelDelegate {
     private static final String TAG = "LayoutManagerTest";
 

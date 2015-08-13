@@ -13,10 +13,11 @@ import android.util.Base64;
 import android.widget.Toast;
 
 import org.chromium.base.ApplicationStatus;
-import org.chromium.base.CalledByNative;
 import org.chromium.base.VisibleForTesting;
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.document.ChromeLauncherActivity;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.webapps.WebappLauncherActivity;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.common.ScreenOrientationConstants;
 
@@ -30,23 +31,28 @@ public class ShortcutHelper {
     public static final String EXTRA_ICON = "org.chromium.chrome.browser.webapp_icon";
     public static final String EXTRA_ID = "org.chromium.chrome.browser.webapp_id";
     public static final String EXTRA_MAC = "org.chromium.chrome.browser.webapp_mac";
+    // EXTRA_TITLE is present for backward compatibility reasons
     public static final String EXTRA_TITLE = "org.chromium.chrome.browser.webapp_title";
+    public static final String EXTRA_NAME = "org.chromium.chrome.browser.webapp_name";
+    public static final String EXTRA_SHORT_NAME = "org.chromium.chrome.browser.webapp_short_name";
     public static final String EXTRA_URL = "org.chromium.chrome.browser.webapp_url";
     public static final String EXTRA_ORIENTATION = ScreenOrientationConstants.EXTRA_ORIENTATION;
     public static final String EXTRA_SOURCE = "org.chromium.chrome.browser.webapp_source";
+    public static final String EXTRA_THEME_COLOR = "org.chromium.chrome.browser.theme_color";
 
-    // This value is equal to SOURCE_UNKNOWN in the C++ ShortcutInfo struct.
-    public static final int SOURCE_UNKNOWN = 0;
+    // This value is equal to kInvalidOrMissingThemeColor in the C++ content::Manifest struct.
+    public static final long THEME_COLOR_INVALID_OR_MISSING = ((long) Integer.MAX_VALUE) + 1;
 
     /** Observes the data fetching pipeline. */
     public interface ShortcutHelperObserver {
         /** Called when the title of the page is available. */
-        void onTitleAvailable(String title);
+        void onUserTitleAvailable(String title);
 
         /** Called when the icon to use in the launcher is available. */
         void onIconAvailable(Bitmap icon);
     }
 
+    /** Broadcasts Intents out Android for adding the shortcut. */
     public static class Delegate {
         /**
          * Broadcasts an intent to all interested BroadcastReceivers.
@@ -61,7 +67,7 @@ public class ShortcutHelper {
          * Returns the name of the fullscreen Activity to use when launching shortcuts.
          */
         public String getFullscreenAction() {
-            return ChromeLauncherActivity.ACTION_START_WEBAPP;
+            return WebappLauncherActivity.ACTION_START_WEBAPP;
         }
     }
 
@@ -117,8 +123,8 @@ public class ShortcutHelper {
     }
 
     @CalledByNative
-    private void onTitleAvailable(String title) {
-        mObserver.onTitleAvailable(title);
+    private void onUserTitleAvailable(String title) {
+        mObserver.onUserTitleAvailable(title);
     }
 
     @CalledByNative
@@ -153,8 +159,9 @@ public class ShortcutHelper {
      */
     @SuppressWarnings("unused")
     @CalledByNative
-    private static void addShortcut(Context context, String url, String title, Bitmap icon,
-            boolean isWebappCapable, int orientation, int source) {
+    private static void addShortcut(Context context, String url, String userTitle, String name,
+            String shortName, Bitmap icon, boolean isWebappCapable, int orientation, int source,
+            long themeColor) {
         Intent shortcutIntent;
         if (isWebappCapable) {
             // Encode the icon as a base64 string (Launcher drops Bitmaps in the Intent).
@@ -171,10 +178,12 @@ public class ShortcutHelper {
             shortcutIntent.setAction(sDelegate.getFullscreenAction());
             shortcutIntent.putExtra(EXTRA_ICON, encodedIcon);
             shortcutIntent.putExtra(EXTRA_ID, UUID.randomUUID().toString());
-            shortcutIntent.putExtra(EXTRA_TITLE, title);
+            shortcutIntent.putExtra(EXTRA_NAME, name);
+            shortcutIntent.putExtra(EXTRA_SHORT_NAME, shortName);
             shortcutIntent.putExtra(EXTRA_URL, url);
             shortcutIntent.putExtra(EXTRA_ORIENTATION, orientation);
             shortcutIntent.putExtra(EXTRA_MAC, getEncodedMac(context, url));
+            shortcutIntent.putExtra(EXTRA_THEME_COLOR, themeColor);
         } else {
             // Add the shortcut as a launcher icon to open in the browser Activity.
             shortcutIntent = BookmarkUtils.createShortcutIntent(url);
@@ -185,7 +194,7 @@ public class ShortcutHelper {
         shortcutIntent.putExtra(EXTRA_SOURCE, source);
         shortcutIntent.setPackage(context.getPackageName());
         sDelegate.sendBroadcast(
-                context, BookmarkUtils.createAddToHomeIntent(shortcutIntent, title, icon, url));
+                context, BookmarkUtils.createAddToHomeIntent(shortcutIntent, userTitle, icon, url));
 
         // Alert the user about adding the shortcut.
         final String shortUrl = UrlUtilities.getDomainAndRegistry(url, true);

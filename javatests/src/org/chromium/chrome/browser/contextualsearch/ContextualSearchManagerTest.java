@@ -25,11 +25,11 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.compositor.bottombar.contextualsearch.ContextualSearchPanel.PanelState;
 import org.chromium.chrome.browser.compositor.bottombar.contextualsearch.ContextualSearchPanelDelegate;
 import org.chromium.chrome.browser.gsa.GSAContextDisplaySelection;
 import org.chromium.chrome.browser.omnibox.UrlBar;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.EmptyTabModelSelectorObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
@@ -388,6 +388,20 @@ public class ContextualSearchManagerTest extends ChromeActivityTestCaseBase<Chro
                         return TextUtils.equals(text, getSelectedText());
                     }
                 }, TEST_TIMEOUT, DEFAULT_POLLING_INTERVAL));
+    }
+
+    /**
+     * Waits for the selection to be dissolved.
+     * This is needed because the renderer's notification of a selection going away is async,
+     * and a subsequent tap may think there's a current selection until it has been dissolved.
+     */
+    private void waitForSelectionDissolved() throws InterruptedException {
+        assertTrue("Selection never dissolved.", CriteriaHelper.pollForCriteria(new Criteria() {
+            @Override
+            public boolean isSatisfied() {
+                return !mSelectionController.isSelectionEstablished();
+            }
+        }, TEST_TIMEOUT, DEFAULT_POLLING_INTERVAL));
     }
 
     /**
@@ -1783,12 +1797,30 @@ public class ContextualSearchManagerTest extends ChromeActivityTestCaseBase<Chro
         assertEquals("Intelligence", getSelectedText());
 
         // Simulate a selection change event and assert that the panel has not reappeared.
-        mManager.onSelectionEvent(SelectionEventType.SELECTION_DRAG_STARTED, 333, 450);
-        mManager.onSelectionEvent(SelectionEventType.SELECTION_DRAG_STOPPED, 303, 450);
+        mManager.onSelectionEvent(SelectionEventType.SELECTION_HANDLE_DRAG_STARTED, 333, 450);
+        mManager.onSelectionEvent(SelectionEventType.SELECTION_HANDLE_DRAG_STOPPED, 303, 450);
         assertPanelClosedOrUndefined();
 
         // Select a different word and assert that the panel has appeared.
         longPressNode("states-far");
         waitForPanelToPeekAndAssert();
+    }
+
+    /**
+     * Tests a bunch of taps in a row.
+     * We've had reliability problems with simple taps due to async clearing
+     * of selection bounds, so this helps prevent a regression with that.
+     */
+    @Restriction({RESTRICTION_TYPE_PHONE, RESTRICTION_TYPE_NON_LOW_END_DEVICE})
+    @CommandLineFlags.Add({ContextualSearchFieldTrial.TAP_RESOLVE_LIMIT_FOR_DECIDED + "=200",
+            ContextualSearchFieldTrial.TAP_RESOLVE_LIMIT_FOR_UNDECIDED + "=200",
+            ContextualSearchFieldTrial.TAP_PREFETCH_LIMIT_FOR_DECIDED + "=200",
+            ContextualSearchFieldTrial.TAP_PREFETCH_LIMIT_FOR_UNDECIDED + "=200"})
+    public void testTapALot() throws InterruptedException, TimeoutException {
+        for (int i = 0; i < 50; i++) {
+            clickToTriggerSearchTermResolution();
+            waitForSelectionDissolved();
+            assertSearchTermRequested();
+        }
     }
 }

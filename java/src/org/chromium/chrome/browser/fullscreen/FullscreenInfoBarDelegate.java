@@ -4,10 +4,10 @@
 
 package org.chromium.chrome.browser.fullscreen;
 
-import org.chromium.base.CalledByNative;
-import org.chromium.chrome.browser.Tab;
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.chrome.browser.preferences.website.ContentSetting;
 import org.chromium.chrome.browser.preferences.website.FullscreenInfo;
+import org.chromium.chrome.browser.tab.Tab;
 
 /**
  * Class for managing the fullscreen infobar.
@@ -51,7 +51,7 @@ public class FullscreenInfoBarDelegate {
      */
     @CalledByNative
     private void onFullscreenAllowed(String origin) {
-        FullscreenInfo fullscreenInfo = new FullscreenInfo(origin, null);
+        FullscreenInfo fullscreenInfo = new FullscreenInfo(origin, null, mTab.isIncognito());
         fullscreenInfo.setContentSetting(ContentSetting.ALLOW);
     }
 

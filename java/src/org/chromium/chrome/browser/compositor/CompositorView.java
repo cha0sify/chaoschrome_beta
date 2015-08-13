@@ -15,12 +15,12 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 
-import org.chromium.base.CalledByNative;
 import org.chromium.base.CommandLine;
-import org.chromium.base.JNINamespace;
 import org.chromium.base.Log;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.VisibleForTesting;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.compositor.layouts.Layout;
@@ -33,9 +33,11 @@ import org.chromium.chrome.browser.compositor.layouts.content.TabContentManager;
 import org.chromium.chrome.browser.compositor.resources.StaticResourcePreloads;
 import org.chromium.chrome.browser.compositor.scene_layer.SceneLayer;
 import org.chromium.chrome.browser.device.DeviceClassManager;
+import org.chromium.chrome.browser.externalnav.IntentWithGesturesHandler;
 import org.chromium.chrome.browser.fullscreen.ChromeFullscreenManager;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.tabmodel.TabModelBase;
+import org.chromium.chrome.browser.widget.ClipDrawableProgressBar.DrawingInfo;
 import org.chromium.content.browser.ContentReadbackHandler;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.WindowAndroid;
@@ -273,6 +275,18 @@ public class CompositorView
     @Override
     public void surfaceRedrawNeeded(SurfaceHolder holder) {}
 
+    @Override
+    public void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if (mWindowAndroid == null) return;
+        if (visibility == View.GONE) {
+            mWindowAndroid.onVisibilityChanged(false);
+        } else if (visibility == View.VISIBLE) {
+            mWindowAndroid.onVisibilityChanged(true);
+        }
+        IntentWithGesturesHandler.getInstance().clear();
+    }
+
     @CalledByNative
     private void onCompositorLayout() {
         mRenderHost.onCompositorLayout();
@@ -333,7 +347,8 @@ public class CompositorView
         mRenderHost.onSwapBuffersCompleted(pendingSwapBuffersCount);
     }
 
-    private void updateToolbarLayer(LayoutProvider provider, boolean forRotation) {
+    private void updateToolbarLayer(LayoutProvider provider, boolean forRotation,
+            final DrawingInfo progressBarDrawingInfo) {
         if (forRotation || !DeviceClassManager.enableFullscreen()) return;
 
         ChromeFullscreenManager fullscreenManager = provider.getFullscreenManager();
@@ -360,8 +375,20 @@ public class CompositorView
             useTexture = false;
         }
 
-        nativeUpdateToolbarLayer(
-                mNativeCompositorView, R.id.control_container, R.id.progress, offset, useTexture);
+        nativeUpdateToolbarLayer(mNativeCompositorView, R.id.control_container, offset, useTexture);
+
+        if (progressBarDrawingInfo == null) return;
+        nativeUpdateProgressBar(mNativeCompositorView,
+                progressBarDrawingInfo.progressBarRect.left,
+                progressBarDrawingInfo.progressBarRect.top,
+                progressBarDrawingInfo.progressBarRect.width(),
+                progressBarDrawingInfo.progressBarRect.height(),
+                progressBarDrawingInfo.progressBarColor,
+                progressBarDrawingInfo.progressBarBackgroundRect.left,
+                progressBarDrawingInfo.progressBarBackgroundRect.top,
+                progressBarDrawingInfo.progressBarBackgroundRect.width(),
+                progressBarDrawingInfo.progressBarBackgroundRect.height(),
+                progressBarDrawingInfo.progressBarBackgroundColor);
     }
 
     /**
@@ -370,7 +397,8 @@ public class CompositorView
      * @param provider               Provides the layout to be rendered.
      * @param forRotation            Whether or not this is a special draw during a rotation.
      */
-    public void finalizeLayers(final LayoutProvider provider, boolean forRotation) {
+    public void finalizeLayers(final LayoutProvider provider, boolean forRotation,
+            final DrawingInfo progressBarDrawingInfo) {
         TraceEvent.begin("CompositorView:finalizeLayers");
         Layout layout = provider.getActiveLayout();
         if (layout == null || mNativeCompositorView == 0) {
@@ -402,7 +430,7 @@ public class CompositorView
                 + Math.max(mSurfaceHeight - mRenderHost.getCurrentOverdrawBottomHeight(), 0);
 
         // TODO(changwan): move to treeprovider.
-        updateToolbarLayer(provider, forRotation);
+        updateToolbarLayer(provider, forRotation, progressBarDrawingInfo);
 
         SceneLayer sceneLayer =
                 layout.getUpdatedSceneLayer(mCacheViewport, mCacheVisibleViewport, mLayerTitleCache,
@@ -448,7 +476,19 @@ public class CompositorView
             float width, float height, float visibleXOffset, float visibleYOffset,
             float overdrawBottomHeight, float dpToPixel);
     private native void nativeUpdateToolbarLayer(long nativeCompositorView, int resourceId,
-            int progressResourceId, float topOffset, boolean visible);
+            float topOffset, boolean visible);
+    private native void nativeUpdateProgressBar(
+            long nativeCompositorView,
+            int progressBarX,
+            int progressBarY,
+            int progressBarWidth,
+            int progressBarHeight,
+            int progressBarColor,
+            int progressBarBackgroundX,
+            int progressBarBackgroundY,
+            int progressBarBackgroundWidth,
+            int progressBarBackgroundHeight,
+            int progressBarBackgroundColor);
     private native void nativeSetOverlayVideoMode(long nativeCompositorView, boolean enabled);
     private native void nativeSetSceneLayer(long nativeCompositorView, SceneLayer sceneLayer);
 }

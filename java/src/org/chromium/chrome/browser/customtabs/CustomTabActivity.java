@@ -13,6 +13,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
+import android.view.Window;
 
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.Log;
@@ -23,12 +24,12 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.IntentHandler.ExternalAppId;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.appmenu.AppMenuPropertiesDelegate;
 import org.chromium.chrome.browser.appmenu.ChromeAppMenuPropertiesDelegate;
 import org.chromium.chrome.browser.compositor.bottombar.contextualsearch.ContextualSearchPanel.StateChangeReason;
 import org.chromium.chrome.browser.compositor.layouts.LayoutManagerDocument;
 import org.chromium.chrome.browser.document.BrandColorUtils;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.SingleTabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
 import org.chromium.chrome.browser.toolbar.ToolbarControlContainer;
@@ -91,6 +92,11 @@ public class CustomTabActivity extends ChromeActivity {
     }
 
     @Override
+    public boolean isCustomTab() {
+        return true;
+    }
+
+    @Override
     public void onStart() {
         super.onStart();
         CustomTabsConnection.getInstance(getApplication())
@@ -119,12 +125,13 @@ public class CustomTabActivity extends ChromeActivity {
             }
         });
         mIntentDataProvider = new CustomTabIntentDataProvider(getIntent(), this);
+        supportRequestWindowFeature(Window.FEATURE_ACTION_MODE_OVERLAY);
     }
 
     @Override
     public void postInflationStartup() {
         super.postInflationStartup();
-        getToolbarManager().setCloseButtonIcon(mIntentDataProvider.getCloseButtonIconResId());
+        getToolbarManager().setCloseButtonDrawable(mIntentDataProvider.getCloseButtonDrawable());
         getToolbarManager().setShowTitle(mIntentDataProvider.getTitleVisibilityState()
                 == CustomTabIntentDataProvider.SHOW_PAGE_TITLE);
         int toolbarColor = mIntentDataProvider.getToolbarColor();
@@ -138,7 +145,7 @@ public class CustomTabActivity extends ChromeActivity {
         ApiCompatibilityUtils.setTaskDescription(this, null, null, toolbarColor);
         if (mIntentDataProvider.shouldShowActionButton()) {
             getToolbarManager().addCustomActionButton(mIntentDataProvider.getActionButtonIcon(),
-                    new OnClickListener() {
+                    mIntentDataProvider.getActionButtonDescription(), new OnClickListener() {
                         @Override
                         public void onClick(View v) {
                             mIntentDataProvider.sendButtonPendingIntentWithUrl(
@@ -236,6 +243,7 @@ public class CustomTabActivity extends ChromeActivity {
     @Override
     public boolean createContextualSearchTab(ContentViewCore searchContentViewCore) {
         if (mTab == null) return false;
+        getCurrentContentViewCore().clearSelection();
         NavigationEntry entry =
                 searchContentViewCore.getWebContents().getNavigationController().getPendingEntry();
         String url = entry != null
@@ -265,7 +273,7 @@ public class CustomTabActivity extends ChromeActivity {
     }
 
     @Override
-    protected int getControlContainerHeightResource() {
+    public int getControlContainerHeightResource() {
         return R.dimen.custom_tabs_control_container_height;
     }
 

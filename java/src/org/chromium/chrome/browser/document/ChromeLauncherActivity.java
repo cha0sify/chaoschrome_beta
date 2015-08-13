@@ -23,7 +23,6 @@ import android.os.Bundle;
 import android.provider.Browser;
 import android.support.customtabs.CustomTabsIntent;
 import android.text.TextUtils;
-import android.util.Base64;
 import android.util.Log;
 
 import org.chromium.base.ApiCompatibilityUtils;
@@ -34,11 +33,11 @@ import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.IntentHandler.TabOpenType;
 import org.chromium.chrome.browser.ShortcutHelper;
-import org.chromium.chrome.browser.Tab;
+import org.chromium.chrome.browser.ShortcutSource;
 import org.chromium.chrome.browser.UrlConstants;
 import org.chromium.chrome.browser.WarmupManager;
-import org.chromium.chrome.browser.WebappAuthenticator;
 import org.chromium.chrome.browser.customtabs.CustomTabActivity;
+import org.chromium.chrome.browser.externalnav.IntentWithGesturesHandler;
 import org.chromium.chrome.browser.firstrun.FirstRunFlowSequencer;
 import org.chromium.chrome.browser.metrics.LaunchHistogram;
 import org.chromium.chrome.browser.metrics.LaunchMetrics;
@@ -48,15 +47,17 @@ import org.chromium.chrome.browser.partnercustomizations.HomepageManager;
 import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomizations;
 import org.chromium.chrome.browser.preferences.ChromePreferenceManager;
 import org.chromium.chrome.browser.preferences.DocumentModeManager;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabIdManager;
 import org.chromium.chrome.browser.tabmodel.document.ActivityDelegate;
+import org.chromium.chrome.browser.tabmodel.document.AsyncTabCreationParams;
+import org.chromium.chrome.browser.tabmodel.document.AsyncTabCreationParamsManager;
 import org.chromium.chrome.browser.tabmodel.document.DocumentTabModel;
 import org.chromium.chrome.browser.tabmodel.document.DocumentTabModelSelector;
 import org.chromium.chrome.browser.util.FeatureUtilities;
 import org.chromium.chrome.browser.util.IntentUtils;
-import org.chromium.chrome.browser.webapps.WebappActivity;
 import org.chromium.content.browser.crypto.CipherFactory;
-import org.chromium.content_public.common.ScreenOrientationValues;
+import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.ui.base.PageTransition;
 
 import java.lang.ref.WeakReference;
@@ -68,20 +69,6 @@ import java.util.List;
  */
 public class ChromeLauncherActivity extends Activity
         implements IntentHandler.IntentHandlerDelegate {
-    /**
-     * Action fired when an Intent is trying to launch a WebappActivity.
-     * Never change the package name or the Intents will fail to launch.
-     */
-    public static final String ACTION_START_WEBAPP =
-            "com.google.android.apps.chrome.webapps.WebappManager.ACTION_START_WEBAPP";
-
-    /**
-     * Extra indicating that a Tab is trying to bring its WebappActivity to the foreground.
-     * Never change the package name or the Intents will fail to launch.
-     */
-    public static final String EXTRA_BRING_WEBAPP_TO_FRONT =
-            "com.google.android.apps.chrome.EXTRA_BRING_WEBAPP_TO_FRONT";
-
     /**
      * Extra indicating launch mode used.
      */
@@ -125,6 +112,8 @@ public class ChromeLauncherActivity extends Activity
     private boolean mIsInMultiInstanceMode;
     private boolean mIsFinishNeeded;
 
+    private boolean mIsCustomTabIntent;
+
     /** When started with an intent, maybe pre-resolve the domain. */
     private void maybePrefetchDnsInBackground() {
         if (getIntent() != null && Intent.ACTION_VIEW.equals(getIntent().getAction())) {
@@ -160,26 +149,10 @@ public class ChromeLauncherActivity extends Activity
         mIntentHandler = new IntentHandler(this, getPackageName());
         maybePerformMigrationTasks();
 
-        if (handleCustomTabActivityIntent()) {
-            finish();
-            return;
-        }
-
-        // Check if we should launch a WebappActivity.
-        if (IntentUtils.safeGetBooleanExtra(getIntent(), EXTRA_BRING_WEBAPP_TO_FRONT, false)
-                || TextUtils.equals(getIntent().getAction(), ACTION_START_WEBAPP)) {
-            Intent fallbackIntent = launchWebapp(getIntent());
-            if (fallbackIntent == null) {
-                ApiCompatibilityUtils.finishAndRemoveTask(this);
-                return;
-            } else {
-                // Try to launch the URL as a regular VIEW intent.
-                setIntent(fallbackIntent);
-            }
-        }
+        mIsCustomTabIntent = isCustomTabIntent();
 
         // Check if we should launch the ChromeTabbedActivity.
-        if (!FeatureUtilities.isDocumentMode(this)) {
+        if (!mIsCustomTabIntent && !FeatureUtilities.isDocumentMode(this)) {
             launchTabbedMode();
             finish();
             return;
@@ -203,6 +176,12 @@ public class ChromeLauncherActivity extends Activity
         // ChromeTabbedActivity because ChromeTabbedActivity handles FRE in its own way.
         if (launchFirstRunExperience()) return;
 
+        if (mIsCustomTabIntent) {
+            launchCustomTabActivity();
+            finish();
+            return;
+        }
+
         // Launch a DocumentActivity to handle the Intent.
         handleDocumentActivityIntent();
         if (!mIsFinishNeeded) ApiCompatibilityUtils.finishAndRemoveTask(this);
@@ -214,7 +193,10 @@ public class ChromeLauncherActivity extends Activity
         if (requestCode == FIRST_RUN_EXPERIENCE_REQUEST_CODE) {
             if (resultCode == Activity.RESULT_OK) {
                 // User might have opted out during FRE, so check again.
-                if (FeatureUtilities.isDocumentMode(this)) {
+                if (mIsCustomTabIntent) {
+                    launchCustomTabActivity();
+                    finish();
+                } else if (FeatureUtilities.isDocumentMode(this)) {
                     handleDocumentActivityIntent();
                     if (!mIsFinishNeeded) ApiCompatibilityUtils.finishAndRemoveTask(this);
                 } else {
@@ -249,16 +231,14 @@ public class ChromeLauncherActivity extends Activity
     @Override
     public void processUrlViewIntent(String url, String referer, String headers,
             IntentHandler.TabOpenType tabOpenType, String externalAppId,
-            int tabIdToBringToFront, Intent intent) {
+            int tabIdToBringToFront, boolean hasUserGesture, Intent intent) {
         assert false;
     }
 
     /**
-     * Handles launching a {@link CustomTabActivity}, which will sit on top of a client's activity
-     * in the same task.
-     * @return True if the intent is handled here.
+     * @return Whether the intent sent is for launching a Custom Tab.
      */
-    private boolean handleCustomTabActivityIntent() {
+    private boolean isCustomTabIntent() {
         if (getIntent() == null || !getIntent().hasExtra(CustomTabsIntent.EXTRA_SESSION)) {
             return false;
         }
@@ -267,18 +247,24 @@ public class ChromeLauncherActivity extends Activity
         if (url == null) return false;
 
         if (!ChromePreferenceManager.getInstance(this).getCustomTabsEnabled()) return false;
+        return true;
+    }
 
+    /**
+     * Handles launching a {@link CustomTabActivity}, which will sit on top of a client's activity
+     * in the same task.
+     */
+    private void launchCustomTabActivity() {
         boolean handled = CustomTabActivity.handleInActiveContentIfNeeded(getIntent());
-        if (handled) return true;
+        if (handled) return;
 
         // Create and fire a launch intent. Use the copy constructor to carry over the myriad of
         // extras.
         Intent newIntent = new Intent(getIntent());
         newIntent.setAction(Intent.ACTION_VIEW);
         newIntent.setClassName(this, CustomTabActivity.class.getName());
-        newIntent.setData(Uri.parse(url));
+        newIntent.setData(Uri.parse(IntentHandler.getUrlFromIntent(getIntent())));
         startActivity(newIntent);
-        return true;
     }
 
     /**
@@ -294,6 +280,9 @@ public class ChromeLauncherActivity extends Activity
         }
 
         maybePrefetchDnsInBackground();
+
+        boolean hasUserGesture =
+                IntentWithGesturesHandler.getInstance().getUserGestureAndClear(getIntent());
 
         // Increment the Tab ID counter at this point since this Activity may not appear in
         // getAppTasks() when DocumentTabModelSelector is initialized.  This can potentially happen
@@ -311,7 +300,7 @@ public class ChromeLauncherActivity extends Activity
         }
 
         // Sometimes an Intent requests that the current Document get clobbered.
-        if (clobberCurrentDocument(url)) return;
+        if (clobberCurrentDocument(url, hasUserGesture)) return;
 
         // Try to retarget existing Documents before creating a new one.
         boolean incognito = IntentUtils.safeGetBooleanExtra(getIntent(),
@@ -326,9 +315,9 @@ public class ChromeLauncherActivity extends Activity
         // Try to relaunch an existing task.
         if (reuse && !append) {
             int shortcutSource = getIntent().getIntExtra(
-                        ShortcutHelper.EXTRA_SOURCE, ShortcutHelper.SOURCE_UNKNOWN);
+                        ShortcutHelper.EXTRA_SOURCE, ShortcutSource.UNKNOWN);
             LaunchMetrics.recordHomeScreenLaunchIntoTab(url, shortcutSource);
-            if (relaunchTask(incognito, url)) return;
+            if (relaunchTask(incognito, url) != Tab.INVALID_TAB_ID) return;
         }
 
         // Create and fire a launch Intent to start a new Task.  The old Intent is copied using
@@ -337,7 +326,8 @@ public class ChromeLauncherActivity extends Activity
                 getApplicationContext(), getIntent(), url, incognito, Tab.INVALID_TAB_ID);
         setRecentsFlagsOnIntent(
                 newIntent, append ? 0 : Intent.FLAG_ACTIVITY_NEW_DOCUMENT, incognito);
-        fireDocumentIntent(this, newIntent, incognito, url, affiliated, null);
+        AsyncTabCreationParams asyncParams = new AsyncTabCreationParams(new LoadUrlParams(url));
+        fireDocumentIntent(this, newIntent, incognito, affiliated, asyncParams);
     }
 
     /**
@@ -365,9 +355,12 @@ public class ChromeLauncherActivity extends Activity
                 String url = HomepageManager.getHomepageUri(ChromeLauncherActivity.this);
                 if (TextUtils.isEmpty(url)) url = UrlConstants.NTP_URL;
 
-                int mode = mIsInMultiInstanceMode ? LAUNCH_MODE_FOREGROUND : LAUNCH_MODE_RETARGET;
-                launchDocumentInstance(ChromeLauncherActivity.this, false, mode, url,
-                        DocumentMetricIds.STARTED_BY_LAUNCHER, PageTransition.AUTO_TOPLEVEL, null);
+                AsyncTabCreationParams asyncParams = new AsyncTabCreationParams(
+                        new LoadUrlParams(url, PageTransition.AUTO_TOPLEVEL));
+                asyncParams.setDocumentStartedBy(DocumentMetricIds.STARTED_BY_LAUNCHER);
+                asyncParams.setDocumentLaunchMode(
+                        mIsInMultiInstanceMode ? LAUNCH_MODE_FOREGROUND : LAUNCH_MODE_RETARGET);
+                launchDocumentInstance(ChromeLauncherActivity.this, false, asyncParams);
 
                 if (mIsFinishNeeded) finish();
             }
@@ -377,9 +370,10 @@ public class ChromeLauncherActivity extends Activity
     /**
      * If necessary, attempts to clobber the current DocumentActivity's tab with the given URL.
      * @param url URL to display.
+     * @param hasUserGesture Whether the intent is launched from a previous user gesture.
      * @return Whether or not the clobber was successful.
      */
-    private boolean clobberCurrentDocument(String url) {
+    private boolean clobberCurrentDocument(String url, boolean hasUserGesture) {
         boolean shouldOpenNewTab = IntentUtils.safeGetBooleanExtra(
                 getIntent(), Browser.EXTRA_CREATE_NEW_TAB, false);
         String applicationId =
@@ -391,13 +385,15 @@ public class ChromeLauncherActivity extends Activity
         if (tabId == Tab.INVALID_TAB_ID) return false;
 
         // Try to clobber the page.
-        PendingDocumentData data = new PendingDocumentData();
-        data.url = url;
-        data.originalIntent = new Intent(getIntent());
-        ChromeApplication.getDocumentTabModelSelector().addPendingDocumentData(tabId, data);
+        LoadUrlParams params = new LoadUrlParams(
+                url, PageTransition.LINK | PageTransition.FROM_API);
+        params.setHasUserGesture(hasUserGesture);
+        AsyncTabCreationParams data =
+                new AsyncTabCreationParams(params, new Intent(getIntent()));
+        AsyncTabCreationParamsManager.add(tabId, data);
         if (!relaunchTask(tabId)) {
             // Were not able to clobber, will fall through to handle in a new document.
-            ChromeApplication.getDocumentTabModelSelector().removePendingDocumentData(tabId);
+            AsyncTabCreationParamsManager.remove(tabId);
             return false;
         }
 
@@ -440,32 +436,32 @@ public class ChromeLauncherActivity extends Activity
      * This should never be exposed to non-Chrome callers.
      * @param activity Activity launching the new instance. May be null.
      * @param incognito Whether the created document should be incognito.
-     * @param launchMode See LAUNCH_MODE_* above.
-     * @param url URL to load.
-     * @param intentSource What is causing the Intent to be fired.
-     *         See DocumentUma.DOCUMENT_ACTIVITY_STARTED_BY_
-     * @param pageTransitionType The page transition we will do on loading the given URL.
-     * @param pendingUrlParams PendingUrlParams to store internally and use later once an intent is
-     *                         received to launch the URL. May be null.
+     * @param asyncParams AsyncTabCreationParams to store internally and use later once an intent is
+     *                    received to launch the URL.
+     * @return ID of the Tab that was launched.
      */
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    public static void launchDocumentInstance(Activity activity, boolean incognito, int launchMode,
-            String url, int intentSource, int pageTransitionType,
-            PendingDocumentData pendingUrlParams) {
+    public static int launchDocumentInstance(
+            Activity activity, boolean incognito, AsyncTabCreationParams asyncParams) {
+        assert asyncParams != null;
+
+        final int launchMode = asyncParams.getDocumentLaunchMode();
+        final int intentSource = asyncParams.getDocumentStartedBy();
+        final LoadUrlParams loadUrlParams = asyncParams.getLoadUrlParams();
+
         // If we weren't given an initial URL, check the pending parameters.
-        if (url == null && pendingUrlParams != null) {
-            if (pendingUrlParams.url != null) {
-                url = pendingUrlParams.url;
-            } else if (pendingUrlParams.webContents != null) {
-                url = pendingUrlParams.webContents.getUrl();
-            }
+        if (loadUrlParams.getUrl() == null && asyncParams.getWebContents() != null) {
+            loadUrlParams.setUrl(asyncParams.getWebContents().getUrl());
         }
 
-        // Try to retarget an existing task.  Make sure there is no pending data to go with the load
-        // because relaunching an Activity won't send the parameters over.
+        // Try to retarget an existing task.  Make sure there is no pending POST data or a dangling
+        // WebContents to go with the load because relaunching an Activity will not use it when it
+        // is restarted.
         if (launchMode == LAUNCH_MODE_RETARGET) {
-            assert pendingUrlParams == null;
-            if (relaunchTask(incognito, url)) return;
+            assert asyncParams.getWebContents() == null;
+            assert loadUrlParams.getPostData() == null;
+            int relaunchedId = relaunchTask(incognito, loadUrlParams.getUrl());
+            if (relaunchedId != Tab.INVALID_TAB_ID) return relaunchedId;
         }
 
         // If the new tab is spawned by another tab, record the parent.
@@ -477,10 +473,12 @@ public class ChromeLauncherActivity extends Activity
 
         // Fire an Intent to start a DocumentActivity instance.
         Context context = ApplicationStatus.getApplicationContext();
-        Intent intent = createLaunchIntent(context, null, url, incognito, parentId);
+        Intent intent = createLaunchIntent(
+                context, null, loadUrlParams.getUrl(), incognito, parentId);
         setRecentsFlagsOnIntent(intent, Intent.FLAG_ACTIVITY_NEW_DOCUMENT, incognito);
         intent.putExtra(IntentHandler.EXTRA_OPEN_NEW_INCOGNITO_TAB, incognito);
-        intent.putExtra(IntentHandler.EXTRA_PAGE_TRANSITION_TYPE, pageTransitionType);
+        intent.putExtra(IntentHandler.EXTRA_PAGE_TRANSITION_TYPE,
+                loadUrlParams.getTransitionType());
         intent.putExtra(IntentHandler.EXTRA_STARTED_BY, intentSource);
         if (activity != null && activity.getIntent() != null) {
             intent.putExtra(IntentHandler.EXTRA_PARENT_INTENT, activity.getIntent());
@@ -492,10 +490,12 @@ public class ChromeLauncherActivity extends Activity
         boolean affiliated = launchMode == LAUNCH_MODE_AFFILIATED;
         if (activity == null) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            fireDocumentIntent(context, intent, incognito, url, affiliated, pendingUrlParams);
+            fireDocumentIntent(context, intent, incognito, affiliated, asyncParams);
         } else {
-            fireDocumentIntent(activity, intent, incognito, url, affiliated, pendingUrlParams);
+            fireDocumentIntent(activity, intent, incognito, affiliated, asyncParams);
         }
+
+        return ActivityDelegate.getTabIdFromIntent(intent);
     }
 
     /**
@@ -508,9 +508,10 @@ public class ChromeLauncherActivity extends Activity
      */
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     private static void fireDocumentIntent(Context context, Intent intent, boolean incognito,
-            String url, boolean affiliated, PendingDocumentData pendingUrlParams) {
-        assert url != null;
-        assert incognito || TextUtils.equals(IntentHandler.getUrlFromIntent(intent), url);
+            boolean affiliated, AsyncTabCreationParams asyncParams) {
+        assert asyncParams != null;
+        assert incognito || TextUtils.equals(
+                IntentHandler.getUrlFromIntent(intent), asyncParams.getLoadUrlParams().getUrl());
         assert !affiliated || !incognito;
 
         // Remove any flags from the Intent that would prevent a second instance of Chrome from
@@ -521,28 +522,20 @@ public class ChromeLauncherActivity extends Activity
                     intent);
         }
 
-        // Incognito URLs are not passed through the Intent for privacy reasons.  Instead, store it
-        // as a parameter that gets retrieved when the IncognitoDocumentActivity starts.
-        if (incognito) {
-            if (pendingUrlParams == null) pendingUrlParams = new PendingDocumentData();
-            assert pendingUrlParams.url == null;
-            pendingUrlParams.url = url;
-        }
-
         // Store parameters for the new DocumentActivity, which are retrieved immediately after the
         // new Activity starts.  This structure is used to avoid passing things like pointers to
         // native WebContents in the Intent, which are strictly under Android's control and is
         // re-delivered when a Chrome Activity is restarted.
         boolean isWebContentsPending = false;
-        if (pendingUrlParams != null) {
-            int tabId = ActivityDelegate.getTabIdFromIntent(intent);
-            ChromeApplication.getDocumentTabModelSelector().addPendingDocumentData(
-                    tabId, pendingUrlParams);
-            isWebContentsPending = pendingUrlParams.webContents != null;
-        }
+        int tabId = ActivityDelegate.getTabIdFromIntent(intent);
+        AsyncTabCreationParamsManager.add(tabId, asyncParams);
+        isWebContentsPending = asyncParams.getWebContents() != null;
 
-        Bundle options = affiliated && !isWebContentsPending
-                ? ActivityOptions.makeTaskLaunchBehind().toBundle() : null;
+        Bundle options = null;
+        if (affiliated && !isWebContentsPending) {
+            options = ActivityOptions.makeTaskLaunchBehind().toBundle();
+            asyncParams.setIsInitiallyHidden(true);
+        }
         if (incognito && !CipherFactory.getInstance().hasCipher()
                 && ChromeApplication.getDocumentTabModelSelector().getModel(true)
                         .getCount() > 0) {
@@ -656,11 +649,11 @@ public class ChromeLauncherActivity extends Activity
      * Bring the task matching the given URL to the front if the task is retargetable.
      * @param incognito Whether or not the tab is incognito.
      * @param url URL that the tab would have been created for. If null, this param is ignored.
-     * @return Whether the task was successfully brought back.
+     * @return ID of the Tab if it was successfully relaunched, otherwise Tab.INVALID_TAB_ID.
      */
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    private static boolean relaunchTask(boolean incognito, String url) {
-        if (TextUtils.isEmpty(url)) return false;
+    private static int relaunchTask(boolean incognito, String url) {
+        if (TextUtils.isEmpty(url)) return Tab.INVALID_TAB_ID;
 
         Context context = ApplicationStatus.getApplicationContext();
         ActivityManager manager =
@@ -680,10 +673,10 @@ public class ChromeLauncherActivity extends Activity
             }
 
             if (!moveToFront(task)) continue;
-            return true;
+            return id;
         }
 
-        return false;
+        return Tab.INVALID_TAB_ID;
     }
 
     /**
@@ -760,50 +753,6 @@ public class ChromeLauncherActivity extends Activity
     }
 
     /**
-     * Tries to launch a WebappActivity for the given Intent.
-     * @return Intent to fire if the webapp Intent failed to launch because of security checks,
-     *         null otherwise.
-     */
-    private Intent launchWebapp(Intent intent) {
-        String webappId = IntentUtils.safeGetStringExtra(intent, ShortcutHelper.EXTRA_ID);
-        String webappUrl = IntentUtils.safeGetStringExtra(intent, ShortcutHelper.EXTRA_URL);
-        String webappTitle = IntentUtils.safeGetStringExtra(intent, ShortcutHelper.EXTRA_TITLE);
-        String webappIcon = IntentUtils.safeGetStringExtra(intent, ShortcutHelper.EXTRA_ICON);
-        int webappOrientation = IntentUtils.safeGetIntExtra(intent,
-                ShortcutHelper.EXTRA_ORIENTATION, ScreenOrientationValues.DEFAULT);
-        int webappSource = IntentUtils.safeGetIntExtra(intent,
-                ShortcutHelper.EXTRA_SOURCE, ShortcutHelper.SOURCE_UNKNOWN);
-
-        if (webappId != null && webappUrl != null) {
-            String webappMacString = IntentUtils.safeGetStringExtra(
-                    intent, ShortcutHelper.EXTRA_MAC);
-            byte[] webappMac =
-                    webappMacString == null ? null : Base64.decode(webappMacString, Base64.DEFAULT);
-
-            if (webappMac != null && WebappAuthenticator.isUrlValid(this, webappUrl, webappMac)) {
-                if (TextUtils.equals(ACTION_START_WEBAPP, intent.getAction())) {
-                    LaunchMetrics.recordHomeScreenLaunchIntoStandaloneActivity(
-                            webappUrl, webappSource);
-                }
-
-                WebappActivity.launchInstance(this, webappId,
-                        webappUrl, webappIcon, webappTitle, webappOrientation, webappSource);
-            } else {
-                Log.e(TAG, "Shortcut (" + webappUrl + ") opened in Chrome.");
-
-                // Tried and failed.  Change the intent action and try the URL with a VIEW Intent.
-                Intent fallbackIntent = new Intent(intent);
-                fallbackIntent.setAction(Intent.ACTION_VIEW);
-                fallbackIntent.setData(Uri.parse(webappUrl));
-                fallbackIntent.putExtra(BookmarkUtils.REUSE_URL_MATCHING_TAB_ELSE_NEW_TAB, true);
-                fallbackIntent.putExtra(ShortcutHelper.EXTRA_SOURCE, webappSource);
-                return fallbackIntent;
-            }
-        }
-        return null;
-    }
-
-    /**
      * Tries to launch the First Run Experience.  If ChromeLauncherActivity is running with the
      * wrong Intent flags, we instead relaunch ChromeLauncherActivity to make sure it runs in its
      * own task, which then triggers First Run.
@@ -813,7 +762,7 @@ public class ChromeLauncherActivity extends Activity
         final boolean isIntentActionMain = getIntent() != null
                 && TextUtils.equals(getIntent().getAction(), Intent.ACTION_MAIN);
         final Intent freIntent = FirstRunFlowSequencer.checkIfFirstRunIsNecessary(
-                this, getIntent(), isIntentActionMain);
+                this, isIntentActionMain);
         if (freIntent == null) return false;
 
         if ((getIntent().getFlags() & Intent.FLAG_ACTIVITY_NEW_TASK) != 0) {

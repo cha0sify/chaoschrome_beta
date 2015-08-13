@@ -9,6 +9,7 @@ import android.test.suitebuilder.annotation.MediumTest;
 
 import org.chromium.base.test.util.Feature;
 import org.chromium.chrome.browser.ShortcutHelper;
+import org.chromium.chrome.browser.ShortcutSource;
 import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
 import org.chromium.content_public.common.ScreenOrientationValues;
 
@@ -23,8 +24,9 @@ public class WebappUrlBarTest extends WebappActivityTestBase {
     protected void setUp() throws Exception {
         super.setUp();
 
-        WebappInfo mockInfo = WebappInfo.create(WEBAPP_ID, WEBAPP_URL, null, null,
-                ScreenOrientationValues.DEFAULT, ShortcutHelper.SOURCE_UNKNOWN);
+        WebappInfo mockInfo = WebappInfo.create(WEBAPP_ID, WEBAPP_URL, null, null, null,
+                ScreenOrientationValues.DEFAULT, ShortcutSource.UNKNOWN,
+                ShortcutHelper.THEME_COLOR_INVALID_OR_MISSING);
         getActivity().getWebappInfo().copy(mockInfo);
         mUrlBar = getActivity().getUrlBarForTests();
     }

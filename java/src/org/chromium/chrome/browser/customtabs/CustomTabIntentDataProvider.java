@@ -11,6 +11,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -22,6 +24,7 @@ import org.chromium.base.Log;
 import org.chromium.base.VisibleForTesting;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.util.IntentUtils;
+import org.chromium.chrome.browser.widget.TintedDrawable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,21 +42,11 @@ public class CustomTabIntentDataProvider {
     public static final String EXTRA_KEEP_ALIVE = "android.support.customtabs.extra.KEEP_ALIVE";
 
     /**
-     * Extra int that specifies the style of the back button on the toolbar. Default is showing a
-     * cross icon.
+     * Extra bitmap that specifies the icon of the back button on the toolbar. If the client chooses
+     * not to customize it, a default close button will be used.
      */
-    public static final String EXTRA_CLOSE_BUTTON_STYLE =
-            "android.support.customtabs.extra.CLOSE_BUTTON_STYLE";
-
-    /**
-     * Uses 'X'-like cross icon for close button.
-     */
-    public static final int CLOSE_BUTTON_CROSS = 0;
-
-    /**
-     * Uses '<'-like chevron arrow icon for close button.
-     */
-    public static final int CLOSE_BUTTON_ARROW = 1;
+    public static final String EXTRA_CLOSE_BUTTON_ICON =
+            "android.support.customtabs.extra.CLOSE_BUTTON_ICON";
 
     /**
      * Extra int that specifies state for showing the page title. Default is showing only the domain
@@ -72,16 +65,24 @@ public class CustomTabIntentDataProvider {
      */
     public static final int SHOW_PAGE_TITLE = 1;
 
+    /**
+     * Extra boolean that specifies whether the custom action button should be tinted. Default is
+     * false and the action button will not be tinted.
+     */
+    public static final String EXTRA_TINT_ACTION_BUTTON =
+            "android.support.customtabs.extra.TINT_ACTION_BUTTON";
+
     private static final String BUNDLE_PACKAGE_NAME = "android:packageName";
     private static final String BUNDLE_ENTER_ANIMATION_RESOURCE = "android:animEnterRes";
     private static final String BUNDLE_EXIT_ANIMATION_RESOURCE = "android:animExitRes";
     private final IBinder mSession;
     private final Intent mKeepAliveServiceIntent;
     private final int mTitleVisibilityState;
-    private final int mCloseButtonResId;
     private int mToolbarColor;
-    private Bitmap mIcon;
-    private PendingIntent mActionButtonPendingIntent;
+    private Drawable mCustomButtonIcon;
+    private String mCustomButtonDescription;
+    private PendingIntent mCustomButtonPendingIntent;
+    private Drawable mCloseButtonIcon;
     private List<Pair<String, PendingIntent>> mMenuEntries = new ArrayList<>();
     private Bundle mAnimationBundle;
     // OnFinished listener for PendingIntents. Used for testing only.
@@ -100,14 +101,37 @@ public class CustomTabIntentDataProvider {
         Bundle actionButtonBundle =
                 IntentUtils.safeGetBundleExtra(intent, CustomTabsIntent.EXTRA_ACTION_BUTTON_BUNDLE);
         if (actionButtonBundle != null) {
-            mIcon = IntentUtils.safeGetParcelable(actionButtonBundle, CustomTabsIntent.KEY_ICON);
-            if (mIcon != null && !checkBitmapSizeWithinBounds(context, mIcon)) {
-                mIcon.recycle();
-                mIcon = null;
-            } else if (mIcon != null) {
-                mActionButtonPendingIntent = IntentUtils.safeGetParcelable(
+            Bitmap bitmap = IntentUtils.safeGetParcelable(actionButtonBundle,
+                    CustomTabsIntent.KEY_ICON);
+            if (bitmap != null && !checkCustomButtonIconWithinBounds(context, bitmap)) {
+                bitmap.recycle();
+                bitmap = null;
+            } else if (bitmap != null) {
+                mCustomButtonPendingIntent = IntentUtils.safeGetParcelable(
                         actionButtonBundle, CustomTabsIntent.KEY_PENDING_INTENT);
+                boolean shouldTint = IntentUtils.safeGetBooleanExtra(intent,
+                        EXTRA_TINT_ACTION_BUTTON, false);
+                if (shouldTint) {
+                    mCustomButtonIcon = TintedDrawable
+                            .constructTintedDrawable(context.getResources(), bitmap);
+                } else {
+                    mCustomButtonIcon = new BitmapDrawable(context.getResources(), bitmap);
+                }
+                mCustomButtonDescription = IntentUtils.safeGetString(actionButtonBundle,
+                        CustomTabsIntent.KEY_DESCRIPTION);
             }
+        }
+
+        Bitmap bitmap = IntentUtils.safeGetParcelableExtra(intent, EXTRA_CLOSE_BUTTON_ICON);
+        if (bitmap != null && !checkCloseButtonSize(context, bitmap)) {
+            bitmap.recycle();
+            bitmap = null;
+        }
+        if (bitmap == null) {
+            mCloseButtonIcon = TintedDrawable.constructTintedDrawable(context.getResources(),
+                    R.drawable.btn_close);
+        } else {
+            mCloseButtonIcon = new BitmapDrawable(context.getResources(), bitmap);
         }
 
         List<Bundle> menuItems =
@@ -125,18 +149,6 @@ public class CustomTabIntentDataProvider {
 
         mAnimationBundle = IntentUtils.safeGetBundleExtra(
                 intent, CustomTabsIntent.EXTRA_EXIT_ANIMATION_BUNDLE);
-
-        int closeButtonStyle =
-                IntentUtils.safeGetIntExtra(intent, EXTRA_CLOSE_BUTTON_STYLE, CLOSE_BUTTON_CROSS);
-        switch(closeButtonStyle) {
-            case CustomTabIntentDataProvider.CLOSE_BUTTON_ARROW:
-                mCloseButtonResId = R.drawable.btn_chevron_left;
-                break;
-            case CustomTabIntentDataProvider.CLOSE_BUTTON_CROSS:
-            default:
-                mCloseButtonResId = R.drawable.btn_close;
-        }
-
         mTitleVisibilityState =
                 IntentUtils.safeGetIntExtra(intent, EXTRA_TITLE_VISIBILITY_STATE, NO_TITLE);
     }
@@ -180,15 +192,17 @@ public class CustomTabIntentDataProvider {
     }
 
     /**
-     * @return The resource id of the close button shown in the custom tab toolbar.
+     * @return The drawable of the icon of close button shown in the custom tab toolbar. If the
+     *         client app provides an icon in valid size, use this icon; else return the default
+     *         drawable.
      */
-    public int getCloseButtonIconResId() {
-        return mCloseButtonResId;
+    public Drawable getCloseButtonDrawable() {
+        return mCloseButtonIcon;
     }
 
     /**
      * @return The title visibility state for the toolbar.
-     *         Default is {@link CustomTabIntentDataProvider#CUSTOM_TAB_NO_TITLE}.
+     *         Default is {@link CustomTabIntentDataProvider#NO_TITLE}.
      */
     public int getTitleVisibilityState() {
         return mTitleVisibilityState;
@@ -199,14 +213,22 @@ public class CustomTabIntentDataProvider {
      *         action button.
      */
     public boolean shouldShowActionButton() {
-        return mIcon != null && mActionButtonPendingIntent != null;
+        return mCustomButtonIcon != null && mCustomButtonPendingIntent != null
+                && !TextUtils.isEmpty(mCustomButtonDescription);
     }
 
     /**
      * @return The icon used for the action button. Will be null if not set in the intent.
      */
-    public Bitmap getActionButtonIcon() {
-        return mIcon;
+    public Drawable getActionButtonIcon() {
+        return mCustomButtonIcon;
+    }
+
+    /**
+     * @return The content description for the custom action button.
+     */
+    public String getActionButtonDescription() {
+        return mCustomButtonDescription;
     }
 
     /**
@@ -215,7 +237,7 @@ public class CustomTabIntentDataProvider {
      */
     @VisibleForTesting
     public PendingIntent getActionButtonPendingIntentForTest() {
-        return mActionButtonPendingIntent;
+        return mCustomButtonPendingIntent;
     }
 
     /**
@@ -286,22 +308,28 @@ public class CustomTabIntentDataProvider {
      * @param url The url to attach as additional data to the {@link PendingIntent}.
      */
     public void sendButtonPendingIntentWithUrl(Context context, String url) {
-        assert mActionButtonPendingIntent != null;
+        assert mCustomButtonPendingIntent != null;
         Intent addedIntent = new Intent();
         addedIntent.setData(Uri.parse(url));
         try {
-            mActionButtonPendingIntent.send(context, 0, addedIntent, mOnFinished, null);
+            mCustomButtonPendingIntent.send(context, 0, addedIntent, mOnFinished, null);
         } catch (CanceledException e) {
             Log.e(TAG, "CanceledException while sending pending intent in custom tab");
         }
     }
 
-    private boolean checkBitmapSizeWithinBounds(Context context, Bitmap bitmap) {
+    private boolean checkCustomButtonIconWithinBounds(Context context, Bitmap bitmap) {
         int height = context.getResources().getDimensionPixelSize(R.dimen.toolbar_icon_height);
         if (bitmap.getHeight() < height) return false;
         int scaledWidth = bitmap.getWidth() / bitmap.getHeight() * height;
         if (scaledWidth > 2 * height) return false;
         return true;
+    }
+
+    private boolean checkCloseButtonSize(Context context, Bitmap bitmap) {
+        int size = context.getResources().getDimensionPixelSize(R.dimen.toolbar_icon_height);
+        if (bitmap.getHeight() == size && bitmap.getWidth() == size) return true;
+        return false;
     }
 
     /**

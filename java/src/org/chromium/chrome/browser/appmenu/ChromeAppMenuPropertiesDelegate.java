@@ -8,16 +8,19 @@ import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import org.chromium.base.CommandLine;
+import org.chromium.base.FieldTrialList;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.BookmarkUtils;
 import org.chromium.chrome.browser.BookmarksBridge;
 import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.ChromeBrowserProviderClient;
-import org.chromium.chrome.browser.Tab;
+import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.UrlConstants;
 import org.chromium.chrome.browser.preferences.ManagedPreferencesUtils;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.share.ShareHelper;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.util.FeatureUtilities;
 import org.chromium.components.dom_distiller.core.DomDistillerUrlUtils;
 import org.chromium.printing.PrintingController;
@@ -32,9 +35,14 @@ public class ChromeAppMenuPropertiesDelegate implements AppMenuPropertiesDelegat
     private static final int RELOAD_BUTTON_LEVEL_RELOAD = 0;
     private static final int RELOAD_BUTTON_LEVEL_STOP_LOADING = 1;
 
+    private static final String MENU_TRIMMING_EXPERIMENT_NAME = "MenuTrimming";
+    private static final String MENU_TRIMMING_EXPERIMENT_ENABLED_GROUP = "Enabled";
+
     protected MenuItem mReloadMenuItem;
 
     protected final ChromeActivity mActivity;
+
+    protected BookmarksBridge mBookmarksBridge;
 
     public ChromeAppMenuPropertiesDelegate(ChromeActivity activity) {
         mActivity = activity;
@@ -92,8 +100,7 @@ public class ChromeAppMenuPropertiesDelegate implements AppMenuPropertiesDelegat
                 loadingStateChanged(currentTab.isLoading());
 
                 MenuItem bookmarkMenuItem = menu.findItem(R.id.bookmark_this_page_id);
-                bookmarkMenuItem.setEnabled(BookmarksBridge.isEditBookmarksEnabled(
-                        mActivity.getActivityTab().getProfile().getOriginalProfile()));
+                bookmarkMenuItem.setEnabled(mBookmarksBridge.isEditBookmarksEnabled());
                 if (currentTab.getBookmarkId() != ChromeBrowserProviderClient.INVALID_BOOKMARK_ID) {
                     bookmarkMenuItem.setIcon(R.drawable.btn_star_filled);
                     bookmarkMenuItem.setChecked(true);
@@ -150,6 +157,8 @@ public class ChromeAppMenuPropertiesDelegate implements AppMenuPropertiesDelegat
             // Only display reader mode settings menu option if the current page is in reader mode.
             menu.findItem(R.id.reader_mode_prefs_id)
                     .setVisible(DomDistillerUrlUtils.isDistilledPage(currentTab.getUrl()));
+
+            maybeDisableRecentsAndHistoryItems(menu);
         }
 
         if (isOverviewMenu) {
@@ -224,5 +233,35 @@ public class ChromeAppMenuPropertiesDelegate implements AppMenuPropertiesDelegat
     @Override
     public int getFooterResourceId() {
         return 0;
+    }
+
+    /**
+     * Updates the bookmarks bridge.
+     *
+     * @param bookmarksBridge The bookmarks bridge.
+     */
+    public void setBookmarksBridge(BookmarksBridge bookmarksBridge) {
+        mBookmarksBridge = bookmarksBridge;
+    }
+
+    /**
+     * @return Whether the menu trimming experiment to hide "Bookmarks" and "Recent tabs" menu
+     *         items is enabled.
+     */
+    public static boolean isMenuTrimmingExperimentEnabled() {
+        // Query the field trial state first, to ensure that UMA reports the correct group.
+        String fieldTrialGroup = FieldTrialList.findFullName(MENU_TRIMMING_EXPERIMENT_NAME);
+        CommandLine commandLine = CommandLine.getInstance();
+        if (commandLine.hasSwitch(ChromeSwitches.ENABLE_MENU_TRIMMING)) return true;
+        return fieldTrialGroup.equals(MENU_TRIMMING_EXPERIMENT_ENABLED_GROUP);
+    }
+
+    private void maybeDisableRecentsAndHistoryItems(Menu menu) {
+        if (isMenuTrimmingExperimentEnabled()) {
+            MenuItem recentTabsMenuItem = menu.findItem(R.id.recent_tabs_menu_id);
+            recentTabsMenuItem.setVisible(false);
+            MenuItem bookmarksMenuItem = menu.findItem(R.id.all_bookmarks_menu_id);
+            bookmarksMenuItem.setVisible(false);
+        }
     }
 }

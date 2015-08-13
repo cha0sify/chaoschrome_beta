@@ -6,6 +6,7 @@ package org.chromium.chrome.browser;
 
 import static org.chromium.base.test.util.Restriction.RESTRICTION_TYPE_TABLET;
 
+import android.test.FlakyTest;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.Smoke;
 import android.text.TextUtils;
@@ -18,6 +19,9 @@ import org.chromium.base.test.util.UrlUtils;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.omnibox.LocationBarLayout;
 import org.chromium.chrome.browser.omnibox.UrlBar;
+import org.chromium.chrome.browser.tab.EmptyTabObserver;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.test.ChromeTabbedActivityTestBase;
@@ -144,9 +148,11 @@ public class NavigateTest extends ChromeTabbedActivityTestBase {
         assertEquals(expectedLocation(url), result);
     }
 
-    @Restriction(RESTRICTION_TYPE_TABLET)
-    @MediumTest
-    @Feature({"Navigation"})
+//    @Restriction(RESTRICTION_TYPE_TABLET)
+//    @MediumTest
+//    @Feature({"Navigation"})
+//    crbug.com/516018
+    @FlakyTest
     public void testNavigateMany() throws InterruptedException {
         final String[] urls = {
                 TestHttpServerClient.getUrl("chrome/test/data/android/navigate/one.html"),

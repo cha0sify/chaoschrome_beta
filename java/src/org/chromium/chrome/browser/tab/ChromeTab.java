@@ -28,15 +28,10 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.ChromeApplication;
 import org.chromium.chrome.browser.ChromeWebContentsDelegateAndroid;
-import org.chromium.chrome.browser.EmptyTabObserver;
 import org.chromium.chrome.browser.FrozenNativePage;
 import org.chromium.chrome.browser.IntentHandler.TabOpenType;
 import org.chromium.chrome.browser.NativePage;
-import org.chromium.chrome.browser.Tab;
-import org.chromium.chrome.browser.TabObserver;
 import org.chromium.chrome.browser.TabState;
-import org.chromium.chrome.browser.TabUma;
-import org.chromium.chrome.browser.TabUma.TabCreationState;
 import org.chromium.chrome.browser.UrlConstants;
 import org.chromium.chrome.browser.contextmenu.ChromeContextMenuPopulator;
 import org.chromium.chrome.browser.contextmenu.ContextMenuParams;
@@ -63,7 +58,7 @@ import org.chromium.chrome.browser.policy.PolicyAuditor.AuditEvent;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.rlz.RevenueStats;
 import org.chromium.chrome.browser.search_engines.TemplateUrlService;
-import org.chromium.chrome.browser.tab.BackgroundContentViewHelper.BackgroundContentViewDelegate;
+import org.chromium.chrome.browser.tab.TabUma.TabCreationState;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager.TabCreator;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
@@ -191,16 +186,6 @@ public class ChromeTab extends Tab {
     private GestureStateListener mGestureStateListener;
 
     /**
-     * The background content view helper which loads the original page in background content view.
-     */
-    private BackgroundContentViewHelper mBackgroundContentViewHelper;
-
-    /**
-     * The load progress of swapped in content view at the time of swap.
-     */
-    private int mLoadProgressAtViewSwapInTime;
-
-    /**
      * Whether forward history should be cleared after navigation is committed.
      */
     private boolean mClearAllForwardHistoryRequired;
@@ -221,12 +206,14 @@ public class ChromeTab extends Tab {
             TabState frozenState) {
         super(id, parentId, incognito, activity, nativeWindow, type, frozenState);
 
-        if (frozenState == null) {
-            assert type != TabLaunchType.FROM_RESTORE
-                    && creationState != TabCreationState.FROZEN_ON_RESTORE;
-        } else {
-            assert type == TabLaunchType.FROM_RESTORE
-                    && creationState == TabCreationState.FROZEN_ON_RESTORE;
+        if (creationState != null) {
+            if (frozenState == null) {
+                assert type != TabLaunchType.FROM_RESTORE
+                        && creationState != TabCreationState.FROZEN_ON_RESTORE;
+            } else {
+                assert type == TabLaunchType.FROM_RESTORE
+                        && creationState == TabCreationState.FROZEN_ON_RESTORE;
+            }
         }
 
         addObserver(mTabObserver);
@@ -319,40 +306,6 @@ public class ChromeTab extends Tab {
     }
 
     /**
-     * Initializes the ChromeTab after construction with an existing ContentViewCore.
-     */
-    @Override
-    protected void internalInit() {
-        super.internalInit();
-        if (mBackgroundContentViewHelper == null) {
-            BackgroundContentViewDelegate delegate = new BackgroundContentViewDelegate() {
-                @Override
-                public void onBackgroundViewReady(
-                        ContentViewCore cvc, boolean didStartLoad, boolean didFinishLoad,
-                        int progress) {
-                    WebContents previewWebContents = getWebContents();
-                    swapContentViewCore(cvc, false, didStartLoad, didFinishLoad);
-                    mLoadProgressAtViewSwapInTime = progress;
-                    mBackgroundContentViewHelper.unloadAndDeleteWebContents(previewWebContents);
-
-                    // Enter to fullscreen.
-                    mHandler.removeMessages(MSG_ID_ENABLE_FULLSCREEN_AFTER_LOAD);
-                    mHandler.sendEmptyMessageDelayed(
-                            MSG_ID_ENABLE_FULLSCREEN_AFTER_LOAD, MAX_FULLSCREEN_LOAD_DELAY_MS);
-                    updateFullscreenEnabledState();
-                }
-
-                @Override
-                public void onLoadProgressChanged(int progress) {
-                    notifyLoadProgress(getProgress());
-                }
-            };
-            mBackgroundContentViewHelper = new BackgroundContentViewHelper(
-                    getWindowAndroid(), this, delegate);
-        }
-    }
-
-    /**
      * Remember if the last load used the data reduction proxy, and if so,
      * also remember if it used pass through mode.
      */
@@ -441,9 +394,9 @@ public class ChromeTab extends Tab {
             // Creating new Tabs asynchronously requires starting a new Activity to create the Tab,
             // so the Tab returned will always be null.  There's no way to know synchronously
             // whether the Tab is created, so assume it's always successful.
-            Tab tab = tabCreator.createTabWithWebContents(
+            boolean createdSuccessfully = tabCreator.createTabWithWebContents(
                     webContents, getId(), TabLaunchType.FROM_LONGPRESS_FOREGROUND, url);
-            boolean success = tabCreator.createsTabsAsynchronously() || tab != null;
+            boolean success = tabCreator.createsTabsAsynchronously() || createdSuccessfully;
             if (success && disposition == WindowOpenDisposition.NEW_POPUP) {
                 PolicyAuditor auditor =
                         ((ChromeApplication) getApplicationContext()).getPolicyAuditor();
@@ -505,7 +458,6 @@ public class ChromeTab extends Tab {
         @Override
         public void onLoadProgressChanged(int progress) {
             if (!isLoading()) return;
-            if (progress >= mLoadProgressAtViewSwapInTime) mLoadProgressAtViewSwapInTime = 0;
             notifyLoadProgress(getProgress());
         }
 
@@ -767,11 +719,6 @@ public class ChromeTab extends Tab {
                 new ChromeTabChromeContextMenuItemDelegate());
     }
 
-    /** @return The {@link BackgroundContentViewHelper} associated with the current tab. */
-    public BackgroundContentViewHelper getBackgroundContentViewHelper() {
-        return mBackgroundContentViewHelper;
-    }
-
     @VisibleForTesting
     public void setViewClientForTesting(ContentViewClient client) {
         setContentViewClient(client);
@@ -911,12 +858,10 @@ public class ChromeTab extends Tab {
                     showRenderedPage();
                 }
 
-                if (!mBackgroundContentViewHelper.hasPendingBackgroundPage()) {
-                    mHandler.removeMessages(MSG_ID_ENABLE_FULLSCREEN_AFTER_LOAD);
-                    mHandler.sendEmptyMessageDelayed(
-                            MSG_ID_ENABLE_FULLSCREEN_AFTER_LOAD, MAX_FULLSCREEN_LOAD_DELAY_MS);
-                    updateFullscreenEnabledState();
-                }
+                mHandler.removeMessages(MSG_ID_ENABLE_FULLSCREEN_AFTER_LOAD);
+                mHandler.sendEmptyMessageDelayed(
+                        MSG_ID_ENABLE_FULLSCREEN_AFTER_LOAD, MAX_FULLSCREEN_LOAD_DELAY_MS);
+                updateFullscreenEnabledState();
 
                 // http://crbug/426679 : if navigation is canceled due to intent handling, we want
                 // to go back to the last committed entry index which was saved before the
@@ -973,44 +918,35 @@ public class ChromeTab extends Tab {
 
     @Override
     protected void didStartPageLoad(String validatedUrl, boolean showingErrorPage) {
-        if (mBackgroundContentViewHelper.isPageSwappingInProgress()) {
-            mLoadProgressAtViewSwapInTime = 0;
-        }
-
         mIsFullscreenWaitingForLoad = !DomDistillerUrlUtils.isDistilledPage(validatedUrl);
-        mLoadProgressAtViewSwapInTime = 0;
 
         super.didStartPageLoad(validatedUrl, showingErrorPage);
     }
 
     @Override
     protected void didFinishPageLoad() {
-        // We should not mark finished if we have pending background page to swap in.
-        // We'll instead call didFinishPageLoad after the background page is swapped in.
-        if (mBackgroundContentViewHelper.hasPendingBackgroundPage()) return;
-
-        mLoadProgressAtViewSwapInTime = 0;
-
         super.didFinishPageLoad();
 
-        // Handle the case where we were pre-renderered and the enable fullscreen message was
-        // never enqueued.
-        if (mIsFullscreenWaitingForLoad
-                && !mHandler.hasMessages(MSG_ID_ENABLE_FULLSCREEN_AFTER_LOAD)
-                && !mBackgroundContentViewHelper.hasPendingBackgroundPage()) {
-            mHandler.sendEmptyMessageDelayed(
-                    MSG_ID_ENABLE_FULLSCREEN_AFTER_LOAD, MAX_FULLSCREEN_LOAD_DELAY_MS);
-        }
+        // Handle the case where a commit or prerender swap notification failed to arrive and the
+        // enable fullscreen message was never enqueued.
+        scheduleEnableFullscreenLoadDelayIfNecessary();
 
         maybeSetDataReductionProxyUsed();
     }
 
     @Override
     protected void didFailPageLoad(int errorCode) {
-        mLoadProgressAtViewSwapInTime = 0;
         cancelEnableFullscreenLoadDelay();
         super.didFailPageLoad(errorCode);
         updateFullscreenEnabledState();
+    }
+
+    private void scheduleEnableFullscreenLoadDelayIfNecessary() {
+        if (mIsFullscreenWaitingForLoad
+                && !mHandler.hasMessages(MSG_ID_ENABLE_FULLSCREEN_AFTER_LOAD)) {
+            mHandler.sendEmptyMessageDelayed(
+                    MSG_ID_ENABLE_FULLSCREEN_AFTER_LOAD, MAX_FULLSCREEN_LOAD_DELAY_MS);
+        }
     }
 
     private void cancelEnableFullscreenLoadDelay() {
@@ -1119,22 +1055,6 @@ public class ChromeTab extends Tab {
         mWebContentsObserver = null;
     }
 
-    @Override
-    public void stopLoading() {
-        super.stopLoading();
-        mBackgroundContentViewHelper.stopLoading();
-    }
-
-    @Override
-    public int getProgress() {
-        if (mBackgroundContentViewHelper.hasPendingBackgroundPage()
-                || mBackgroundContentViewHelper.isPageSwappingInProgress()) {
-            return mBackgroundContentViewHelper.getProgress();
-        }
-        int currentTabProgress = super.getProgress();
-        return Math.max(mLoadProgressAtViewSwapInTime, currentTabProgress);
-    }
-
     /**
      * @return Whether the tab is ready to display or it should be faded in as it loads.
      */
@@ -1183,24 +1103,6 @@ public class ChromeTab extends Tab {
             return true;
         }
         return false;
-    }
-
-    @Override
-    public void goBack() {
-        mBackgroundContentViewHelper.recordBack();
-        super.goBack();
-    }
-
-    @Override
-    public void reload() {
-        mBackgroundContentViewHelper.recordReload();
-        super.reload();
-    }
-
-    @Override
-    public void reloadIgnoringCache() {
-        mBackgroundContentViewHelper.recordReload();
-        super.reloadIgnoringCache();
     }
 
     @Override
@@ -1304,6 +1206,7 @@ public class ChromeTab extends Tab {
                     .setOpenInNewTab(shouldCloseTab)
                     .setIsBackgroundTabNavigation(isHidden() && !isInitialTabLaunchInBackground)
                     .setIsMainFrame(navigationParams.isMainFrame)
+                    .setHasUserGesture(navigationParams.hasUserGesture)
                     .setShouldCloseContentsOnOverrideUrlLoadingAndLaunchIntent(shouldCloseTab
                             && navigationParams.isMainFrame)
                     .build();
@@ -1417,12 +1320,6 @@ public class ChromeTab extends Tab {
         return new InterceptNavigationDelegateImpl();
     }
 
-    @Override
-    public void setClosing(boolean closing) {
-        if (closing) mBackgroundContentViewHelper.recordTabClose();
-        super.setClosing(closing);
-    }
-
     /**
      * @return The reader mode manager for this tab that handles UI events for reader mode.
      */
@@ -1456,11 +1353,6 @@ public class ChromeTab extends Tab {
     // TODO(dtrainor): Port more methods to the observer.
     private final TabObserver mTabObserver = new EmptyTabObserver() {
         @Override
-        public void onContentChanged(Tab tab) {
-            mLoadProgressAtViewSwapInTime = 0;
-        }
-
-        @Override
         public void onSSLStateUpdated(Tab tab) {
             PolicyAuditor auditor =
                     ((ChromeApplication) getApplicationContext()).getPolicyAuditor();
@@ -1475,6 +1367,11 @@ public class ChromeTab extends Tab {
             String url = tab.getUrl();
             // Simulate the PAGE_LOAD_STARTED notification that we did not get.
             didStartPageLoad(url, false);
+
+            // As we may have missed the main frame commit notification for the
+            // swapped web contents, schedule the enabling of fullscreen now.
+            scheduleEnableFullscreenLoadDelayIfNecessary();
+
             if (didFinishLoad) {
                 // Simulate the PAGE_LOAD_FINISHED notification that we did not get.
                 didFinishPageLoad();

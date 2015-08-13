@@ -8,7 +8,7 @@ import android.os.Handler;
 
 import org.chromium.base.VisibleForTesting;
 import org.chromium.chrome.browser.ChromeActivity;
-import org.chromium.chrome.browser.Tab;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.content.browser.ContentViewCore;
 import org.chromium.content_public.browser.GestureStateListener;
 import org.chromium.ui.touch_selection.SelectionEventType;
@@ -54,6 +54,7 @@ public class ContextualSearchSelectionController {
     private boolean mIsSelectionBeingModified;
     private boolean mWasLastTapValid;
     private boolean mIsWaitingForInvalidTapDetection;
+    private boolean mIsSelectionEstablished;
     private boolean mShouldHandleSelectionModification;
     private boolean mDidExpandSelection;
 
@@ -188,21 +189,27 @@ public class ContextualSearchSelectionController {
     void handleSelectionEvent(int eventType, float posXPix, float posYPix) {
         boolean shouldHandleSelection = false;
         switch (eventType) {
-            case SelectionEventType.SELECTION_SHOWN:
+            case SelectionEventType.SELECTION_HANDLES_SHOWN:
                 mWasTapGestureDetected = false;
                 mSelectionType = SelectionType.LONG_PRESS;
                 shouldHandleSelection = true;
                 break;
-            case SelectionEventType.SELECTION_CLEARED:
+            case SelectionEventType.SELECTION_HANDLES_CLEARED:
                 mHandler.handleSelectionDismissal();
                 resetAllStates();
                 break;
-            case SelectionEventType.SELECTION_DRAG_STARTED:
+            case SelectionEventType.SELECTION_HANDLE_DRAG_STARTED:
                 mIsSelectionBeingModified = true;
                 break;
-            case SelectionEventType.SELECTION_DRAG_STOPPED:
+            case SelectionEventType.SELECTION_HANDLE_DRAG_STOPPED:
                 mIsSelectionBeingModified = false;
                 shouldHandleSelection = mShouldHandleSelectionModification;
+                break;
+            case SelectionEventType.SELECTION_ESTABLISHED:
+                mIsSelectionEstablished = true;
+                break;
+            case SelectionEventType.SELECTION_DISSOLVED:
+                mIsSelectionEstablished = false;
                 break;
             default:
         }
@@ -231,7 +238,6 @@ public class ContextualSearchSelectionController {
         mShouldHandleSelectionModification = true;
         mHandler.handleSelection(selection, isValidSelection(selection), type, mX, mY);
     }
-
 
     /**
      * Resets all internal state of this class, including the tap state.
@@ -294,6 +300,8 @@ public class ContextualSearchSelectionController {
      *                           the search term.
      */
     void adjustSelection(int selectionStartAdjust, int selectionEndAdjust) {
+        if (ContextualSearchFieldTrial.isSelectionExpansionDisabled()) return;
+
         // TODO(donnd): add code to verify that the selection is still valid before changing it.
         // crbug.com/508354
 
@@ -359,6 +367,14 @@ public class ContextualSearchSelectionController {
     @VisibleForTesting
     boolean wasAnyTapGestureDetected() {
         return mIsWaitingForInvalidTapDetection;
+    }
+
+    /**
+     * @return whether the selection has been established, for testing.
+     */
+    @VisibleForTesting
+    boolean isSelectionEstablished() {
+        return mIsSelectionEstablished;
     }
 
     /** Determines if the given selection is valid or not.

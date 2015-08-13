@@ -6,7 +6,6 @@ package org.chromium.chrome.browser.toolbar;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -21,14 +20,14 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.appmenu.AppMenuButtonHelper;
 import org.chromium.chrome.browser.compositor.Invalidator;
 import org.chromium.chrome.browser.ntp.NewTabPage;
 import org.chromium.chrome.browser.omnibox.LocationBar;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.util.ViewUtils;
-import org.chromium.chrome.browser.widget.SmoothProgressBar;
 import org.chromium.chrome.browser.widget.TintedImageButton;
+import org.chromium.chrome.browser.widget.ToolbarProgressBar;
 import org.chromium.ui.UiUtils;
 
 /**
@@ -51,7 +50,7 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
 
     private ToolbarDataProvider mToolbarDataProvider;
     private ToolbarTabController mToolbarTabController;
-    private SmoothProgressBar mProgressBar;
+    private ToolbarProgressBar mProgressBar;
 
     private boolean mNativeLibraryReady;
     private boolean mUrlHasFocus;
@@ -75,12 +74,12 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
     protected void onFinishInflate() {
         super.onFinishInflate();
 
-        mProgressBar = (SmoothProgressBar) findViewById(R.id.progress);
+        mProgressBar = (ToolbarProgressBar) findViewById(R.id.progress);
         if (mProgressBar != null) {
             removeView(mProgressBar);
-            Drawable progressDrawable = mProgressBar.getProgressDrawable();
             getFrameLayoutParams(mProgressBar).topMargin = mToolbarHeightWithoutShadow
-                    - progressDrawable.getIntrinsicHeight();
+                    - getFrameLayoutParams(mProgressBar).height;
+            if (isNativeLibraryReady()) mProgressBar.initializeAnimation();
         }
 
         mMenuButton = (TintedImageButton) findViewById(R.id.menu_button);
@@ -109,11 +108,6 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
             @Override
             public NewTabPage getNewTabPageForCurrentTab() {
                 return null;
-            }
-
-            @Override
-            public int getLoadProgress() {
-                return 0;
             }
 
             @Override
@@ -149,7 +143,12 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
         return R.dimen.toolbar_height_no_shadow;
     }
 
-    @Override
+    /**
+     * Initialize the external dependencies required for view interaction.
+     * @param toolbarDataProvider The provider for toolbar data.
+     * @param tabController       The controller that handles interactions with the tab.
+     * @param appMenuButtonHelper The helper for managing menu button interactions.
+     */
     public void initialize(ToolbarDataProvider toolbarDataProvider,
             ToolbarTabController tabController, AppMenuButtonHelper appMenuButtonHelper) {
         mToolbarDataProvider = toolbarDataProvider;
@@ -170,6 +169,7 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
      */
     public void onNativeLibraryReady() {
         mNativeLibraryReady = true;
+        if (mProgressBar != null) mProgressBar.initializeAnimation();
     }
 
     /**
@@ -182,7 +182,7 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
     /**
      * @return The {@link ProgressBar} this layout uses.
      */
-    SmoothProgressBar getProgressBar() {
+    ToolbarProgressBar getProgressBar() {
         return mProgressBar;
     }
 
@@ -226,19 +226,18 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
     /**
      * Shows the content description toast for items on the toolbar.
      * @param view The view to anchor the toast.
-     * @param stringResId The resource id for the string in the toast.
+     * @param description The string shown in the toast.
      * @return Whether a toast has been shown successfully.
      */
-    protected boolean showAccessibilityToast(View view, int stringResId) {
-        if (stringResId == 0) return false;
+    protected boolean showAccessibilityToast(View view, CharSequence description) {
+        if (description == null) return false;
 
         final int screenWidth = getResources().getDisplayMetrics().widthPixels;
         final int[] screenPos = new int[2];
         view.getLocationOnScreen(screenPos);
         final int width = view.getWidth();
 
-        Toast toast = Toast.makeText(
-                getContext(), getResources().getString(stringResId), Toast.LENGTH_SHORT);
+        Toast toast = Toast.makeText(getContext(), description, Toast.LENGTH_SHORT);
         toast.setGravity(
                 Gravity.TOP | Gravity.END,
                 screenWidth - screenPos[0] - width / 2,
@@ -254,7 +253,12 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
         return mToolbarDataProvider;
     }
 
-    @Override
+    /**
+     * Sets the {@link Invalidator} that will be called when the toolbar attempts to invalidate the
+     * drawing surface.  This will give the object that registers as the host for the
+     * {@link Invalidator} a chance to defer the actual invalidate to sync drawing.
+     * @param invalidator An {@link Invalidator} instance.
+     */
     public void setPaintInvalidator(Invalidator invalidator) {
         mInvalidator = invalidator;
     }
@@ -281,15 +285,23 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
         mFindInPageToolbarShowing = showing;
     }
 
-    @Override
+    /**
+     * Sets the OnClickListener that will be notified when the TabSwitcher button is pressed.
+     * @param listener The callback that will be notified when the TabSwitcher button is pressed.
+     */
     public void setOnTabSwitcherClickHandler(OnClickListener listener) { }
 
-    @Override
+    /**
+     * Sets the OnClickListener that will be notified when the New Tab button is pressed.
+     * @param listener The callback that will be notified when the New Tab button is pressed.
+     */
     public void setOnNewTabClickHandler(OnClickListener listener) { }
 
-    @Override
+    /**
+     * Sets the OnClickListener that will be notified when the bookmark button is pressed.
+     * @param listener The callback that will be notified when the bookmark button is pressed.
+     */
     public void setBookmarkClickHandler(OnClickListener listener) { }
-
 
     /**
      * Sets the OnClickListener to notify when the close button is pressed in a custom tab.
@@ -319,11 +331,12 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
     protected void updateReloadButtonVisibility(boolean isReloading) { }
 
     /**
-     * Gives inheriting classes the chance to update the visibility of the
+     * Gives inheriting classes the chance to update the visual status of the
      * bookmark button.
      * @param isBookmarked Whether or not the current tab is already bookmarked.
+     * @param editingAllowed Whether or not bookmarks can be modified (added, edited, or removed).
      */
-    protected void updateBookmarkButtonVisibility(boolean isBookmarked) { }
+    protected void updateBookmarkButton(boolean isBookmarked, boolean editingAllowed) { }
 
     /**
      * Gives inheriting classes the chance to respond to accessibility state changes.
@@ -365,12 +378,18 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
     protected void onPrimaryColorChanged() { }
 
     /**
-     * Sets the icon resource that the close button in the toolbar (if any) should show.
+     * Sets the icon drawable that the close button in the toolbar (if any) should show.
      */
-    public void setCloseButtonImageResource(int iconRes) { }
+    public void setCloseButtonImageResource(Drawable drawable) { }
 
-    @Override
-    public void addCustomActionButton(Bitmap buttonSource, OnClickListener listener) { }
+    /**
+     * Adds a custom action button to the {@link ToolbarLayout} if it is supported.
+     * @param description  The content description for the button.
+     * @param listener     The {@link OnClickListener} to use for clicks to the button.
+     * @param buttonSource The {@link Bitmap} resource to use as the source for the button.
+     */
+    public void addCustomActionButton(Drawable drawable, String description,
+            OnClickListener listener) { }
 
     /**
      * Triggered when the content view for the specified tab has changed.
@@ -467,7 +486,9 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
         if (mFirstDrawTimeMs == 0) mFirstDrawTimeMs = SystemClock.elapsedRealtime();
     }
 
-    @Override
+    /**
+     * Returns the elapsed realtime in ms of the time at which first draw for the toolbar occurred.
+     */
     public long getFirstDrawTime() {
         return mFirstDrawTimeMs;
     }
@@ -479,14 +500,38 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
     }
 
     /**
-     * Sets load progress.
-     * @param progress The load progress between 0 and 100.
+     * Starts load progress.
      */
-    protected void setLoadProgress(int progress) {
-        if (mProgressBar != null) mProgressBar.setProgress(progress);
+    protected void startLoadProgress() {
+        if (mProgressBar != null) {
+            mProgressBar.start();
+        }
     }
 
-    @Override
+    /**
+     * Sets load progress.
+     * @param progress The load progress between 0 and 1.
+     */
+    protected void setLoadProgress(float progress) {
+        if (mProgressBar != null) {
+            mProgressBar.setProgress(progress);
+        }
+    }
+
+    /**
+     * Finishes load progress.
+     * @param delayed Whether hiding progress bar should be delayed to give enough time for user to
+     *                        recognize the last state.
+     */
+    protected void finishLoadProgress(boolean delayed) {
+        if (mProgressBar != null) {
+            mProgressBar.finish(delayed);
+        }
+    }
+
+    /**
+     * Finish any toolbar animations.
+     */
     public void finishAnimations() { }
 
     /**
@@ -507,7 +552,9 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
         return mToolbarDataProvider.isIncognito();
     }
 
-    @Override
+    /**
+     * @return {@link LocationBar} object this {@link ToolbarLayout} contains.
+     */
     public abstract LocationBar getLocationBar();
 
     /**

@@ -5,23 +5,24 @@
 package org.chromium.chrome.browser.childaccounts;
 
 import android.accounts.Account;
-import android.accounts.AccountManager;
 import android.accounts.AccountManagerCallback;
 import android.accounts.AccountManagerFuture;
 import android.accounts.AuthenticatorException;
-import android.accounts.OnAccountsUpdateListener;
 import android.accounts.OperationCanceledException;
 import android.content.Context;
+import android.content.Intent;
 
-import org.chromium.base.CalledByNative;
 import org.chromium.base.CommandLine;
 import org.chromium.base.Log;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.VisibleForTesting;
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.chrome.browser.ChromeSwitches;
+import org.chromium.chrome.browser.services.AccountsChangedReceiver;
 import org.chromium.chrome.browser.signin.SigninManager;
 import org.chromium.sync.signin.AccountManagerHelper;
+import org.chromium.sync.signin.ChromeSigninController;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -67,18 +68,18 @@ public class ChildAccountService {
 
     protected ChildAccountService(Context context) {
         mContext = context;
-        AccountManager accountManager = AccountManager.get(mContext);
-        accountManager.addOnAccountsUpdatedListener(new OnAccountsUpdateListener() {
-            @Override
-            public void onAccountsUpdated(Account[] accounts) {
-                ThreadUtils.runOnUiThread(new Runnable() {
+        AccountsChangedReceiver.addObserver(
+                new AccountsChangedReceiver.AccountsChangedObserver() {
                     @Override
-                    public void run() {
-                        recheckChildAccountStatus();
+                    public void onAccountsChanged(Context context, Intent intent) {
+                        ThreadUtils.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                recheckChildAccountStatus();
+                            }
+                        });
                     }
                 });
-            }
-        }, null, false);
     }
 
     /**
@@ -155,8 +156,14 @@ public class ChildAccountService {
             Log.v(TAG, "Child account detection disabled");
             return false;
         }
-        Account[] googleAccounts =
-                AccountManagerHelper.get(mContext).getGoogleAccounts();
+        AccountManagerHelper accountManagerHelper = AccountManagerHelper.get(mContext);
+        // This isn't strictly necessary, as getGoogleAccounts() will return an empty list if the
+        // GET_ACCOUNTS permission is not granted, but it makes the behavior explicit.
+        if (!accountManagerHelper.hasGetAccountsPermission()) {
+            Log.v(TAG, "GET_ACCOUNTS permission not granted");
+            return false;
+        }
+        Account[] googleAccounts = accountManagerHelper.getGoogleAccounts();
         if (googleAccounts.length != 1) {
             if (CommandLine.getInstance().hasSwitch(ChromeSwitches.CHILD_ACCOUNT)) {
                 Log.w(TAG, "Ignoring --" + ChromeSwitches.CHILD_ACCOUNT + " command line flag "
@@ -270,12 +277,11 @@ public class ChildAccountService {
         Log.v(TAG, "hasChildAccount: " + mHasChildAccount + " oldHasChildAccount: " + oldValue);
         if (mHasChildAccount) {
             if (oldValue == null) {
-                // This is the first time we have determined the child account status,
-                // which means the browser is starting up. The startup code will sign in
-                // and call us back in onChildAccountSigninComplete().
-                return;
-            }
-            if (!oldValue.booleanValue()) {
+                // This is the first time we have determined the child account status, which means
+                // the browser is starting up. If we are not signed in yet, the startup code will
+                // sign in and call us back in onChildAccountSigninComplete().
+                if (ChromeSigninController.get(mContext).getSignedInUser() == null) return;
+            } else if (!oldValue.booleanValue()) {
                 // We have switched from no child account to child account while the browser
                 // is running. Sign in (which will call us back in onChildAccountSigninComplete()).
                 SigninManager signinManager = SigninManager.get(mContext);

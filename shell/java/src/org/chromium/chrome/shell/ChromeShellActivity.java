@@ -31,7 +31,6 @@ import org.chromium.base.library_loader.LibraryProcessType;
 import org.chromium.base.library_loader.ProcessInitException;
 import org.chromium.chrome.browser.DevToolsServer;
 import org.chromium.chrome.browser.FileProviderHelper;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.WarmupManager;
 import org.chromium.chrome.browser.WebsiteSettingsPopup;
 import org.chromium.chrome.browser.appmenu.AppMenuHandler;
@@ -45,6 +44,7 @@ import org.chromium.chrome.browser.printing.PrintingControllerFactory;
 import org.chromium.chrome.browser.printing.TabPrinter;
 import org.chromium.chrome.browser.share.ShareHelper;
 import org.chromium.chrome.browser.sync.SyncController;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.shell.signin.AccountChooserFragment;
@@ -106,14 +106,6 @@ public class ChromeShellActivity extends AppCompatActivity implements AppMenuPro
                 AppMenuPropertiesDelegate delegate, int menuResourceId);
     }
 
-    private static AppMenuHandlerFactory sAppMenuHandlerFactory =
-            new AppMenuHandlerFactory() {
-                @Override
-                public AppMenuHandler getAppMenuHandler(Activity activity,
-                        AppMenuPropertiesDelegate delegate, int menuResourceId) {
-                    return new AppMenuHandler(activity, delegate, menuResourceId);
-                }
-            };
     private AppMenuHandler mAppMenuHandler;
 
     @Override
@@ -189,8 +181,7 @@ public class ChromeShellActivity extends AppCompatActivity implements AppMenuPro
             mTabManager.setStartupUrl(startupUrl);
         }
         mToolbar = (ChromeShellToolbar) findViewById(R.id.toolbar);
-        mAppMenuHandler = sAppMenuHandlerFactory.getAppMenuHandler(this, this,
-                R.menu.chrome_shell_main_menu);
+        mAppMenuHandler = new AppMenuHandler(this, this, R.menu.chrome_shell_main_menu);
         mToolbar.setMenuHandler(mAppMenuHandler);
 
         mDevToolsServer = new DevToolsServer("chrome_shell");
@@ -482,16 +473,6 @@ public class ChromeShellActivity extends AppCompatActivity implements AppMenuPro
     @VisibleForTesting
     public TabModelSelector getTabModelSelector() {
         return mTabManager.getTabModelSelector();
-    }
-
-    @VisibleForTesting
-    public static void setActivityWindowAndroidFactory(ActivityWindowAndroidFactory factory) {
-        sWindowAndroidFactory = factory;
-    }
-
-    @VisibleForTesting
-    public static void setAppMenuHandlerFactory(AppMenuHandlerFactory factory) {
-        sAppMenuHandlerFactory = factory;
     }
 
     /**

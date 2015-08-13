@@ -21,11 +21,12 @@ import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.ShortcutHelper;
-import org.chromium.chrome.browser.document.ChromeLauncherActivity;
+import org.chromium.chrome.browser.ShortcutSource;
 import org.chromium.chrome.browser.document.DocumentActivity;
 import org.chromium.chrome.browser.tab.TabIdManager;
 import org.chromium.chrome.test.MultiActivityTestBase;
 import org.chromium.chrome.test.util.ActivityUtils;
+import org.chromium.chrome.test.util.ApplicationTestUtils;
 import org.chromium.chrome.test.util.DisableInTabbedMode;
 import org.chromium.chrome.test.util.browser.TabLoadObserver;
 import org.chromium.content.browser.test.util.Criteria;
@@ -67,7 +68,7 @@ public class WebappModeTest extends MultiActivityTestBase {
             public boolean isSatisfied() {
                 Context context = getInstrumentation().getTargetContext();
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
-                        && MultiActivityTestBase.getNumChromeTasks(context) != numActivities) {
+                        && ApplicationTestUtils.getNumChromeTasks(context) != numActivities) {
                     return false;
                 }
 
@@ -86,13 +87,15 @@ public class WebappModeTest extends MultiActivityTestBase {
         Intent intent = new Intent();
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.setPackage(getInstrumentation().getTargetContext().getPackageName());
-        intent.setAction(ChromeLauncherActivity.ACTION_START_WEBAPP);
+        intent.setAction(WebappLauncherActivity.ACTION_START_WEBAPP);
         intent.putExtra(ShortcutHelper.EXTRA_ID, id);
         intent.putExtra(ShortcutHelper.EXTRA_URL, url);
         intent.putExtra(ShortcutHelper.EXTRA_TITLE, title);
         intent.putExtra(ShortcutHelper.EXTRA_ICON, icon);
         intent.putExtra(ShortcutHelper.EXTRA_ORIENTATION, ScreenOrientationValues.PORTRAIT);
-        intent.putExtra(ShortcutHelper.EXTRA_SOURCE, ShortcutHelper.SOURCE_UNKNOWN);
+        intent.putExtra(ShortcutHelper.EXTRA_SOURCE, ShortcutSource.UNKNOWN);
+        intent.putExtra(ShortcutHelper.EXTRA_THEME_COLOR,
+                ShortcutHelper.THEME_COLOR_INVALID_OR_MISSING);
         if (addMac) {
             // Needed for security reasons.  If the MAC is excluded, the URL of the webapp is opened
             // in a browser window, instead.
@@ -102,7 +105,7 @@ public class WebappModeTest extends MultiActivityTestBase {
 
         getInstrumentation().getTargetContext().startActivity(intent);
         getInstrumentation().waitForIdleSync();
-        MultiActivityTestBase.waitUntilChromeInForeground();
+        ApplicationTestUtils.waitUntilChromeInForeground();
     }
 
     /**
@@ -182,7 +185,7 @@ public class WebappModeTest extends MultiActivityTestBase {
             }
         }));
 
-        assertTrue("Smaller Tab ID was used", 11684 <= webappActivity.getActivityTab().getId());
+        assertEquals("Wrong Tab ID was used", 11684, webappActivity.getActivityTab().getId());
     }
 
     /**
@@ -208,13 +211,13 @@ public class WebappModeTest extends MultiActivityTestBase {
         // Return home.
         final WebappActivity activity =
                 (WebappActivity) ApplicationStatus.getLastTrackedFocusedActivity();
-        MultiActivityTestBase.launchHomescreenIntent(context);
+        ApplicationTestUtils.fireHomeScreenIntent(context);
         getInstrumentation().waitForIdleSync();
 
         // Bring it back via the Tab.
         activity.getActivityTab().getChromeWebContentsDelegateAndroid().activateContents();
         getInstrumentation().waitForIdleSync();
-        MultiActivityTestBase.waitUntilChromeInForeground();
+        ApplicationTestUtils.waitUntilChromeInForeground();
         assertTrue(CriteriaHelper.pollForCriteria(new Criteria() {
             @Override
             public boolean isSatisfied() {
@@ -352,6 +355,6 @@ public class WebappModeTest extends MultiActivityTestBase {
                 return webappActivity == ApplicationStatus.getLastTrackedFocusedActivity();
             }
         }));
-        MultiActivityTestBase.waitUntilChromeInForeground();
+        ApplicationTestUtils.waitUntilChromeInForeground();
     }
 }

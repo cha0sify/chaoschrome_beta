@@ -11,15 +11,14 @@ import android.net.Uri;
 import android.text.TextUtils;
 
 import org.chromium.base.ApplicationStatus;
-import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.IntentHandler;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.TabState;
 import org.chromium.chrome.browser.UrlConstants;
 import org.chromium.chrome.browser.document.ChromeLauncherActivity;
 import org.chromium.chrome.browser.document.DocumentMetricIds;
-import org.chromium.chrome.browser.document.PendingDocumentData;
 import org.chromium.chrome.browser.tab.ChromeTab;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabIdManager;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager.TabCreator;
 import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
 import org.chromium.chrome.browser.util.FeatureUtilities;
@@ -28,27 +27,11 @@ import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.PageTransition;
 
-import java.lang.ref.WeakReference;
-
-import javax.annotation.Nullable;
-
 /**
  * Asynchronously creates Tabs by creating/starting up Activities.
  */
-public class TabDelegate implements TabCreator {
-    /** Optional parameters for creating a Tab asynchronously. */
-    public static final class AsyncTabCreationParams {
-        /** How to start a document mode Tab. */
-        public int documentLaunchMode = ChromeLauncherActivity.LAUNCH_MODE_FOREGROUND;
-
-        /** What caused a document mode Tab to be created. */
-        public int documentStartedBy = DocumentMetricIds.STARTED_BY_UNKNOWN;
-
-        /** Used by the ServiceTabLauncher. */
-        public Integer requestId;
-    }
-
-    private boolean mIsIncognito;
+public class TabDelegate extends TabCreator {
+    private final boolean mIsIncognito;
 
     /**
      * Creates a TabDelegate.
@@ -75,18 +58,10 @@ public class TabDelegate implements TabCreator {
     }
 
     @Override
-    public Tab createTabWithWebContents(
-            WebContents webContents, int parentId, TabLaunchType type) {
-        createTabWithWebContents(webContents, parentId, type, webContents.getUrl());
-        return null;
-    }
-
-    @Override
-    public Tab createTabWithWebContents(
+    public boolean createTabWithWebContents(
             WebContents webContents, int parentId, TabLaunchType type, String url) {
-        createTabWithWebContents(
+        return createTabWithWebContents(
                 webContents, parentId, type, url, DocumentMetricIds.STARTED_BY_WINDOW_OPEN);
-        return null;
     }
 
     /**
@@ -97,44 +72,19 @@ public class TabDelegate implements TabCreator {
      * @param url           URL that the WebContents was opened for.
      * @param startedBy     See {@link DocumentMetricIds}.
      */
-    public void createTabWithWebContents(
+    public boolean createTabWithWebContents(
             WebContents webContents, int parentId, TabLaunchType type, String url, int startedBy) {
-        // Tabs can't be launched in affiliated mode when a webcontents exists.
-        assert type != TabLaunchType.FROM_LONGPRESS_BACKGROUND;
-
         if (url == null) url = "";
 
-        Context context = ApplicationStatus.getApplicationContext();
+        // TODO(dfalcantara): Does this transition make sense? (crbug.com/509886)
         int pageTransition = startedBy == DocumentMetricIds.STARTED_BY_CHROME_HOME_RECENT_TABS
                 ? PageTransition.RELOAD : PageTransition.AUTO_TOPLEVEL;
 
-        Activity parentActivity = getActivityForTabId(parentId);
-
-        if (FeatureUtilities.isDocumentMode(context)) {
-            PendingDocumentData data = new PendingDocumentData();
-            data.webContents = webContents;
-
-            ChromeLauncherActivity.launchDocumentInstance(parentActivity, mIsIncognito,
-                    ChromeLauncherActivity.LAUNCH_MODE_FOREGROUND, url, startedBy, pageTransition,
-                    data);
-        } else {
-            // TODO(dfalcantara): Unify the document-mode path with this path so that both go
-            //                    through the ChromeLauncherActivity via an Intent.
-            Intent tabbedIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            tabbedIntent.setClass(context, ChromeLauncherActivity.class);
-            tabbedIntent.putExtra(IntentHandler.EXTRA_OPEN_NEW_INCOGNITO_TAB, mIsIncognito);
-            tabbedIntent.putExtra(IntentHandler.EXTRA_WEB_CONTENTS, webContents);
-            tabbedIntent.putExtra(IntentHandler.EXTRA_PAGE_TRANSITION_TYPE, pageTransition);
-            tabbedIntent.putExtra(IntentHandler.EXTRA_PARENT_TAB_ID, parentId);
-
-            if (parentActivity != null && parentActivity.getIntent() != null) {
-                tabbedIntent.putExtra(
-                        IntentHandler.EXTRA_PARENT_INTENT, parentActivity.getIntent());
-            }
-
-            tabbedIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            IntentHandler.startActivityForTrustedIntent(tabbedIntent, context);
-        }
+        AsyncTabCreationParams asyncParams =
+                new AsyncTabCreationParams(new LoadUrlParams(url, pageTransition), webContents);
+        asyncParams.setDocumentStartedBy(startedBy);
+        createNewTab(asyncParams, type, parentId);
+        return true;
     }
 
     @Override
@@ -143,92 +93,79 @@ public class TabDelegate implements TabCreator {
     }
 
     @Override
-    public Tab launchNTP() {
-        return createNewTab(new LoadUrlParams(UrlConstants.NTP_URL, PageTransition.AUTO_TOPLEVEL),
-                TabLaunchType.FROM_MENU_OR_OVERVIEW, null);
-    }
-
-    @Override
     public Tab createNewTab(LoadUrlParams loadUrlParams, TabLaunchType type, Tab parent) {
-        AsyncTabCreationParams asyncParams = new AsyncTabCreationParams();
+        AsyncTabCreationParams asyncParams = new AsyncTabCreationParams(loadUrlParams);
 
         // Figure out how the page will be launched.
         if (TextUtils.equals(UrlConstants.NTP_URL, loadUrlParams.getUrl())) {
-            asyncParams.documentLaunchMode = ChromeLauncherActivity.LAUNCH_MODE_RETARGET;
+            asyncParams.setDocumentLaunchMode(ChromeLauncherActivity.LAUNCH_MODE_RETARGET);
         } else if (type == TabLaunchType.FROM_LONGPRESS_BACKGROUND) {
             if (!parent.isIncognito() && mIsIncognito) {
                 // Incognito tabs opened from regular tabs open in the foreground for privacy
                 // concerns.
-                asyncParams.documentLaunchMode = ChromeLauncherActivity.LAUNCH_MODE_FOREGROUND;
+                asyncParams.setDocumentLaunchMode(ChromeLauncherActivity.LAUNCH_MODE_FOREGROUND);
             } else {
-                asyncParams.documentLaunchMode = ChromeLauncherActivity.LAUNCH_MODE_AFFILIATED;
+                asyncParams.setDocumentLaunchMode(ChromeLauncherActivity.LAUNCH_MODE_AFFILIATED);
             }
         }
 
         // Classify the startup type.
         if (parent != null && TextUtils.equals(UrlConstants.NTP_URL, parent.getUrl())) {
-            asyncParams.documentStartedBy =
-                    DocumentMetricIds.STARTED_BY_CHROME_HOME_MOST_VISITED;
+            asyncParams.setDocumentStartedBy(
+                    DocumentMetricIds.STARTED_BY_CHROME_HOME_MOST_VISITED);
         } else if (type == TabLaunchType.FROM_LONGPRESS_BACKGROUND
                 || type == TabLaunchType.FROM_LONGPRESS_FOREGROUND) {
-            asyncParams.documentStartedBy = DocumentMetricIds.STARTED_BY_CONTEXT_MENU;
+            asyncParams.setDocumentStartedBy(DocumentMetricIds.STARTED_BY_CONTEXT_MENU);
         } else if (type == TabLaunchType.FROM_MENU_OR_OVERVIEW) {
-            asyncParams.documentStartedBy = DocumentMetricIds.STARTED_BY_OPTIONS_MENU;
+            asyncParams.setDocumentStartedBy(DocumentMetricIds.STARTED_BY_OPTIONS_MENU);
         }
 
         // Tab is created aysnchronously.  Can't return anything, yet.
-        createNewTab(loadUrlParams, type, parent, asyncParams);
+        createNewTab(asyncParams, type, parent == null ? Tab.INVALID_TAB_ID : parent.getId());
         return null;
     }
 
     /**
      * Creates a Tab to host the given WebContents asynchronously.
-     * @param loadUrlParams   Parameters of the url load.
+     * @param asyncParams     Parameters to create the Tab with, including the URL.
      * @param type            Information about how the tab was launched.
-     * @param parent          The parent tab, if it exists.
-     * @param asyncParams     Additional parameters to load.
+     * @param parentId        ID of the parent tab, if it exists.
      */
-    public void createNewTab(LoadUrlParams loadUrlParams, TabLaunchType type, @Nullable Tab parent,
-            AsyncTabCreationParams asyncParams) {
+    public void createNewTab(
+            AsyncTabCreationParams asyncParams, TabLaunchType type, int parentId) {
         assert asyncParams != null;
 
-        if (FeatureUtilities.isDocumentMode(ApplicationStatus.getApplicationContext())) {
-            // Pack up everything.
-            PendingDocumentData params = null;
-            if (loadUrlParams.getPostData() != null
-                    || loadUrlParams.getVerbatimHeaders() != null
-                    || loadUrlParams.getReferrer() != null
-                    || asyncParams.requestId != null) {
-                params = new PendingDocumentData();
-                params.postData = loadUrlParams.getPostData();
-                params.extraHeaders = loadUrlParams.getVerbatimHeaders();
-                params.referrer = loadUrlParams.getReferrer();
-                params.requestId = asyncParams.requestId == null
-                        ? 0 : asyncParams.requestId.intValue();
-            }
+        // Tabs should't be launched in affiliated mode when a webcontents exists.
+        assert !(type == TabLaunchType.FROM_LONGPRESS_BACKGROUND
+                && asyncParams.getWebContents() != null);
 
-            ChromeLauncherActivity.launchDocumentInstance(getActivityFromTab(parent), mIsIncognito,
-                    asyncParams.documentLaunchMode, loadUrlParams.getUrl(),
-                    asyncParams.documentStartedBy, loadUrlParams.getTransitionType(), params);
+        Context context = ApplicationStatus.getApplicationContext();
+        Activity parentActivity = ActivityDelegate.getActivityForTabId(parentId);
+
+        boolean mayLaunchDocumentActivity = isAllowedToLaunchDocumentActivity(context);
+        assert mayLaunchDocumentActivity || (asyncParams.getWebContents() == null);
+
+        if (FeatureUtilities.isDocumentMode(context) && mayLaunchDocumentActivity) {
+            AsyncDocumentLauncher.getInstance().enqueueLaunch(mIsIncognito, parentId, asyncParams);
         } else {
-            // TODO(dfalcantara): Start parceling all of the LoadUrlParams when ChromeTabbedActivity
-            //                    can use them.  Use the same non-duplication mechanism as the
-            //                    WebContents so that they don't get reused across process restarts.
-            Context context = ApplicationStatus.getApplicationContext();
+            // TODO(dfalcantara): Is it possible to get rid of this conditional?
+            int assignedTabId = TabIdManager.getInstance().generateValidId(Tab.INVALID_TAB_ID);
+            AsyncTabCreationParamsManager.add(assignedTabId, asyncParams);
 
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(loadUrlParams.getUrl()));
+            Intent intent = new Intent(
+                    Intent.ACTION_VIEW, Uri.parse(asyncParams.getLoadUrlParams().getUrl()));
             intent.setClass(context, ChromeLauncherActivity.class);
+            intent.putExtra(IntentHandler.EXTRA_TAB_ID, assignedTabId);
             intent.putExtra(IntentHandler.EXTRA_OPEN_NEW_INCOGNITO_TAB, mIsIncognito);
-            intent.putExtra(
-                    IntentHandler.EXTRA_PAGE_TRANSITION_TYPE, loadUrlParams.getTransitionType());
+            intent.putExtra(IntentHandler.EXTRA_PARENT_TAB_ID, parentId);
 
-            if (parent != null) {
-                intent.putExtra(IntentHandler.EXTRA_PARENT_TAB_ID, parent.getId());
+            if (parentActivity != null && parentActivity.getIntent() != null) {
+                intent.putExtra(IntentHandler.EXTRA_PARENT_INTENT, parentActivity.getIntent());
             }
 
-            if (asyncParams.requestId != null) {
+            if (asyncParams.getRequestId() != null) {
                 intent.putExtra(ServiceTabLauncher.LAUNCH_REQUEST_ID_EXTRA,
-                        asyncParams.requestId.intValue());
+                        asyncParams.getRequestId().intValue());
             }
 
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -236,23 +173,10 @@ public class TabDelegate implements TabCreator {
         }
     }
 
-    private Activity getActivityFromTab(Tab tab) {
-        return tab == null || tab.getWindowAndroid() == null
-                ? null : tab.getWindowAndroid().getActivity().get();
-    }
-
-    /** @return Running Activity that owns the given Tab, null if the Activity couldn't be found. */
-    private Activity getActivityForTabId(int id) {
-        if (id == Tab.INVALID_TAB_ID) return null;
-
-        for (WeakReference<Activity> ref : ApplicationStatus.getRunningActivities()) {
-            if (!(ref.get() instanceof ChromeActivity)) continue;
-
-            ChromeActivity activity = (ChromeActivity) ref.get();
-            if (activity == null) continue;
-
-            if (activity.getTabModelSelector().getModelForTabId(id) != null) return activity;
-        }
-        return null;
+    /**
+     * @return Whether the TabDelegate is allowed to directly launch a DocumentActivity.
+     */
+    protected boolean isAllowedToLaunchDocumentActivity(Context context) {
+        return true;
     }
 }

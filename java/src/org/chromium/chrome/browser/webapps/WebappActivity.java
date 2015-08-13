@@ -4,7 +4,6 @@
 
 package org.chromium.chrome.browser.webapps;
 
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -15,18 +14,17 @@ import android.util.Log;
 import android.view.View;
 
 import org.chromium.base.ActivityState;
-import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.VisibleForTesting;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.EmptyTabObserver;
 import org.chromium.chrome.browser.ShortcutHelper;
-import org.chromium.chrome.browser.Tab;
-import org.chromium.chrome.browser.TabObserver;
 import org.chromium.chrome.browser.UrlUtilities;
 import org.chromium.chrome.browser.document.DocumentUtils;
 import org.chromium.chrome.browser.fullscreen.ChromeFullscreenManager;
 import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
+import org.chromium.chrome.browser.tab.EmptyTabObserver;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.chrome.browser.util.FeatureUtilities;
 import org.chromium.content.browser.ScreenOrientationProvider;
 import org.chromium.content_public.browser.LoadUrlParams;
@@ -237,7 +235,7 @@ public class WebappActivity extends FullScreenActivity {
             }
 
             @Override
-            public void onDidChangeThemeColor(int color) {
+            public void onDidChangeThemeColor(Tab tab, int color) {
                 if (!isWebappDomain()) return;
                 mBrandColor = color;
                 updateTaskDescription();
@@ -258,10 +256,20 @@ public class WebappActivity extends FullScreenActivity {
     }
 
     private void updateTaskDescription() {
-        String title = mWebappInfo.title() == null
-                ? getActivityTab().getTitle() : mWebappInfo.title();
+        // TODO(lalitm): this is actually a temporary fix for the bigger issue of short
+        // name not being set to the meta tag title of the website if the short name
+        // is not present in the manifest. Some discussion is required for this before
+        // a CL which correctly fixes the issue is submitted.
+        String title = TextUtils.isEmpty(mWebappInfo.shortName())
+                ? getActivityTab().getTitle() : mWebappInfo.shortName();
         Bitmap icon = mWebappInfo.icon() == null
                 ? getActivityTab().getFavicon() : mWebappInfo.icon();
+
+        if (mBrandColor == null
+                && mWebappInfo.themeColor() != ShortcutHelper.THEME_COLOR_INVALID_OR_MISSING
+                && (mWebappInfo.themeColor() & 0xFF000000L) != 0) {
+            mBrandColor = (int) mWebappInfo.themeColor();
+        }
         int color = mBrandColor == null
                 ? getResources().getColor(R.color.default_primary_color) : mBrandColor;
 
@@ -295,7 +303,7 @@ public class WebappActivity extends FullScreenActivity {
     }
 
     @Override
-    protected int getControlContainerHeightResource() {
+    public int getControlContainerHeightResource() {
         return R.dimen.webapp_control_container_height;
     }
 
@@ -318,41 +326,5 @@ public class WebappActivity extends FullScreenActivity {
     @Override
     protected boolean isContextualSearchAllowed() {
         return false;
-    }
-
-    /**
-     * Launches the URL in its own WebappActivity.
-     * @param context Context to use for launching the webapp.
-     * @param id ID of the webapp.
-     * @param url URL for the webapp.
-     * @param icon Base64 encoded Bitmap representing the webapp.
-     * @param title String to show in Recents.
-     * @param orientation Default orientation for the activity.
-     */
-    public static void launchInstance(Context context, String id, String url, String icon,
-            String title, int orientation, int source) {
-        String activityName = WebappActivity.class.getName();
-        if (!FeatureUtilities.isDocumentModeEligible(context)) {
-            // Specifically assign the app to a particular WebappActivity instance.
-            int activityIndex = ActivityAssigner.instance(context).assign(id);
-            activityName += String.valueOf(activityIndex);
-        }
-
-        // Fire an intent to launch the Webapp in an unmapped Activity.
-        Intent webappIntent = new Intent();
-        webappIntent.setClassName(context, activityName);
-        webappIntent.putExtra(ShortcutHelper.EXTRA_ICON, icon);
-        webappIntent.putExtra(ShortcutHelper.EXTRA_ID, id);
-        webappIntent.putExtra(ShortcutHelper.EXTRA_URL, url);
-        webappIntent.putExtra(ShortcutHelper.EXTRA_TITLE, title);
-        webappIntent.putExtra(ShortcutHelper.EXTRA_ORIENTATION, orientation);
-        webappIntent.putExtra(ShortcutHelper.EXTRA_SOURCE, source);
-
-        // On L, firing intents with the exact same data should relaunch a particular Activity.
-        webappIntent.setAction(Intent.ACTION_VIEW);
-        webappIntent.setData(Uri.parse(WEBAPP_SCHEME + "://" + id));
-        webappIntent.setFlags(ApiCompatibilityUtils.getActivityNewDocumentFlag());
-
-        context.startActivity(webappIntent);
     }
 }

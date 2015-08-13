@@ -5,7 +5,6 @@
 package org.chromium.chrome.browser;
 
 import android.accounts.Account;
-import android.accounts.AccountManager;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -13,7 +12,9 @@ import android.text.Html;
 import android.text.TextUtils;
 import android.util.Patterns;
 
-import org.chromium.base.CalledByNative;
+import org.chromium.base.ContentUriUtils;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.sync.signin.AccountManagerHelper;
 
 import java.io.File;
 
@@ -40,7 +41,7 @@ public abstract class IntentHelper {
     static void sendEmail(Context context, String email, String subject, String body,
             String chooserTitle, String fileToAttach) {
         if (TextUtils.isEmpty(email)) {
-            Account[] accounts = AccountManager.get(context).getAccounts();
+            Account[] accounts = AccountManagerHelper.get(context).getGoogleAccounts();
             if (accounts != null && accounts.length == 1
                     && Patterns.EMAIL_ADDRESS.matcher(accounts[0].name).matches()) {
                 email = accounts[0].name;
@@ -54,7 +55,16 @@ public abstract class IntentHelper {
         send.putExtra(Intent.EXTRA_TEXT, Html.fromHtml(body));
         if (!TextUtils.isEmpty(fileToAttach)) {
             File fileIn = new File(fileToAttach);
-            send.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(fileIn));
+            Uri fileUri;
+            // Attempt to use a content Uri, for greater compatibility.  If the path isn't set
+            // up to be shared that way with a <paths> meta-data element, just use a file Uri
+            // instead.
+            try {
+                fileUri = ContentUriUtils.getContentUriFromFile(context, fileIn);
+            } catch (IllegalArgumentException ex) {
+                fileUri = Uri.fromFile(fileIn);
+            }
+            send.putExtra(Intent.EXTRA_STREAM, fileUri);
         }
 
         try {

@@ -6,8 +6,6 @@ package org.chromium.chrome.browser.enhancedbookmarks;
 
 import android.support.v4.widget.DrawerLayout;
 
-import org.chromium.chrome.browser.enhanced_bookmarks.EnhancedBookmarksModel;
-import org.chromium.chrome.browser.enhanced_bookmarks.LaunchLocation;
 import org.chromium.components.bookmarks.BookmarkId;
 
 import java.util.List;
@@ -40,6 +38,13 @@ interface EnhancedBookmarkDelegate {
      * @param folder Parent folder that contains bookmarks to show as its children.
      */
     void openFolder(BookmarkId folder);
+
+    /**
+     * Corresponds to any filter named list item in the side drawer. Shows bookmarks that match
+     * that filter.
+     * @param filter A filter that will narrow down a list of bookmarks to show.
+     */
+    void openFilter(EnhancedBookmarkFilter filter);
 
     /**
      * Clear all selected items. After this call, {@link #isSelectionEnabled()} will return false.

@@ -26,12 +26,13 @@ import org.chromium.base.Log;
 import org.chromium.base.VisibleForTesting;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.chrome.browser.externalauth.ExternalAuthUtils;
+import org.chromium.chrome.browser.externalnav.IntentWithGesturesHandler;
 import org.chromium.chrome.browser.omnibox.AutocompleteController;
 import org.chromium.chrome.browser.search_engines.TemplateUrlService;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.document.ActivityDelegate;
 import org.chromium.chrome.browser.util.IntentUtils;
 import org.chromium.content_public.browser.LoadUrlParams;
-import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.common.Referrer;
 
 import java.util.ArrayList;
@@ -69,9 +70,9 @@ public class IntentHandler {
     public static final String EXTRA_STARTED_BY = "com.android.chrome.started_by";
 
     /**
-     * A pointer to a native web contents object to associate with the given tab.
+     * Tab ID to use when creating a new Tab.
      */
-    public static final String EXTRA_WEB_CONTENTS = "com.android.chrome.web_contents";
+    public static final String EXTRA_TAB_ID = "com.android.chrome.tab_id";
 
     /**
      * The tab id of the parent tab, if any.
@@ -217,7 +218,7 @@ public class IntentHandler {
          */
         void processUrlViewIntent(String url, String referer, String headers,
                 TabOpenType tabOpenType, String externalAppId, int tabIdToBringToFront,
-                Intent intent);
+                boolean hasUserGesture, Intent intent);
 
         void processWebSearchIntent(String query);
     }
@@ -289,7 +290,8 @@ public class IntentHandler {
     public boolean onNewIntent(Context context, Intent intent) {
         assert intentHasValidUrl(intent);
         String url = getUrlFromIntent(intent);
-
+        boolean hasUserGesture =
+                IntentWithGesturesHandler.getInstance().getUserGestureAndClear(intent);
         TabOpenType tabOpenType = getTabOpenType(intent);
         int tabIdToBringToFront = IntentUtils.safeGetIntExtra(
                 intent, TabOpenType.BRING_TAB_TO_FRONT.name(), Tab.INVALID_TAB_ID);
@@ -304,7 +306,7 @@ public class IntentHandler {
         // TODO(joth): Presumably this should check the action too.
         mDelegate.processUrlViewIntent(url, referrerUrl, extraHeaders, tabOpenType,
                 IntentUtils.safeGetStringExtra(intent, Browser.EXTRA_APPLICATION_ID),
-                tabIdToBringToFront, intent);
+                tabIdToBringToFront, hasUserGesture, intent);
         recordExternalIntentSourceUMA(intent);
         return true;
     }
@@ -512,7 +514,6 @@ public class IntentHandler {
             // and check it with isIntentChromeInternal.
             intent.putExtra(TRUSTED_APPLICATION_CODE_EXTRA,
                     getAuthenticationToken(context.getApplicationContext()));
-
             // It is crucial that we never leak the authentication token to other packages, because
             // then the other package could be used to impersonate us/do things as us. Therefore,
             // scope the real Intent to our package.
@@ -871,22 +872,5 @@ public class IntentHandler {
             return sPendingReferrer.second;
         }
         return null;
-    }
-
-    /**
-     * Retrieves a WebContents that has been parceled into the Intent.  If the WebContents was
-     * created in a different process, it is dropped on the floor.
-     * @return WebContents if one exists in the Intent AND it was created in the same process.
-     *         null otherwise.
-     */
-    public static WebContents getWebContentsFromIntent(Intent intent) {
-        WebContents deliveredContents = null;
-        if (intent != null) {
-            // The Intent may have been fired with a pre-created WebContents in it.
-            intent.setExtrasClassLoader(WebContents.class.getClassLoader());
-            deliveredContents = IntentUtils.safeGetParcelableExtra(intent, EXTRA_WEB_CONTENTS);
-            intent.setExtrasClassLoader(null);
-        }
-        return deliveredContents;
     }
 }

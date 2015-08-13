@@ -327,6 +327,18 @@ CHAR-LIMIT guidelines:
       <message name="IDS_SEARCH_SUGGESTIONS_SUMMARY" desc="Summary for search and url suggestions.">
         Use a prediction service to show related queries and popular websites as you type in the address bar
       </message>
+      <message name="IDS_SAFE_BROWSING_EXTENDED_REPORTING_TITLE" desc="Title for checkbox that controls whether details of possible security incidents will be sent to Google.">
+      Security incidents
+      </message>
+      <message name="IDS_SAFE_BROWSING_EXTENDED_REPORTING_SUMMARY" desc="Summary for report security incidents.">
+      Automatically report details of possible security incidents to Google
+      </message>
+      <message name="IDS_SAFE_BROWSING_TITLE" desc="Title for safe browsing.">
+      Safe Browsing
+      </message>
+      <message name="IDS_SAFE_BROWSING_SUMMARY" desc="Summary for safe browsing.">
+      Protect you and your device from dangerous sites
+      </message>
       <message name="IDS_NETWORK_PREDICTIONS_TITLE" desc="Title for Prefetch page resources.">
         Prefetch page resources
       </message>
@@ -457,7 +469,7 @@ Usage statistics include information such as preferences, button clicks, and mem
       </message>
 
       <!-- Site settings -->
-      <message name="IDS_PREFS_CONTENT_SETTINGS" desc="Title of the Website Settings screen. [CHAR-LIMIT=32]">
+      <message name="IDS_PREFS_SITE_SETTINGS" desc="Title of the Website Settings screen. [CHAR-LIMIT=32]">
         Site settings
       </message>
       <message name="IDS_ALL_SITES" desc='Title of the "All sites" settings screen that allows the user to see permissions for all websites. [CHAR-LIMIT=32]'>
@@ -560,11 +572,14 @@ particular permission.">
       <message name="IDS_WEBSITE_SETTINGS_CATEGORY_COOKIE_ALLOWED" desc="Summary text explaining that sites are allowed to use cookies and that it is the recommended setting.">
         Allow sites to save and read cookie data (recommended)
       </message>
-      <message name="IDS_WEBSITE_SETTINGS_PERMISSIONS_ALLOW" desc="Summary text explaining that the user will allow a website to access some permission, e.g. JavaScript: allow.">
+      <message name="IDS_WEBSITE_SETTINGS_PERMISSIONS_ALLOW" desc="Summary text explaining that Chrome will allow a website to access some permission, e.g. JavaScript: allow.">
         Allow
       </message>
-      <message name="IDS_WEBSITE_SETTINGS_PERMISSIONS_BLOCK" desc="Summary text explaining that the user will block a website from accessing some permission, e.g. JavaScript: block.">
+      <message name="IDS_WEBSITE_SETTINGS_PERMISSIONS_BLOCK" desc="Summary text explaining that Chrome will block a website from accessing some permission, e.g. JavaScript: block.">
         Block
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_PERMISSIONS_ALLOW_DSE" desc="Summary text explaining that Chrome will allow the default search engine to access the user's location, but only when the user searches directly from the address bar. e.g. Location access: Allow (for address bar searches)">
+        Allow (for address bar searches)
       </message>
       <message name="IDS_WEBSITE_SETTINGS_SEARCH" desc="The label for the search button on the Website Settings page.">
         Search
@@ -617,10 +632,10 @@ particular permission.">
       </message>
 
       <!-- Camera and microphone preferences -->
-      <message name="IDS_WEBSITE_SETTINGS_USE_CAMERA" desc="The category filter 'Camera' for content settings.">
+      <message name="IDS_WEBSITE_SETTINGS_USE_CAMERA" desc="The category filter 'Camera' for site settings.">
         Camera
       </message>
-      <message name="IDS_WEBSITE_SETTINGS_USE_MIC" desc="The category filter 'Mic' for content settings.">
+      <message name="IDS_WEBSITE_SETTINGS_USE_MIC" desc="The category filter 'Mic' for site settings.">
         Microphone
       </message>
       <message name="IDS_CAMERA_PERMISSION_TITLE" desc="Title text to be shown when the user has allowed/denied video access for the website [CHAR-LIMIT=32]">
@@ -649,18 +664,27 @@ particular permission.">
 To obtain new licenses, connect to the internet and play your downloaded content.
       </message>
 
-      <!-- Google translate preferences -->
-      <message name="IDS_GOOGLE_TRANSLATE" desc='Title for the Google Translate settings screen. [CHAR-LIMIT=32]'>
+      <!-- Language preferences -->
+      <message name="IDS_LANGUAGE" desc="Title for Language settings screen. [CHAR-LIMIT=32]">
+        Language
+      </message>
+      <message name="IDS_GOOGLE_TRANSLATE" desc='Title for the Google Translate preference. [CHAR-LIMIT=32]'>
         Google Translate
       </message>
       <message name="IDS_TRANSLATE_PREFS_DESCRIPTION" desc="Translate preference description">
-        When this feature is turned on, Chrome will offer to translate pages written in other languages using Google Translate.
+        Offer to translate pages using Google Translate
       </message>
       <message name="IDS_TRANSLATE_PREFS_TOAST_DESCRIPTION" desc="Translate settings reset toast when resetting defaults">
         Your translate settings have been reset.
       </message>
       <message name="IDS_RESET_TRANSLATE_DEFAULTS" desc="Title for translate reset menu preference">
         Reset translate settings
+      </message>
+      <message name="IDS_AUTO_DETECT_ENCODING" desc="Title for checkbox to enable or disable automatic detection of the character encoding in web pages. ">
+        Auto detect encoding
+      </message>
+      <message name="IDS_AUTO_DETECT_ENCODING_DESCRIPTION" desc="Description for checkbox to enable or disable automatic detection of the character encoding in web pages. ">
+        Automatically determine character encoding
       </message>
 
       <!-- Storage preferences -->
@@ -686,16 +710,16 @@ To obtain new licenses, connect to the internet and play your downloaded content
       <message name="IDS_DATA_REDUCTION_LO_FI_SNACKBAR_ACTION" desc="Button to load images when page is opened in low fidelity mode when there is a slow unreliable connection.">
         Load images
       </message>
-      <message name="IDS_REDUCE_DATA_USAGE_TITLE" desc="Menu item for reducing data usage.">
+      <message name="IDS_DATA_REDUCTION_TITLE" desc="Menu item for Data Saver, which allows users to save mobile data by compressing network traffic.">
         Data Saver
       </message>
-      <message name="IDS_REDUCE_DATA_USAGE_DESCRIPTION" desc="Description text for reducing data usage">
+      <message name="IDS_DATA_REDUCTION_DESCRIPTION" desc="Description text for the Data Saver feature.">
         When this feature is turned on, Chrome will use Google servers to compress pages you visit before downloading them. SSL and incognito pages will not be included.
       </message>
       <message name="IDS_DATA_REDUCTION_MENU_ITEM_SUMMARY" desc="Summary text for data reduction menu item.">
         <ph name="PERCENT">%1$s<ex>49%</ex></ph> data savings
       </message>
-      <message name="IDS_DATA_REDUCTION_STATISTICS_TITLE" desc="Data reduction statistics title.">
+      <message name="IDS_DATA_REDUCTION_STATS_TITLE" desc="Data reduction statistics title.">
         Data savings
       </message>
       <message name="IDS_DATA_REDUCTION_ORIGINAL_SIZE_LABEL" desc="Data Reduction statistics original size label">
@@ -1060,6 +1084,10 @@ You are signing in with a managed account and giving its administrator control o
       <!-- InfoBar -->
       <message desc="Accessibility label for the dismiss infobar Button" name="IDS_INFOBAR_CLOSE">
         Close
+      </message>
+
+      <message desc="Accessibility label to inform users about the InfoBar location" name="IDS_INFOBAR_SCREEN_POSITION">
+        %1$s. Options available near bottom of the screen
       </message>
 
       <!-- Account chooser infobar strings. -->
@@ -1791,8 +1819,14 @@ Just open Chrome on your computer, go to the menu, and select “Sign in to Chro
       <message name="IDS_ENHANCED_BOOKMARK_DRAWER_FOLDERS" desc="Title for the list of folders in the drawer view. [CHAR-LIMIT=32]">
         Folders
       </message>
+      <message name="IDS_ENHANCED_BOOKMARK_DRAWER_FILTER_OFFLINE_PAGES" desc="Menu item for showing all bookmarks with an offline pages [CHAR-LIMIT=24]">
+        Saved offline
+      </message>
       <message name="IDS_ENHANCED_BOOKMARK_TITLE_BAR_ALL_ITEMS" desc="Title bar text for showing all bookmark items in the enhanced bookmarks UI [CHAR-LIMIT=32]">
         Bookmarks
+      </message>
+      <message name="IDS_ENHANCED_BOOKMARK_TITLE_BAR_ALL_ITEMS_OFFLINE_PAGES" desc="Title bar text for showing all offline pages bookmarks UI [CHAR-LIMIT=32]">
+        All saved pages
       </message>
       <message name="IDS_ENHANCED_BOOKMARK_PARENT_FOLDER" desc="Header text for title of parent folder of the bookmark [CHAR-LIMIT=32]">
         Parent folder
@@ -2021,9 +2055,6 @@ Just open Chrome on your computer, go to the menu, and select “Sign in to Chro
       </message>
       <message name="IDS_ACCESSIBILITY_TOOLBAR_BTN_HOME" desc="Content description for the home button.">
         Home
-      </message>
-      <message name="IDS_ACCESSIBILITY_TOOLBAR_BTN_CUSTOM" desc="Content description for the custom action button.">
-        Custom action button
       </message>
       <message name="IDS_ACCESSIBILITY_BTN_REFRESH" desc="Content description for the refresh page button.">
         Refresh page

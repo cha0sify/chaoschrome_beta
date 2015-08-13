@@ -19,11 +19,11 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.Feature;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeActivity;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.ntp.NewTabPage;
 import org.chromium.chrome.browser.omnibox.AutocompleteController.OnSuggestionsReceivedListener;
 import org.chromium.chrome.browser.omnibox.OmniboxResultsAdapter.OmniboxResultItem;
 import org.chromium.chrome.browser.omnibox.OmniboxSuggestion.Type;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.toolbar.ToolbarDataProvider;
 import org.chromium.chrome.test.ChromeActivityTestCaseBase;
 import org.chromium.chrome.test.util.OmniboxTestUtils;
@@ -289,11 +289,6 @@ public class QueryInOmniboxTest extends ChromeActivityTestCaseBase<ChromeActivit
         @Override
         public boolean isIncognito() {
             return mBaseProvider.isIncognito();
-        }
-
-        @Override
-        public int getLoadProgress() {
-            return mBaseProvider.getLoadProgress();
         }
 
         @Override

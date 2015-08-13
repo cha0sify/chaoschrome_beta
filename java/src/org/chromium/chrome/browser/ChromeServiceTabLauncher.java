@@ -7,9 +7,10 @@ package org.chromium.chrome.browser;
 import android.content.Context;
 
 import org.chromium.chrome.browser.document.DocumentMetricIds;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
+import org.chromium.chrome.browser.tabmodel.document.AsyncTabCreationParams;
 import org.chromium.chrome.browser.tabmodel.document.TabDelegate;
-import org.chromium.chrome.browser.tabmodel.document.TabDelegate.AsyncTabCreationParams;
 import org.chromium.components.service_tab_launcher.ServiceTabLauncher;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.common.Referrer;
@@ -40,12 +41,11 @@ public class ChromeServiceTabLauncher extends ServiceTabLauncher {
         loadUrlParams.setVerbatimHeaders(extraHeaders);
         loadUrlParams.setReferrer(new Referrer(referrerUrl, referrerPolicy));
 
-        AsyncTabCreationParams additionalParams = new AsyncTabCreationParams();
-        additionalParams.documentStartedBy = intentSource;
-        additionalParams.requestId = requestId;
+        AsyncTabCreationParams asyncParams = new AsyncTabCreationParams(loadUrlParams, requestId);
+        asyncParams.setDocumentStartedBy(intentSource);
 
         TabDelegate tabDelegate = new TabDelegate(incognito);
         tabDelegate.createNewTab(
-                loadUrlParams, TabLaunchType.FROM_MENU_OR_OVERVIEW, null, additionalParams);
+                asyncParams, TabLaunchType.FROM_MENU_OR_OVERVIEW, Tab.INVALID_TAB_ID);
     }
 }

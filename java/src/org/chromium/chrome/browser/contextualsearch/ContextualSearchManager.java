@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.contextualsearch;
 import android.app.Activity;
 import android.os.Handler;
 import android.view.View;
+import android.view.View.MeasureSpec;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.ViewTreeObserver.OnGlobalFocusChangeListener;
@@ -14,12 +15,11 @@ import android.view.ViewTreeObserver.OnGlobalFocusChangeListener;
 import org.chromium.base.ActivityState;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ApplicationStatus.ActivityStateListener;
-import org.chromium.base.CalledByNative;
 import org.chromium.base.SysUtils;
 import org.chromium.base.VisibleForTesting;
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeActivity;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.WebContentsFactory;
 import org.chromium.chrome.browser.compositor.bottombar.contextualsearch.ContextualSearchControl;
 import org.chromium.chrome.browser.compositor.bottombar.contextualsearch.ContextualSearchPanel.PanelState;
@@ -33,10 +33,12 @@ import org.chromium.chrome.browser.externalnav.ExternalNavigationParams;
 import org.chromium.chrome.browser.gsa.GSAContextDisplaySelection;
 import org.chromium.chrome.browser.infobar.InfoBarContainer;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabRedirectHandler;
 import org.chromium.chrome.browser.tabmodel.EmptyTabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
+import org.chromium.chrome.browser.tabmodel.TabModel.TabSelectionType;
 import org.chromium.chrome.browser.tabmodel.TabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
@@ -44,6 +46,7 @@ import org.chromium.components.navigation_interception.InterceptNavigationDelega
 import org.chromium.components.navigation_interception.NavigationParams;
 import org.chromium.components.web_contents_delegate_android.WebContentsDelegateAndroid;
 import org.chromium.content.browser.ContentView;
+import org.chromium.content.browser.ContentViewClient;
 import org.chromium.content.browser.ContentViewCore;
 import org.chromium.content.browser.ContextualSearchClient;
 import org.chromium.content_public.browser.GestureStateListener;
@@ -213,6 +216,13 @@ public class ContextualSearchManager extends ContextualSearchObservable
 
         mTabModelObserver = new EmptyTabModelObserver() {
             @Override
+            public void didSelectTab(Tab tab, TabSelectionType type, int lastId) {
+                if (!mIsPromotingToTab && tab.getId() != lastId) {
+                    hideContextualSearch(StateChangeReason.UNKNOWN);
+                }
+            }
+
+            @Override
             public void didAddTab(Tab tab, TabLaunchType type) {
                 // If we're in the process of promoting this tab, just return and don't mess with
                 // this state.
@@ -260,6 +270,11 @@ public class ContextualSearchManager extends ContextualSearchObservable
     @Override
     public void setContextualSearchPanelDelegate(ContextualSearchPanelDelegate delegate) {
         mSearchPanelDelegate = delegate;
+    }
+
+    @Override
+    public boolean isCustomTab() {
+        return mActivity.isCustomTab();
     }
 
     /**
@@ -311,6 +326,11 @@ public class ContextualSearchManager extends ContextualSearchObservable
     @Override
     public boolean isPromoAvailable() {
         return mPolicy.isPromoAvailable();
+    }
+
+    @Override
+    public int getControlContainerHeightResource() {
+        return mActivity.getControlContainerHeightResource();
     }
 
     /**
@@ -849,6 +869,26 @@ public class ContextualSearchManager extends ContextualSearchObservable
         }
 
         mSearchContentViewCore = new ContentViewCore(mActivity);
+
+        // Adds a ContentViewClient to override the default fullscreen size.
+        if (!mSearchPanelDelegate.isFullscreenSizePanel()) {
+            mSearchContentViewCore.setContentViewClient(new ContentViewClient() {
+                @Override
+                public int getDesiredWidthMeasureSpec() {
+                    return MeasureSpec.makeMeasureSpec(
+                            mSearchPanelDelegate.getSearchContentViewWidthPx(),
+                            MeasureSpec.EXACTLY);
+                }
+
+                @Override
+                public int getDesiredHeightMeasureSpec() {
+                    return MeasureSpec.makeMeasureSpec(
+                            mSearchPanelDelegate.getSearchContentViewHeightPx(),
+                            MeasureSpec.EXACTLY);
+                }
+            });
+        }
+
         ContentView cv = new ContentView(mActivity, mSearchContentViewCore);
         // Creates an initially hidden WebContents which gets shown when the panel is opened.
         mSearchContentViewCore.initialize(cv, cv,
@@ -940,6 +980,19 @@ public class ContextualSearchManager extends ContextualSearchObservable
      * @param url The URL we are navigating to.
      */
     private void onExternalNavigation(String url) {
+        if (mSearchPanelDelegate.isFullscreenSizePanel()) {
+            // Consider the ContentView height to be fullscreen, and inform the system that
+            // the Toolbar is always visible (from the Compositor's perspective), even though
+            // the Toolbar and Base Page might be offset outside the screen. This means the
+            // renderer will consider the ContentView height to be the fullscreen height
+            // minus the Toolbar height.
+            //
+            // This is necessary to fix the bugs: crbug.com/510205 and crbug.com/510206
+            mSearchContentViewCore.getWebContents().updateTopControlsState(false, true, false);
+        } else {
+            mSearchContentViewCore.getWebContents().updateTopControlsState(true, false, false);
+        }
+
         if (!mDidPromoteSearchNavigation
                 && !BLACKLISTED_URL.equals(url)
                 && !url.startsWith(INTENT_URL_PREFIX)
@@ -1029,7 +1082,11 @@ public class ContextualSearchManager extends ContextualSearchObservable
 
             // NOTE(pedrosimonetti): The Panel should be closed after being promoted to a Tab
             // to prevent Chrome-Android from animating the creation of the new Tab.
-            mSearchPanelDelegate.closePanel(StateChangeReason.TAB_PROMOTION, false);
+            if (mSearchPanelDelegate.shouldAnimatePanelCloseOnPromoteToTab()) {
+                mSearchPanelDelegate.closePanel(StateChangeReason.TAB_PROMOTION, true);
+            } else {
+                mSearchPanelDelegate.closePanel(StateChangeReason.TAB_PROMOTION, false);
+            }
 
             // Focus the Omnibox.
             if (shouldFocusOmnibox) {
@@ -1213,8 +1270,10 @@ public class ContextualSearchManager extends ContextualSearchObservable
             StateChangeReason stateChangeReason = type == SelectionType.TAP
                     ? StateChangeReason.TEXT_SELECT_TAP : StateChangeReason.TEXT_SELECT_LONG_PRESS;
             ContextualSearchUma.logSelectionIsValid(isSelectionValid);
-
-            if (isSelectionValid) {
+            // Workaround to disable Contextual Search in HTML fullscreen mode. crbug.com/511977
+            boolean isInFullscreenMode =
+                    mActivity.getFullscreenManager().getPersistentFullscreenMode();
+            if (isSelectionValid && !isInFullscreenMode) {
                 mSearchPanelDelegate.updateBasePageSelectionYPx(y);
                 showContextualSearch(stateChangeReason);
             } else {
@@ -1225,7 +1284,14 @@ public class ContextualSearchManager extends ContextualSearchObservable
 
     @Override
     public void handleSelectionDismissal() {
-        if (mSearchPanelDelegate.isShowing() && !mIsPromotingToTab) {
+        if (mSearchPanelDelegate.isShowing()
+                && !mIsPromotingToTab
+                // If the selection is dismissed when the Panel is not peeking anymore,
+                // which means the Panel is at least partially expanded, then it means
+                // the selection was cleared by an external source (like JavaScript),
+                // so we should not dismiss the UI in here.
+                // See crbug.com/516665
+                && mSearchPanelDelegate.isPeeking()) {
             hideContextualSearch(StateChangeReason.CLEARED_SELECTION);
         }
     }

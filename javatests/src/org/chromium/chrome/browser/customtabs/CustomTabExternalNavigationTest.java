@@ -10,12 +10,12 @@ import android.test.suitebuilder.annotation.SmallTest;
 
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ThreadUtils;
-import org.chromium.chrome.browser.EmptyTabObserver;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.customtabs.CustomTab.CustomTabNavigationDelegate;
 import org.chromium.chrome.browser.externalnav.ExternalNavigationHandler;
 import org.chromium.chrome.browser.externalnav.ExternalNavigationHandler.OverrideUrlLoadingResult;
 import org.chromium.chrome.browser.externalnav.ExternalNavigationParams;
+import org.chromium.chrome.browser.tab.EmptyTabObserver;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.test.util.TestHttpServerClient;
@@ -58,7 +58,8 @@ public class CustomTabExternalNavigationTest extends CustomTabActivityTestBase {
     @Override
     public void startMainActivity() throws InterruptedException {
         super.startMainActivity();
-        startCustomTabActivityWithIntent(createMinimalCustomTabIntent(TEST_URL));
+        startCustomTabActivityWithIntent(CustomTabsTestUtils.createMinimalCustomTabIntent(
+                getInstrumentation().getTargetContext(), TEST_URL, null));
         Tab tab = getActivity().getActivityTab();
         assertTrue("A custom tab is not present in the activity.", tab instanceof CustomTab);
         CustomTab customTab = (CustomTab) tab;

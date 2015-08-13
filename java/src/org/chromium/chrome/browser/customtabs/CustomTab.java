@@ -10,6 +10,7 @@ import android.content.pm.ResolveInfo;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.os.TransactionTooLargeException;
+import android.support.customtabs.CustomTabsCallback;
 import android.text.TextUtils;
 import android.view.ContextMenu;
 import android.view.Menu;
@@ -19,8 +20,6 @@ import org.chromium.base.VisibleForTesting;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeActivity;
-import org.chromium.chrome.browser.EmptyTabObserver;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.UrlUtilities;
 import org.chromium.chrome.browser.WebContentsFactory;
 import org.chromium.chrome.browser.banners.AppBannerManager;
@@ -30,6 +29,8 @@ import org.chromium.chrome.browser.contextmenu.ContextMenuPopulator;
 import org.chromium.chrome.browser.externalnav.ExternalNavigationDelegateImpl;
 import org.chromium.chrome.browser.externalnav.ExternalNavigationHandler;
 import org.chromium.chrome.browser.tab.ChromeTab;
+import org.chromium.chrome.browser.tab.EmptyTabObserver;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabIdManager;
 import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
 import org.chromium.content_public.browser.LoadUrlParams;
@@ -78,13 +79,15 @@ public class CustomTab extends ChromeTab {
                 mPageLoadStartedTimestamp = SystemClock.elapsedRealtime();
                 mCurrentState = STATE_WAITING_LOAD_FINISH;
             }
-            mCustomTabsConnection.notifyPageLoadStarted(mSession, url);
+            mCustomTabsConnection.notifyNavigationEvent(
+                    mSession, CustomTabsCallback.NAVIGATION_STARTED);
         }
 
         @Override
         public void onPageLoadFinished(Tab tab) {
             long pageLoadFinishedTimestamp = SystemClock.elapsedRealtime();
-            mCustomTabsConnection.notifyPageLoadFinished(mSession, tab.getUrl());
+            mCustomTabsConnection.notifyNavigationEvent(
+                    mSession, CustomTabsCallback.NAVIGATION_FINISHED);
             // Both histograms (commit and PLT) are reported here, to make sure
             // that they are always recorded together, and that we only record
             // commits for successful navigations.
@@ -247,18 +250,16 @@ public class CustomTab extends ChromeTab {
 
         @Override
         public boolean startActivityIfNeeded(Intent intent) {
+            boolean isExternalProtocol = !UrlUtilities.isAcceptedScheme(intent.getDataString());
+            boolean hasDefaultHandler = hasDefaultHandler(intent);
             try {
-                if (resolveDefaultHandlerForIntent(intent)) {
-                    if (getActivity().startActivityIfNeeded(intent, -1)) {
-                        mHasActivityStarted = true;
-                        return true;
-                    } else {
-                        return false;
-                    }
-                } else {
-                    // If we failed to find the default handler of the intent, fall back to chrome.
-                    return false;
-                }
+                // For a url chrome can handle and there is no default set, handle it ourselves.
+                if (!hasDefaultHandler && !isExternalProtocol) return false;
+                // If android fails to find a handler, handle it ourselves.
+                if (!getActivity().startActivityIfNeeded(intent, -1)) return false;
+
+                mHasActivityStarted = true;
+                return true;
             } catch (RuntimeException e) {
                 logTransactionTooLargeOrRethrow(e, intent);
                 return false;
@@ -270,7 +271,7 @@ public class CustomTab extends ChromeTab {
          * @return Whether the default external handler is found: if chrome turns out to be the
          *         default handler, this method will return false.
          */
-        private boolean resolveDefaultHandlerForIntent(Intent intent) {
+        private boolean hasDefaultHandler(Intent intent) {
             try {
                 ResolveInfo info = getActivity().getPackageManager().resolveActivity(intent, 0);
                 if (info != null) {

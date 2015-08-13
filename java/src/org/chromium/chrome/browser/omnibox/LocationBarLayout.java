@@ -62,11 +62,11 @@ import org.chromium.base.VisibleForTesting;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.ContextualMenuBar;
 import org.chromium.chrome.browser.ContextualMenuBar.ActionBarDelegate;
 import org.chromium.chrome.browser.CustomSelectionActionModeCallback;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.WebsiteSettingsPopup;
 import org.chromium.chrome.browser.WindowDelegate;
 import org.chromium.chrome.browser.appmenu.AppMenuButtonHelper;
@@ -83,12 +83,13 @@ import org.chromium.chrome.browser.omnibox.OmniboxResultsAdapter.OmniboxSuggesti
 import org.chromium.chrome.browser.omnibox.OmniboxSuggestion.Type;
 import org.chromium.chrome.browser.omnibox.VoiceSuggestionProvider.VoiceResult;
 import org.chromium.chrome.browser.omnibox.geo.GeolocationHeader;
+import org.chromium.chrome.browser.omnibox.geo.GeolocationSnackbarController;
 import org.chromium.chrome.browser.preferences.privacy.PrivacyPreferencesManager;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.TemplateUrlService;
 import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
-import org.chromium.chrome.browser.tab.BackgroundContentViewHelper;
 import org.chromium.chrome.browser.tab.ChromeTab;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.toolbar.ToolbarDataProvider;
 import org.chromium.chrome.browser.toolbar.ToolbarPhone;
 import org.chromium.chrome.browser.util.FeatureUtilities;
@@ -124,6 +125,10 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
     private static final long OMNIBOX_SUGGESTION_START_DELAY_MS = 30;
 
     private static final int OMNIBOX_CONTAINER_BACKGROUND_FADE_MS = 250;
+
+    // Delay showing the geolocation snackbar when the omnibox is focused until the keyboard is
+    // hopefully visible.
+    private static final int GEOLOCATION_SNACKBAR_SHOW_DELAY_MS = 750;
 
     // The minimum confidence threshold that will result in navigating directly to a voice search
     // response (as opposed to treating it like a typed string in the Omnibox).
@@ -228,10 +233,6 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
     private View mFocusedTabView;
     private int mFocusedTabImportantForAccessibilityState;
     private BrowserAccessibilityManager mFocusedTabAccessibilityManager;
-
-    // True if we are showing original url for preview page. This is will be true when there is a
-    // background page loaded in background content view.
-    private boolean mShowingOriginalUrlForPreview;
 
     private boolean mSuggestionModalShown;
     private boolean mUseDarkColors;
@@ -817,7 +818,6 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
                 });
 
         mWindowAndroid = windowAndroid;
-        mMicButton.setOnClickListener(this);
     }
 
     /**
@@ -839,6 +839,7 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
         mNavigationButton.setOnClickListener(this);
         updateMicButtonState();
         mDeleteButton.setOnClickListener(this);
+        mMicButton.setOnClickListener(this);
 
         mAutocomplete = new AutocompleteController(this);
 
@@ -1018,6 +1019,15 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
             mHasStartedNewOmniboxEditSession = false;
             mNewOmniboxEditSessionTimestamp = -1;
         }
+
+        if (hasFocus && currentTab != null) {
+            ChromeActivity activity = (ChromeActivity) mWindowAndroid.getActivity().get();
+            if (activity != null) {
+                GeolocationSnackbarController.maybeShowSnackbar(activity.getSnackbarManager(),
+                        LocationBarLayout.this, currentTab.isIncognito(),
+                        GEOLOCATION_SNACKBAR_SHOW_DELAY_MS);
+            }
+        }
     }
 
     /**
@@ -1160,14 +1170,6 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
         return mQueryInTheOmnibox;
     }
 
-    /**
-     * @return Whether original url is shown for preview page.
-     */
-    @Override
-    public boolean showingOriginalUrlForPreview() {
-        return mShowingOriginalUrlForPreview;
-    }
-
     private int getSecurityLevel() {
         if (getCurrentTab() == null) return ConnectionSecurityLevel.NONE;
         return getCurrentTab().getSecurityLevel();
@@ -1202,9 +1204,6 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
      */
     @Override
     public void updateSecurityIcon(int securityLevel) {
-        if (showingOriginalUrlForPreview()) {
-            securityLevel = ConnectionSecurityLevel.NONE;
-        }
         if (mQueryInTheOmnibox) {
             if (securityLevel == ConnectionSecurityLevel.SECURE
                     || securityLevel == ConnectionSecurityLevel.EV_SECURE) {
@@ -1511,11 +1510,19 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
      * @return The background for the omnibox suggestions popup.
      */
     protected Drawable getSuggestionPopupBackground() {
-        if (mToolbarDataProvider.isIncognito()) {
-            return new ColorDrawable(OMNIBOX_INCOGNITO_RESULTS_BG_COLOR);
-        } else {
-            return new ColorDrawable(OMNIBOX_RESULTS_BG_COLOR);
+        int color = mToolbarDataProvider.isIncognito() ? OMNIBOX_INCOGNITO_RESULTS_BG_COLOR
+                : OMNIBOX_RESULTS_BG_COLOR;
+        if (!isHardwareAccelerated()) {
+            // When HW acceleration is disabled, changing mSuggestionList' items somehow erases
+            // mOmniboxResultsContainer' background from the area not covered by mSuggestionList.
+            // To make sure mOmniboxResultsContainer is always redrawn, we make list background
+            // color slightly transparent. This makes mSuggestionList.isOpaque() to return false,
+            // and forces redraw of the parent view (mOmniboxResultsContainer).
+            if (Color.alpha(color) == 255) {
+                color = Color.argb(254, Color.red(color), Color.green(color), Color.blue(color));
+            }
         }
+        return new ColorDrawable(color);
     }
 
     /**
@@ -1958,15 +1965,6 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
             return;
         }
 
-        // Background view has similar case as snapshot.
-        BackgroundContentViewHelper backgroundViewHelper =
-                getCurrentTab().getBackgroundContentViewHelper();
-        boolean hasPendingBackgroundPage =
-                backgroundViewHelper != null && backgroundViewHelper.hasPendingBackgroundPage();
-        boolean isTransitioningFromPreviewPageToOriginal =
-                showingOriginalUrlForPreview() && !hasPendingBackgroundPage;
-        mShowingOriginalUrlForPreview = hasPendingBackgroundPage;
-
         boolean showingQuery = false;
         String displayText = mToolbarDataProvider.getText();
         int securityLevel = getSecurityLevel();
@@ -1998,7 +1996,7 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
             }
         }
 
-        if (setUrlBarText(displayText, path, url) || isTransitioningFromPreviewPageToOriginal) {
+        if (setUrlBarText(displayText, path, url)) {
             mUrlBar.deEmphasizeUrl();
             emphasizeUrl();
         }
@@ -2423,7 +2421,6 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
         }
 
         // Record UMA event for how the URL bar was focused.
-        assert !mHasRecordedUrlFocusSource;
         if (mHasRecordedUrlFocusSource) return;
 
         Tab currentTab = getCurrentTab();

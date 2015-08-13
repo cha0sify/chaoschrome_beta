@@ -7,8 +7,7 @@ package org.chromium.chrome.browser.customtabs;
 import android.app.Application;
 import android.content.Context;
 import android.net.Uri;
-import android.os.Bundle;
-import android.os.IBinder;
+import android.os.Process;
 import android.support.customtabs.ICustomTabsCallback;
 import android.test.InstrumentationTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -25,25 +24,13 @@ public class CustomTabsConnectionTest extends InstrumentationTestCase {
         super.setUp();
         Context context = getInstrumentation().getTargetContext().getApplicationContext();
         mCustomTabsConnection = CustomTabsConnection.getInstance((Application) context);
+        mCustomTabsConnection.resetThrottling(Process.myUid());
     }
 
     @Override
     protected void tearDown() throws Exception {
         super.tearDown();
         mCustomTabsConnection.cleanupAll();
-    }
-
-    private ICustomTabsCallback newDummyCallback() {
-        return new ICustomTabsCallback.Stub() {
-            @Override
-            public void onUserNavigationStarted(Uri url, Bundle extras) {}
-            @Override
-            public void onUserNavigationFinished(Uri url, Bundle extras) {}
-            @Override
-            public IBinder asBinder() {
-                return this;
-            }
-        };
     }
 
     /**
@@ -53,7 +40,7 @@ public class CustomTabsConnectionTest extends InstrumentationTestCase {
     @SmallTest
     public void testNewSession() {
         assertEquals(false, mCustomTabsConnection.newSession(null));
-        ICustomTabsCallback cb = newDummyCallback();
+        ICustomTabsCallback cb = CustomTabsTestUtils.newDummyCallback();
         assertEquals(true, mCustomTabsConnection.newSession(cb));
         assertEquals(false, mCustomTabsConnection.newSession(cb));
     }
@@ -76,7 +63,7 @@ public class CustomTabsConnectionTest extends InstrumentationTestCase {
             ICustomTabsCallback cb, String url, boolean shouldSucceed) {
         mCustomTabsConnection.warmup(0);
         if (cb == null) {
-            cb = newDummyCallback();
+            cb = CustomTabsTestUtils.newDummyCallback();
             mCustomTabsConnection.newSession(cb);
         }
         boolean succeeded = mCustomTabsConnection.mayLaunchUrl(cb, Uri.parse(url), null, null);
@@ -86,12 +73,13 @@ public class CustomTabsConnectionTest extends InstrumentationTestCase {
 
     /**
      * Tests that
-     * {@link CustomTabsConnection#mayLaunchUrl(long, String, Bundle, List<Bundle>)}
+     * {@link CustomTabsConnection#mayLaunchUrl(
+     * ICustomTabsCallback, Uri, android.os.Bundle, java.util.List)}
      * returns an error when called with an invalid session ID.
      */
     @SmallTest
     public void testNoMayLaunchUrlWithInvalidSessionId() {
-        assertWarmupAndMayLaunchUrl(newDummyCallback(), URL, false);
+        assertWarmupAndMayLaunchUrl(CustomTabsTestUtils.newDummyCallback(), URL, false);
     }
 
     /**
@@ -122,7 +110,9 @@ public class CustomTabsConnectionTest extends InstrumentationTestCase {
     @SmallTest
     public void testMultipleMayLaunchUrl() {
         ICustomTabsCallback cb = assertWarmupAndMayLaunchUrl(null, URL, true);
+        mCustomTabsConnection.resetThrottling(Process.myUid());
         assertWarmupAndMayLaunchUrl(cb, URL, true);
+        mCustomTabsConnection.resetThrottling(Process.myUid());
         assertWarmupAndMayLaunchUrl(cb, URL2, true);
     }
 

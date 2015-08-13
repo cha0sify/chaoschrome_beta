@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser;
 
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.SearchManager;
 import android.content.Context;
@@ -37,6 +38,7 @@ import org.chromium.chrome.browser.IntentHandler.TabOpenType;
 import org.chromium.chrome.browser.compositor.CompositorViewHolder;
 import org.chromium.chrome.browser.compositor.bottombar.contextualsearch.ContextualSearchPanel.StateChangeReason;
 import org.chromium.chrome.browser.compositor.layouts.Layout;
+import org.chromium.chrome.browser.compositor.layouts.LayoutManager;
 import org.chromium.chrome.browser.compositor.layouts.LayoutManagerChrome;
 import org.chromium.chrome.browser.compositor.layouts.LayoutManagerChrome.OverviewLayoutFactoryDelegate;
 import org.chromium.chrome.browser.compositor.layouts.LayoutManagerChromePhone;
@@ -64,12 +66,13 @@ import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomiza
 import org.chromium.chrome.browser.preferences.ChromePreferenceManager;
 import org.chromium.chrome.browser.preferences.ConnectionChangeReceiver;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
-import org.chromium.chrome.browser.preferences.bandwidth.BandwidthReductionPreferences;
-import org.chromium.chrome.browser.preferences.bandwidth.DataReductionPromoScreen;
+import org.chromium.chrome.browser.preferences.datareduction.DataReductionPreferences;
+import org.chromium.chrome.browser.preferences.datareduction.DataReductionPromoScreen;
 import org.chromium.chrome.browser.signin.SigninPromoScreen;
 import org.chromium.chrome.browser.snackbar.undo.UndoBarPopupController;
 import org.chromium.chrome.browser.sync.SyncController;
 import org.chromium.chrome.browser.tab.ChromeTab;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.ChromeTabCreator;
 import org.chromium.chrome.browser.tabmodel.EmptyTabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModel;
@@ -171,6 +174,22 @@ public class ChromeTabbedActivity extends ChromeActivity implements ActionBarDel
     // Time at which an intent was received and handled.
     private long mIntentHandlingTimeMs = 0;
 
+    private class TabbedAssistStatusHandler extends AssistStatusHandler {
+        public TabbedAssistStatusHandler(Activity activity) {
+            super(activity);
+        }
+
+        @Override
+        public boolean isAssistSupported() {
+            // If we are in the tab switcher and any incognito tabs are present, disable assist.
+            if (isInOverviewMode() && mTabModelSelectorImpl != null
+                    && mTabModelSelectorImpl.getModel(true).getCount() > 0) {
+                return false;
+            }
+            return super.isAssistSupported();
+        }
+    }
+
     @Override
     public void initializeCompositor() {
         try {
@@ -270,7 +289,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements ActionBarDel
             super.finishNativeInitialization();
 
             if (getActivityTab() != null) {
-                BandwidthReductionPreferences.launchDataReductionSSLInfoBar(
+                DataReductionPreferences.launchDataReductionSSLInfoBar(
                         this, getActivityTab().getWebContents());
             }
         } finally {
@@ -345,6 +364,11 @@ public class ChromeTabbedActivity extends ChromeActivity implements ActionBarDel
         return (ChromeTabCreator) tabCreator;
     }
 
+    @Override
+    protected AssistStatusHandler createAssistStatusHandler() {
+        return new TabbedAssistStatusHandler(this);
+    }
+
     private void handleDebugIntent(Intent intent) {
         if (ACTION_CLOSE_TABS.equals(intent.getAction())) {
             getTabModelSelector().closeAllTabs();
@@ -411,6 +435,10 @@ public class ChromeTabbedActivity extends ChromeActivity implements ActionBarDel
             OnClickListener tabSwitcherClickHandler = new OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    if (getFullscreenManager() != null
+                            && getFullscreenManager().getPersistentFullscreenMode()) {
+                        return;
+                    }
                     toggleOverview();
                 }
             };
@@ -535,8 +563,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements ActionBarDel
     private void createInitialTab() {
         String url = HomepageManager.getHomepageUri(getApplicationContext());
         if (TextUtils.isEmpty(url)) url = UrlConstants.NTP_URL;
-        getTabCreator(false).createNewTab(
-                new LoadUrlParams(url), TabLaunchType.FROM_MENU_OR_OVERVIEW, null);
+        getTabCreator(false).launchUrl(url, TabLaunchType.FROM_MENU_OR_OVERVIEW);
     }
 
     @Override
@@ -592,7 +619,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements ActionBarDel
         @Override
         public void processUrlViewIntent(String url, String referer, String headers,
                 TabOpenType tabOpenType, String externalAppId, int tabIdToBringToFront,
-                Intent intent) {
+                boolean hasUserGesture, Intent intent) {
             TabModel tabModel = getCurrentTabModel();
             switch (tabOpenType) {
                 case REUSE_URL_MATCHING_TAB_ELSE_NEW_TAB:
@@ -613,7 +640,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements ActionBarDel
                     }
                     RecordUserAction.record("MobileReceivedExternalIntent");
                     int shortcutSource = intent.getIntExtra(
-                            ShortcutHelper.EXTRA_SOURCE, ShortcutHelper.SOURCE_UNKNOWN);
+                            ShortcutHelper.EXTRA_SOURCE, ShortcutSource.UNKNOWN);
                     LaunchMetrics.recordHomeScreenLaunchIntoTab(url, shortcutSource);
                     break;
                 case REUSE_APP_ID_MATCHING_TAB_ELSE_NEW_TAB:
@@ -646,6 +673,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements ActionBarDel
                         int transitionType = PageTransition.LINK | PageTransition.FROM_API;
                         LoadUrlParams loadUrlParams = new LoadUrlParams(url, transitionType);
                         loadUrlParams.setIntentReceivedTimestamp(mIntentHandlingTimeMs);
+                        loadUrlParams.setHasUserGesture(hasUserGesture);
                         currentTab.loadUrl(loadUrlParams);
                         RecordUserAction.record("MobileTabClobbered");
                     } else {
@@ -795,7 +823,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements ActionBarDel
                 && TextUtils.equals(getIntent().getAction(), Intent.ACTION_MAIN);
         android.util.Log.i(TAG, "begin FirstRunFlowSequencer.checkIfFirstRunIsNecessary");
         final Intent freIntent = FirstRunFlowSequencer.checkIfFirstRunIsNecessary(
-                this, getIntent(), isIntentActionMain);
+                this, isIntentActionMain);
         android.util.Log.i(TAG, "end FirstRunFlowSequencer.checkIfFirstRunIsNecessary");
         if (freIntent == null) return;
 
@@ -1089,16 +1117,22 @@ public class ChromeTabbedActivity extends ChromeActivity implements ActionBarDel
             if (contentViewCore != null) {
                 contentViewCore.setAccessibilityState(false);
             }
-        } else if (getCurrentTabModel().getCount() != 0) {
-            // Don't hide overview if current tab stack is empty()
-            mLayoutManager.hideOverview(true);
+        } else {
+            Layout activeLayout = mLayoutManager.getActiveLayout();
+            if (activeLayout instanceof StackLayout) {
+                ((StackLayout) activeLayout).commitOutstandingModelState(LayoutManager.time());
+            }
+            if (getCurrentTabModel().getCount() != 0) {
+                // Don't hide overview if current tab stack is empty()
+                mLayoutManager.hideOverview(true);
 
-            // hideOverview could change the current tab.  Update the local variables.
-            currentTab = getActivityTab();
-            contentViewCore = currentTab != null ? currentTab.getContentViewCore() : null;
+                // hideOverview could change the current tab.  Update the local variables.
+                currentTab = getActivityTab();
+                contentViewCore = currentTab != null ? currentTab.getContentViewCore() : null;
 
-            if (contentViewCore != null) {
-                contentViewCore.setAccessibilityState(true);
+                if (contentViewCore != null) {
+                    contentViewCore.setAccessibilityState(true);
+                }
             }
         }
     }
@@ -1253,17 +1287,12 @@ public class ChromeTabbedActivity extends ChromeActivity implements ActionBarDel
 
     @Override
     public boolean isInOverviewMode() {
-        return mLayoutManager.overviewVisible();
+        return mLayoutManager != null && mLayoutManager.overviewVisible();
     }
 
     @Override
     protected IntentHandlerDelegate createIntentHandlerDelegate() {
         return new InternalIntentDelegate();
-    }
-
-    @Override
-    public void onOverviewModeStartedShowing(boolean showToolbar) {
-        if (mFindToolbarManager != null) mFindToolbarManager.hideToolbar();
     }
 
     @Override
@@ -1273,11 +1302,19 @@ public class ChromeTabbedActivity extends ChromeActivity implements ActionBarDel
     }
 
     @Override
-    public void onOverviewModeFinishedShowing() { }
+    public void onOverviewModeStartedShowing(boolean showToolbar) {
+        if (mFindToolbarManager != null) mFindToolbarManager.hideToolbar();
+        if (getAssistStatusHandler() != null) getAssistStatusHandler().updateAssistState();
+    }
+
+    @Override
+    public void onOverviewModeFinishedShowing() {}
 
     @Override
     public void onOverviewModeStartedHiding(boolean showToolbar, boolean delayAnimation) {}
 
     @Override
-    public void onOverviewModeFinishedHiding() {}
+    public void onOverviewModeFinishedHiding() {
+        if (getAssistStatusHandler() != null) getAssistStatusHandler().updateAssistState();
+    }
 }

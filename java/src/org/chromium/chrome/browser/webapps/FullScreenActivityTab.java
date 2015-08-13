@@ -19,16 +19,15 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.ShortcutHelper;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.TabState;
-import org.chromium.chrome.browser.TabUma.TabCreationState;
 import org.chromium.chrome.browser.UrlUtilities;
 import org.chromium.chrome.browser.compositor.layouts.content.TabContentManager;
 import org.chromium.chrome.browser.contextmenu.ContextMenuHelper;
 import org.chromium.chrome.browser.contextmenu.ContextMenuParams;
 import org.chromium.chrome.browser.contextmenu.ContextMenuPopulator;
-import org.chromium.chrome.browser.document.ChromeLauncherActivity;
 import org.chromium.chrome.browser.tab.ChromeTab;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabUma.TabCreationState;
 import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
@@ -317,17 +316,18 @@ public class FullScreenActivityTab extends ChromeTab {
             String url = webAppInfo.uri().toString();
 
             Intent intent = new Intent();
-            intent.setAction(Intent.ACTION_MAIN);
+            intent.setAction(WebappLauncherActivity.ACTION_START_WEBAPP);
             intent.setPackage(mActivity.getPackageName());
-            intent.putExtra(ChromeLauncherActivity.EXTRA_BRING_WEBAPP_TO_FRONT, true);
 
             intent.putExtra(ShortcutHelper.EXTRA_ICON, webAppInfo.getEncodedIcon());
             intent.putExtra(ShortcutHelper.EXTRA_ID, webAppInfo.id());
             intent.putExtra(ShortcutHelper.EXTRA_URL, url);
-            intent.putExtra(ShortcutHelper.EXTRA_TITLE, webAppInfo.title());
+            intent.putExtra(ShortcutHelper.EXTRA_NAME, webAppInfo.name());
+            intent.putExtra(ShortcutHelper.EXTRA_SHORT_NAME, webAppInfo.shortName());
             intent.putExtra(ShortcutHelper.EXTRA_ORIENTATION, webAppInfo.orientation());
             intent.putExtra(ShortcutHelper.EXTRA_MAC, ShortcutHelper.getEncodedMac(mActivity, url));
             intent.putExtra(ShortcutHelper.EXTRA_SOURCE, webAppInfo.source());
+            intent.putExtra(ShortcutHelper.EXTRA_THEME_COLOR, webAppInfo.themeColor());
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
             getApplicationContext().startActivity(intent);

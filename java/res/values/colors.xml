@@ -104,6 +104,11 @@
     <color name="contextual_search_promo_text_color">#333333</color>
     <color name="contextual_search_promo_background_color">#EEEEEE</color>
 
+    <!-- Progress Bar colors -->
+    <color name="progress_bar_foreground">@color/light_active_color</color>
+    <color name="progress_bar_background">#3d4386f7</color>
+    <color name="progress_bar_background_white">#4d000000</color>
+
     <!-- Theme colors. Also used for toolbar background -->
     <color name="incognito_primary_color">#505050</color>
 
@@ -138,8 +143,6 @@
     <color name="enhanced_bookmark_detail_text">#212121</color>
     <color name="enhanced_bookmark_detail_section">#7C7B79</color>
     <color name="enhanced_bookmark_app_bar_shadow_color">#1D000000</color>
-    <color name="enhanced_bookmark_selection_action_bar_background">#4F82F4</color>
-    <color name="enhanced_bookmark_drawer_selected_color">#4281F4</color>
     <color name="enhanced_bookmark_drawer_selected_background_color">#F0F0F0</color>
     <color name="enhanced_bookmark_list_item_highlight_color">#804281f4</color>
     <color name="enhanced_bookmark_icon_background_color">#ff787878</color>

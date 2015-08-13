@@ -21,9 +21,9 @@ import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.UrlUtils;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeWebContentsDelegateAndroid;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.omnibox.UrlBar;
 import org.chromium.chrome.browser.tab.ChromeTab;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.test.ChromeTabbedActivityTestBase;
 import org.chromium.chrome.test.util.OmniboxTestUtils;
 import org.chromium.chrome.test.util.PrerenderTestHelper;
@@ -329,8 +329,12 @@ public class FullscreenManagerTest extends ChromeTabbedActivityTestBase {
         scrollTopControls(false);
     }
 
+    /*
+    Marked flaky on 2015-07-20: http://crbug.com/512299
     @LargeTest
     @Feature({"Fullscreen"})
+    */
+    @FlakyTest
     public void testTopControlsShownWhenInputIsFocused()
             throws InterruptedException, ExecutionException {
         startMainActivityWithURL(LONG_HTML_WITH_AUTO_FOCUS_INPUT_TEST_PAGE);

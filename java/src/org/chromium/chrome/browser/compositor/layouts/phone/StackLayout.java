@@ -14,7 +14,6 @@ import android.view.ViewGroup.LayoutParams;
 import android.widget.FrameLayout;
 
 import org.chromium.base.VisibleForTesting;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.compositor.LayerTitleCache;
 import org.chromium.chrome.browser.compositor.layouts.ChromeAnimation.Animatable;
 import org.chromium.chrome.browser.compositor.layouts.Layout;
@@ -30,6 +29,7 @@ import org.chromium.chrome.browser.compositor.scene_layer.SceneLayer;
 import org.chromium.chrome.browser.compositor.scene_layer.TabListSceneLayer;
 import org.chromium.chrome.browser.fullscreen.ChromeFullscreenManager;
 import org.chromium.chrome.browser.partnercustomizations.HomepageManager;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
@@ -223,10 +223,18 @@ public class StackLayout extends Layout implements Animatable<StackLayout.Proper
         return mStacks[getTabStackIndex(tabId)];
     }
 
-    @Override
-    public void onTabSelecting(long time, int tabId) {
+    /**
+     * Commits outstanding model states.
+     * @param time  The current time of the app in ms.
+     */
+    public void commitOutstandingModelState(long time) {
         mStacks[1].ensureCleaningUpDyingTabs(time);
         mStacks[0].ensureCleaningUpDyingTabs(time);
+    }
+
+    @Override
+    public void onTabSelecting(long time, int tabId) {
+        commitOutstandingModelState(time);
         if (tabId == Tab.INVALID_TAB_ID) tabId = mTabModelSelector.getCurrentTabId();
         super.onTabSelecting(time, tabId);
         mStacks[getTabStackIndex()].tabSelectingEffect(time, tabId);

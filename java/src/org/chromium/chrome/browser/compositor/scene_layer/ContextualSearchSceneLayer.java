@@ -4,10 +4,9 @@
 
 package org.chromium.chrome.browser.compositor.scene_layer;
 
-import org.chromium.base.JNINamespace;
+import org.chromium.base.annotations.JNINamespace;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.compositor.bottombar.contextualsearch.ContextualSearchPanel;
-import org.chromium.chrome.browser.compositor.bottombar.contextualsearch.ContextualSearchPanelFeatures;
 import org.chromium.content.browser.ContentViewCore;
 import org.chromium.ui.resources.ResourceManager;
 
@@ -41,9 +40,11 @@ public class ContextualSearchSceneLayer extends SceneLayer {
         float searchPromoHeightPx = mSearchPanel.getPromoHeightPx();
         float searchPromoOpacity = mSearchPanel.getPromoOpacity();
 
-        float searchPanelY = mSearchPanel.getContextualSearchPanelY();
+        float searchPanelX = mSearchPanel.getOffsetX();
+        float searchPanelY = mSearchPanel.getOffsetY();
         float searchPanelWidth = mSearchPanel.getWidth();
-        float searchBarMarginTop = mSearchPanel.getSearchBarMarginTop();
+        float searchPanelHeight = mSearchPanel.getHeight();
+
         float searchBarMarginSide = mSearchPanel.getSearchBarMarginSide();
         float searchBarHeight = mSearchPanel.getSearchBarHeight();
         float searchBarTextOpacity = mSearchPanel.getSearchBarTextOpacity();
@@ -65,7 +66,7 @@ public class ContextualSearchSceneLayer extends SceneLayer {
         float arrowIconOpacity = mSearchPanel.getArrowIconOpacity();
         float arrowIconRotation = mSearchPanel.getArrowIconRotation();
 
-        boolean closeIconVisible = ContextualSearchPanelFeatures.isCloseButtonAvailable();
+        boolean closeIconVisible = mSearchPanel.isCloseIconVisible();
         float closeIconOpacity = mSearchPanel.getCloseIconOpacity();
 
         boolean isProgressBarVisible = mSearchPanel.isProgressBarVisible();
@@ -89,9 +90,10 @@ public class ContextualSearchSceneLayer extends SceneLayer {
                 searchPromoVisible,
                 searchPromoHeightPx,
                 searchPromoOpacity,
+                searchPanelX * mDpToPx,
                 searchPanelY * mDpToPx,
                 searchPanelWidth * mDpToPx,
-                searchBarMarginTop * mDpToPx,
+                searchPanelHeight * mDpToPx,
                 searchBarMarginSide * mDpToPx,
                 searchBarHeight * mDpToPx,
                 searchBarTextOpacity,
@@ -151,9 +153,10 @@ public class ContextualSearchSceneLayer extends SceneLayer {
             boolean searchPromoVisible,
             float searchPromoHeight,
             float searchPromoOpacity,
+            float searchPanelX,
             float searchPanelY,
             float searchPanelWidth,
-            float searchBarMarginTop,
+            float searchPanelHeight,
             float searchBarMarginSide,
             float searchBarHeight,
             float searchBarTextOpacity,

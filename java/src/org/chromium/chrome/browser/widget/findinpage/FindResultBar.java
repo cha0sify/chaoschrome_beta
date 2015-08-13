@@ -21,8 +21,8 @@ import android.widget.FrameLayout;
 
 import org.chromium.base.annotations.SuppressFBWarnings;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.findinpage.FindInPageBridge;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.util.MathUtils;
 import org.chromium.ui.UiUtils;
 import org.chromium.ui.base.LocalizationUtils;
@@ -77,9 +77,9 @@ class FindResultBar extends View {
     private static Comparator<RectF> sComparator = new Comparator<RectF>() {
         @Override
         public int compare(RectF a, RectF b) {
-            if (a.top != b.top) return a.top > b.top ? 1 : -1;
-            if (a.top != b.top) return a.left > b.left ? 1 : -1;
-            return 0;
+            int top = Float.compare(a.top, b.top);
+            if (top != 0) return top;
+            return Float.compare(a.left, b.left);
         }
     };
 
@@ -392,10 +392,7 @@ class FindResultBar extends View {
         @SuppressFBWarnings("EQ_COMPARETO_USE_OBJECT_EQUAL")
         @Override
         public int compareTo(Tickmark other) {
-            float center = centerY();
-            float otherCenter = other.centerY();
-            if (center == otherCenter) return 0;
-            return center > otherCenter ? 1 : -1;
+            return Float.compare(centerY(), other.centerY());
         }
     }
 }

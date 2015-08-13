@@ -29,9 +29,9 @@ import android.util.Log;
 import android.util.LongSparseArray;
 
 import org.chromium.base.BuildInfo;
-import org.chromium.base.CalledByNative;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.VisibleForTesting;
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.CalledByNativeUnchecked;
 import org.chromium.base.annotations.SuppressFBWarnings;
 import org.chromium.base.library_loader.LibraryProcessType;
@@ -365,7 +365,11 @@ public class ChromeBrowserProvider extends ContentProvider {
     @Override
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
             String sortOrder) {
-        if (!canHandleContentProviderApiCall() || !hasReadAccess()) return null;
+        if (!canHandleContentProviderApiCall()) return null;
+
+        // Starting with M, other apps are no longer allowed to access bookmarks. But returning null
+        // might break old apps, so return an empty Cursor instead.
+        if (!hasReadAccess()) return new MatrixCursor(BOOKMARK_DEFAULT_PROJECTION, 0);
 
         // Check for invalid id values if provided.
         long bookmarkId = getContentUriId(uri);

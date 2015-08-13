@@ -11,8 +11,8 @@ import android.test.suitebuilder.annotation.SmallTest;
 import org.chromium.base.CommandLine;
 import org.chromium.base.ObserverList;
 import org.chromium.base.ThreadUtils;
-import org.chromium.chrome.browser.Tab;
-import org.chromium.chrome.browser.TabObserver;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
 import org.chromium.chrome.browser.tabmodel.TabModel.TabSelectionType;
 import org.chromium.content.browser.test.NativeLibraryTestBase;
@@ -96,9 +96,9 @@ public class TabModelSelectorTabObserverTest extends NativeLibraryTestBase {
         };
         mNormalTabModel = new TabModelBase(false, orderController, delegate) {
             @Override
-            protected Tab createTabWithWebContents(boolean incognito, WebContents webContents,
+            protected boolean createTabWithWebContents(boolean incognito, WebContents webContents,
                     int parentId) {
-                return null;
+                return false;
             }
 
             @Override
@@ -109,9 +109,9 @@ public class TabModelSelectorTabObserverTest extends NativeLibraryTestBase {
 
         mIncognitoTabModel = new TabModelBase(true, orderController, delegate) {
             @Override
-            protected Tab createTabWithWebContents(boolean incognito, WebContents webContents,
+            protected boolean createTabWithWebContents(boolean incognito, WebContents webContents,
                     int parentId) {
-                return null;
+                return false;
             }
 
             @Override

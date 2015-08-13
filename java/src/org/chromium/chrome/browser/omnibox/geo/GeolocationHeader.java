@@ -56,12 +56,6 @@ public class GeolocationHeader {
         GeolocationTracker.refreshLastKnownLocation(context, REFRESH_LOCATION_AGE);
     }
 
-    private static boolean hasGeolocationPermission(Context context) {
-        return context.checkPermission(
-                Manifest.permission.ACCESS_COARSE_LOCATION, Process.myPid(), Process.myUid())
-                        == PackageManager.PERMISSION_GRANTED;
-    }
-
     /**
      * Returns an X-Geo HTTP header string if:
      *  1. The current mode is not incognito.
@@ -129,9 +123,10 @@ public class GeolocationHeader {
         return "X-Geo: a " + locationBase64;
     }
 
-    /** Records a data point for the Geolocation.HeaderSentOrNot histogram. */
-    private static void recordHistogram(int result) {
-        RecordHistogram.recordEnumeratedHistogram("Geolocation.HeaderSentOrNot", result, UMA_MAX);
+    static boolean hasGeolocationPermission(Context context) {
+        return context.checkPermission(
+                Manifest.permission.ACCESS_COARSE_LOCATION, Process.myPid(), Process.myUid())
+                        == PackageManager.PERMISSION_GRANTED;
     }
 
     /**
@@ -139,8 +134,8 @@ public class GeolocationHeader {
      * geolocation infobar). If the user has not chosen a preference for url and url uses the https
      * scheme, this considers the user's preference for url with the http scheme instead.
      */
-    private static boolean isLocationDisabledForUrl(Uri uri) {
-        GeolocationInfo locationSettings = new GeolocationInfo(uri.toString(), null);
+    static boolean isLocationDisabledForUrl(Uri uri) {
+        GeolocationInfo locationSettings = new GeolocationInfo(uri.toString(), null, false);
         ContentSetting locationPermission = locationSettings.getContentSetting();
 
         // If no preference has been chosen and the scheme is https, fall back to the preference for
@@ -150,11 +145,16 @@ public class GeolocationHeader {
             if (scheme != null && scheme.toLowerCase(Locale.US).equals("https")
                     && uri.getAuthority() != null && uri.getUserInfo() == null) {
                 String urlWithHttp = "http://" + uri.getHost();
-                locationSettings = new GeolocationInfo(urlWithHttp, null);
+                locationSettings = new GeolocationInfo(urlWithHttp, null, false);
                 locationPermission = locationSettings.getContentSetting();
             }
         }
 
         return locationPermission == ContentSetting.BLOCK;
+    }
+
+    /** Records a data point for the Geolocation.HeaderSentOrNot histogram. */
+    private static void recordHistogram(int result) {
+        RecordHistogram.recordEnumeratedHistogram("Geolocation.HeaderSentOrNot", result, UMA_MAX);
     }
 }

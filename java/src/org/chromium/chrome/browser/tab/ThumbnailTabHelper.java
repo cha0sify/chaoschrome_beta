@@ -16,9 +16,6 @@ import android.util.Log;
 
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeActivity;
-import org.chromium.chrome.browser.EmptyTabObserver;
-import org.chromium.chrome.browser.Tab;
-import org.chromium.chrome.browser.TabObserver;
 import org.chromium.chrome.browser.UrlConstants;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.util.MathUtils;
@@ -66,12 +63,8 @@ public class ThumbnailTabHelper {
             }
             if (!shouldUpdateThumbnail()) return;
 
-            // Scale the image so we're not copying more than we need to (from
-            // the GPU).
-            int[] dim = new int[] {
-                mTab.getWidth(), mTab.getHeight()
-            };
-            MathUtils.scaleToFitTargetSize(dim, mThumbnailWidth, mThumbnailHeight);
+            int snapshotWidth = Math.min(mTab.getWidth(), mThumbnailWidth);
+            int snapshotHeight = Math.min(mTab.getHeight(), mThumbnailHeight);
 
             ContentReadbackHandler readbackHandler = getActivity().getContentReadbackHandler();
             if (readbackHandler == null || mTab.getContentViewCore() == null) return;
@@ -93,7 +86,7 @@ public class ThumbnailTabHelper {
                             bitmap.recycle();
                         }
                     };
-            readbackHandler.getContentBitmapAsync(1, new Rect(0, 0, dim[0], dim[1]),
+            readbackHandler.getContentBitmapAsync(1, new Rect(0, 0, snapshotWidth, snapshotHeight),
                     mTab.getContentViewCore(), Bitmap.Config.ARGB_8888, bitmapCallback);
         }
     };

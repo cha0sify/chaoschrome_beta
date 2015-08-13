@@ -21,20 +21,19 @@ import org.chromium.base.VisibleForTesting;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.LogoBridge;
-import org.chromium.chrome.browser.LogoBridge.Logo;
-import org.chromium.chrome.browser.LogoBridge.LogoObserver;
 import org.chromium.chrome.browser.NativePage;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.UrlConstants;
 import org.chromium.chrome.browser.compositor.layouts.content.InvalidationAwareThumbnailProvider;
 import org.chromium.chrome.browser.document.DocumentMetricIds;
 import org.chromium.chrome.browser.enhancedbookmarks.EnhancedBookmarkUtils;
 import org.chromium.chrome.browser.favicon.FaviconHelper;
+import org.chromium.chrome.browser.favicon.FaviconHelper.FaviconAvailabilityCallback;
 import org.chromium.chrome.browser.favicon.FaviconHelper.FaviconImageCallback;
 import org.chromium.chrome.browser.favicon.LargeIconBridge;
 import org.chromium.chrome.browser.favicon.LargeIconBridge.LargeIconCallback;
 import org.chromium.chrome.browser.ntp.BookmarksPage.BookmarkSelectedListener;
+import org.chromium.chrome.browser.ntp.LogoBridge.Logo;
+import org.chromium.chrome.browser.ntp.LogoBridge.LogoObserver;
 import org.chromium.chrome.browser.ntp.NewTabPageView.NewTabPageManager;
 import org.chromium.chrome.browser.preferences.DocumentModeManager;
 import org.chromium.chrome.browser.preferences.DocumentModePreference;
@@ -46,6 +45,7 @@ import org.chromium.chrome.browser.profiles.MostVisitedSites.ThumbnailCallback;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.TemplateUrlService;
 import org.chromium.chrome.browser.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.util.FeatureUtilities;
@@ -342,11 +342,19 @@ public class NewTabPage
         }
 
         @Override
+        public void ensureFaviconIsAvailable(String pageUrl, String faviconUrl,
+                FaviconAvailabilityCallback callback) {
+            if (mIsDestroyed) return;
+            if (mFaviconHelper == null) mFaviconHelper = new FaviconHelper();
+            mFaviconHelper.ensureFaviconIsAvailable(mProfile, mTab.getWebContents(), pageUrl,
+                    faviconUrl, callback);
+        }
+
+        @Override
         public void openLogoLink() {
             if (mIsDestroyed) return;
             if (mOnLogoClickUrl == null) return;
-            mTab.loadUrl(
-                    new LoadUrlParams(mOnLogoClickUrl, PageTransition.LINK));
+            mTab.loadUrl(new LoadUrlParams(mOnLogoClickUrl, PageTransition.LINK));
         }
 
         @Override
@@ -518,6 +526,7 @@ public class NewTabPage
 
     @Override
     public void destroy() {
+        assert !mIsDestroyed;
         assert getView().getParent() == null : "Destroy called before removed from window";
         if (mFaviconHelper != null) {
             mFaviconHelper.destroy();

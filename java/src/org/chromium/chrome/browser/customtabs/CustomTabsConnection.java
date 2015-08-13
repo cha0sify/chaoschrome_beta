@@ -25,6 +25,7 @@ import android.os.SystemClock;
 import android.support.customtabs.ICustomTabsCallback;
 import android.support.customtabs.ICustomTabsService;
 import android.text.TextUtils;
+import android.util.SparseArray;
 import android.view.WindowManager;
 
 import org.chromium.base.FieldTrialList;
@@ -52,11 +53,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Implementation of the ICustomTabsConnectionService interface.
+ *
+ * Note: This class is meant to be package private, and is public to be
+ * accessible from {@link ChromeApplication}.
  */
-class CustomTabsConnection extends ICustomTabsService.Stub {
+public class CustomTabsConnection extends ICustomTabsService.Stub {
     private static final String TAG = "cr.ChromeConnection";
 
     // Values for the "CustomTabs.PredictionStatus" UMA histogram. Append-only.
@@ -65,8 +70,8 @@ class CustomTabsConnection extends ICustomTabsService.Stub {
     private static final int BAD_PREDICTION = 2;
     private static final int PREDICTION_STATUS_COUNT = 3;
 
-    private static final Object sConstructionLock = new Object();
-    private static CustomTabsConnection sInstance;
+    private static AtomicReference<CustomTabsConnection> sInstance =
+            new AtomicReference<CustomTabsConnection>();
 
     private static final class PrerenderedUrlParams {
         public final IBinder mSession;
@@ -85,7 +90,42 @@ class CustomTabsConnection extends ICustomTabsService.Stub {
         }
     }
 
-    private final Application mApplication;
+    private static final class PredictionStats {
+        private static final long MIN_DELAY = 100;
+        private static final long MAX_DELAY = 10000;
+        private long mLastRequestTimestamp = -1;
+        private long mDelayMs = MIN_DELAY;
+
+        /**
+         * Updates the prediction stats and return whether prediction is allowed.
+         *
+         * The policy is:
+         * 1. If the client does not wait more than mDelayMs, decline the request.
+         * 2. If the client waits for more than mDelayMs but less than 2*mDelayMs,
+         *    accept the request and double mDelayMs.
+         * 3. If the client waits for more than 2*mDelayMs, accept the request
+         *    and reset mDelayMs.
+         *
+         * And: 100ms <= mDelayMs <= 10s.
+         *
+         * This way, if an application sends a burst of requests, it is quickly
+         * seriously throttled. If it stops being this way, back to normal.
+         */
+        public boolean updateStatsAndReturnIfAllowed() {
+            long now = SystemClock.elapsedRealtime();
+            long deltaMs = now - mLastRequestTimestamp;
+            if (deltaMs < mDelayMs) return false;
+            mLastRequestTimestamp = now;
+            if (deltaMs < 2 * mDelayMs) {
+                mDelayMs = Math.min(MAX_DELAY, mDelayMs * 2);
+            } else {
+                mDelayMs = MIN_DELAY;
+            }
+            return true;
+        }
+    }
+
+    protected final Application mApplication;
     private final AtomicBoolean mWarmupHasBeenCalled = new AtomicBoolean();
     private ExternalPrerenderHandler mExternalPrerenderHandler;
     private PrerenderedUrlParams mPrerender;
@@ -130,8 +170,16 @@ class CustomTabsConnection extends ICustomTabsService.Stub {
 
     private final Object mLock = new Object();
     private final Map<IBinder, SessionParams> mSessionParams = new HashMap<>();
+    // Prediction tracking is done by UID and not by session, since a
+    // mis-behaving application can create a large number of sessions.
+    private SparseArray<PredictionStats> mUidToPredictionsStats = new SparseArray<>();
 
-    private CustomTabsConnection(Application application) {
+    /**
+     * <strong>DO NOT CALL</strong>
+     * Public to be instanciable from {@link ChromeApplication}. This is however
+     * intended to be private.
+     */
+    public CustomTabsConnection(Application application) {
         super();
         mApplication = application;
     }
@@ -139,20 +187,23 @@ class CustomTabsConnection extends ICustomTabsService.Stub {
     /**
      * @return The unique instance of ChromeCustomTabsConnection.
      */
+    @SuppressFBWarnings("BC_UNCONFIRMED_CAST")
     public static CustomTabsConnection getInstance(Application application) {
-        synchronized (sConstructionLock) {
-            if (sInstance == null) sInstance = new CustomTabsConnection(application);
+        if (sInstance.get() == null) {
+            ChromeApplication chromeApplication = (ChromeApplication) application;
+            sInstance.compareAndSet(null, chromeApplication.createCustomTabsConnection());
         }
-        return sInstance;
+        return sInstance.get();
     }
 
     @Override
     public boolean newSession(ICustomTabsCallback callback) {
-        if (callback == null || mSessionParams.containsKey(callback)) return false;
+        if (callback == null) return false;
         final int uid = Binder.getCallingUid();
         SessionParams sessionParams = new SessionParams(uid, callback);
         final IBinder session = callback.asBinder();
         synchronized (mLock) {
+            if (mSessionParams.containsKey(session)) return false;
             try {
                 callback.asBinder().linkToDeath(new IBinder.DeathRecipient() {
                     @Override
@@ -168,6 +219,9 @@ class CustomTabsConnection extends ICustomTabsService.Stub {
                 return false;
             }
             mSessionParams.put(session, sessionParams);
+            if (mUidToPredictionsStats.get(uid) == null) {
+                mUidToPredictionsStats.put(uid, new PredictionStats());
+            }
         }
         return true;
     }
@@ -222,6 +276,7 @@ class CustomTabsConnection extends ICustomTabsService.Stub {
             SessionParams sessionParams = mSessionParams.get(session);
             if (sessionParams == null || sessionParams.mUid != uid) return false;
             sessionParams.setPredictionMetrics(urlString, SystemClock.elapsedRealtime());
+            if (!mUidToPredictionsStats.get(uid).updateStatsAndReturnIfAllowed()) return false;
         }
         ThreadUtils.postOnUiThread(new Runnable() {
             @Override
@@ -238,6 +293,11 @@ class CustomTabsConnection extends ICustomTabsService.Stub {
             }
         });
         return true;
+    }
+
+    @Override
+    public Bundle extraCommand(String commandName, Bundle args) {
+        return null;
     }
 
     /**
@@ -259,6 +319,11 @@ class CustomTabsConnection extends ICustomTabsService.Stub {
                 elapsedTimeMs = SystemClock.elapsedRealtime()
                         - sessionParams.getLastMayLaunchUrlTimestamp();
                 sessionParams.setPredictionMetrics(null, 0);
+                if (outcome == GOOD_PREDICTION) {
+                    // If the prediction was correct, back to the smallest
+                    // throttling level.
+                    mUidToPredictionsStats.put(sessionParams.mUid, new PredictionStats());
+                }
             }
         }
         RecordHistogram.recordEnumeratedHistogram(
@@ -323,44 +388,24 @@ class CustomTabsConnection extends ICustomTabsService.Stub {
     }
 
     /**
-     * Notifies the application that a page load has started.
+     * Notifies the application of a navigation event.
      *
-     * Delivers the {@link ICustomTabsConnectionCallback#onUserNavigationStarted}
+     * Delivers the {@link ICustomTabsConnectionCallback#onNavigationEvent}
      * callback to the aplication.
      *
      * @param session The Binder object identifying the session.
-     * @param url The URL the tab is navigating to.
+     * @param navigationEvent The navigation event code, defined in {@link CustomTabsCallback}
      * @return true for success.
      */
-    boolean notifyPageLoadStarted(IBinder session, String url) {
+    boolean notifyNavigationEvent(IBinder session, int navigationEvent) {
         ICustomTabsCallback callback = getCallbackForSession(session);
         if (callback == null) return false;
         try {
-            callback.onUserNavigationStarted(Uri.parse(url), null);
-        } catch (RemoteException e) {
-            // This should not happen, as we have registered a death recipient.
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Notifies the application that a page load has finished.
-     *
-     * Delivers the {@link ICustomTabsConnectionCallback#onUserNavigationFinished}
-     * callback to the aplication.
-     *
-     * @param session The Binder object identifying the session.
-     * @param url The URL the tab has navigated to.
-     * @return true for success.
-     */
-    boolean notifyPageLoadFinished(IBinder session, String url) {
-        ICustomTabsCallback callback = getCallbackForSession(session);
-        if (callback == null) return false;
-        try {
-            callback.onUserNavigationFinished(Uri.parse(url), null);
-        } catch (RemoteException e) {
-            // This should not happen, as we have registered a death recipient.
+            callback.onNavigationEvent(navigationEvent, null);
+        } catch (Exception e) {
+            // Catching all exceptions is really bad, but we need it here,
+            // because Android exposes us to client bugs by throwing a variety
+            // of exceptions. See crbug.com/517023.
             return false;
         }
         return true;
@@ -505,7 +550,9 @@ class CustomTabsConnection extends ICustomTabsService.Stub {
         if (referrer == null) referrer = "";
         WebContents webContents = mExternalPrerenderHandler.addPrerender(
                 Profile.getLastUsedProfile(), url, referrer, contentSize.x, contentSize.y);
-        mPrerender = new PrerenderedUrlParams(session, webContents, url, referrer, extras);
+        if (webContents != null) {
+            mPrerender = new PrerenderedUrlParams(session, webContents, url, referrer, extras);
+        }
     }
 
     /**
@@ -534,5 +581,12 @@ class CustomTabsConnection extends ICustomTabsService.Stub {
             // Nothing, this is just a best effort estimate.
         }
         return screenSize;
+    }
+
+    @VisibleForTesting
+    void resetThrottling(int uid) {
+        synchronized (mLock) {
+            mUidToPredictionsStats.put(uid, new PredictionStats());
+        }
     }
 }

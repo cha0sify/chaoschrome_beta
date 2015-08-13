@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.preferences;
 
 import android.content.Context;
+import android.os.Bundle;
 import android.os.Handler;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceClickListener;
@@ -20,7 +21,7 @@ import org.chromium.chrome.browser.bookmarkimport.AndroidBrowserImporter;
 import org.chromium.chrome.browser.bookmarkimport.ImportBookmarksAlertDialog;
 import org.chromium.chrome.browser.net.spdyproxy.DataReductionProxySettings;
 import org.chromium.chrome.browser.partnercustomizations.HomepageManager;
-import org.chromium.chrome.browser.preferences.bandwidth.BandwidthReductionPreferences;
+import org.chromium.chrome.browser.preferences.datareduction.DataReductionPreferences;
 import org.chromium.chrome.browser.signin.AccountAdder;
 import org.chromium.chrome.browser.signin.AddGoogleAccountDialogFragment;
 import org.chromium.chrome.browser.signin.AddGoogleAccountDialogFragment.AddGoogleAccountListener;
@@ -37,20 +38,34 @@ import org.chromium.sync.signin.ChromeSigninController;
 public class MainPreferences extends PreferenceFragment implements SignInStateObserver {
 
     public static final String PREF_SIGN_IN = "sign_in";
+    public static final String PREF_SEARCH_ENGINE = "search_engine";
     public static final String PREF_DOCUMENT_MODE = "document_mode";
     public static final String PREF_AUTOFILL_SETTINGS = "autofill_settings";
     public static final String PREF_SAVED_PASSWORDS = "saved_passwords";
     public static final String PREF_HOMEPAGE = "homepage";
-    public static final String PREF_REDUCE_DATA_USAGE = "reduce_data_usage";
+    public static final String PREF_DATA_REDUCTION = "data_reduction";
 
     public static final String ACCOUNT_PICKER_DIALOG_TAG = "account_picker_dialog_tag";
+    public static final String EXTRA_SHOW_SEARCH_ENGINE_PICKER = "show_search_engine_picker";
 
     private SignInPreference mSignInPreference;
     private ManagedPreferenceDelegate mManagedPreferenceDelegate;
 
+    private boolean mShowSearchEnginePicker;
+
     public MainPreferences() {
         setHasOptionsMenu(true);
         mManagedPreferenceDelegate = createManagedPreferenceDelegate();
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        if (savedInstanceState == null && getArguments() != null
+                && getArguments().getBoolean(EXTRA_SHOW_SEARCH_ENGINE_PICKER, false)) {
+            mShowSearchEnginePicker = true;
+        }
     }
 
     @Override
@@ -80,6 +95,11 @@ public class MainPreferences extends PreferenceFragment implements SignInStateOb
         super.onResume();
         SigninManager.get(getActivity()).addSignInStateObserver(this);
         updatePreferences();
+
+        if (mShowSearchEnginePicker) {
+            mShowSearchEnginePicker = false;
+            ((SearchEnginePreference) findPreference(PREF_SEARCH_ENGINE)).showDialog();
+        }
     }
 
     @Override
@@ -136,14 +156,14 @@ public class MainPreferences extends PreferenceFragment implements SignInStateOb
             getPreferenceScreen().removePreference(homepagePref);
         }
 
-        ChromeBasePreference bandwidthReduction =
-                (ChromeBasePreference) findPreference(PREF_REDUCE_DATA_USAGE);
+        ChromeBasePreference dataReduction =
+                (ChromeBasePreference) findPreference(PREF_DATA_REDUCTION);
         if (DataReductionProxySettings.getInstance().isDataReductionProxyAllowed()) {
-            bandwidthReduction.setSummary(
-                    BandwidthReductionPreferences.generateSummary(getResources()));
-            bandwidthReduction.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
+            dataReduction.setSummary(
+                    DataReductionPreferences.generateSummary(getResources()));
+            dataReduction.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
         } else {
-            getPreferenceScreen().removePreference(bandwidthReduction);
+            getPreferenceScreen().removePreference(dataReduction);
         }
     }
 
@@ -223,7 +243,7 @@ public class MainPreferences extends PreferenceFragment implements SignInStateOb
                 if (PREF_SAVED_PASSWORDS.equals(preference.getKey())) {
                     return PrefServiceBridge.getInstance().isRememberPasswordsManaged();
                 }
-                if (PREF_REDUCE_DATA_USAGE.equals(preference.getKey())) {
+                if (PREF_DATA_REDUCTION.equals(preference.getKey())) {
                     return DataReductionProxySettings.getInstance().isDataReductionProxyManaged();
                 }
                 return false;
@@ -240,7 +260,7 @@ public class MainPreferences extends PreferenceFragment implements SignInStateOb
                     return prefs.isRememberPasswordsManaged()
                             && !prefs.isRememberPasswordsEnabled();
                 }
-                if (PREF_REDUCE_DATA_USAGE.equals(preference.getKey())) {
+                if (PREF_DATA_REDUCTION.equals(preference.getKey())) {
                     DataReductionProxySettings settings = DataReductionProxySettings.getInstance();
                     return settings.isDataReductionProxyManaged()
                             && !settings.isDataReductionProxyEnabled();

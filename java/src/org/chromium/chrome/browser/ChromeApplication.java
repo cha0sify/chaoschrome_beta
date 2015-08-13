@@ -25,12 +25,12 @@ import org.chromium.base.ApplicationState;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ApplicationStatus.ApplicationStateListener;
 import org.chromium.base.BuildInfo;
-import org.chromium.base.CalledByNative;
 import org.chromium.base.PathUtils;
 import org.chromium.base.ResourceExtractor;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.VisibleForTesting;
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.SuppressFBWarnings;
 import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.base.library_loader.LibraryProcessType;
@@ -40,6 +40,7 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.accessibility.FontSizePrefs;
 import org.chromium.chrome.browser.banners.AppBannerManager;
 import org.chromium.chrome.browser.banners.AppDetailsDelegate;
+import org.chromium.chrome.browser.customtabs.CustomTabsConnection;
 import org.chromium.chrome.browser.document.DocumentActivity;
 import org.chromium.chrome.browser.document.IncognitoDocumentActivity;
 import org.chromium.chrome.browser.download.DownloadManagerService;
@@ -55,14 +56,12 @@ import org.chromium.chrome.browser.invalidation.UniqueIdInvalidationClientNameGe
 import org.chromium.chrome.browser.metrics.UmaUtils;
 import org.chromium.chrome.browser.metrics.VariationsSession;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
+import org.chromium.chrome.browser.net.qualityprovider.NetworkQualityProvider;
 import org.chromium.chrome.browser.net.spdyproxy.DataReductionProxySettings;
 import org.chromium.chrome.browser.omaha.RequestGenerator;
 import org.chromium.chrome.browser.omaha.UpdateInfoBarHelper;
 import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomizations;
 import org.chromium.chrome.browser.policy.PolicyAuditor;
-import org.chromium.chrome.browser.policy.PolicyManager;
-import org.chromium.chrome.browser.policy.PolicyManager.PolicyChangeListener;
-import org.chromium.chrome.browser.policy.providers.AppRestrictionsPolicyProvider;
 import org.chromium.chrome.browser.preferences.AccessibilityPreferences;
 import org.chromium.chrome.browser.preferences.LocationSettings;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
@@ -81,8 +80,9 @@ import org.chromium.chrome.browser.smartcard.EmptyPKCS11AuthenticationManager;
 import org.chromium.chrome.browser.smartcard.PKCS11AuthenticationManager;
 import org.chromium.chrome.browser.sync.SyncController;
 import org.chromium.chrome.browser.tab.AuthenticatorNavigationInterceptor;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
-import org.chromium.chrome.browser.tabmodel.document.ActivityDelegate;
+import org.chromium.chrome.browser.tabmodel.document.ActivityDelegateImpl;
 import org.chromium.chrome.browser.tabmodel.document.DocumentTabModelSelector;
 import org.chromium.chrome.browser.tabmodel.document.StorageDelegate;
 import org.chromium.chrome.browser.tabmodel.document.TabDelegate;
@@ -92,7 +92,13 @@ import org.chromium.content.browser.BrowserStartupController;
 import org.chromium.content.browser.ChildProcessLauncher;
 import org.chromium.content.browser.ContentViewStatics;
 import org.chromium.content.browser.DownloadController;
+import org.chromium.policy.AppRestrictionsProvider;
+import org.chromium.policy.CombinedPolicyProvider;
+import org.chromium.policy.CombinedPolicyProvider.PolicyChangeListener;
 import org.chromium.printing.PrintingController;
+import org.chromium.sync.signin.AccountManagerDelegate;
+import org.chromium.sync.signin.AccountManagerHelper;
+import org.chromium.sync.signin.SystemAccountManagerDelegate;
 import org.chromium.ui.UiUtils;
 import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.ResourceBundle;
@@ -180,7 +186,6 @@ public class ChromeApplication extends ContentApplication {
 
     private ChromeLifetimeController mChromeLifetimeController;
     private PrintingController mPrintingController;
-    private PolicyManager mPolicyManager = new PolicyManager();
 
     /**
      * This is called once per ChromeApplication instance, which get created per process
@@ -205,6 +210,11 @@ public class ChromeApplication extends ContentApplication {
                 return activity != null && MultiWindowUtils.getInstance().isMultiWindow(activity);
             }
         });
+
+        // Initialize the AccountManagerHelper with the correct AccountManagerDelegate. Must be done
+        // only once and before AccountMangerHelper.get(...) is called to avoid using the
+        // default AccountManagerDelegate.
+        AccountManagerHelper.initializeAccountManagerHelper(this, createAccountManagerDelegate());
 
         // Set the unique identification generator for invalidations.  The
         // invalidations system can start and attempt to fetch the client ID
@@ -311,8 +321,7 @@ public class ChromeApplication extends ContentApplication {
             stopApplicationActivityTracker();
             PartnerBrowserCustomizations.destroy();
             ShareHelper.clearSharedScreenshots(this);
-            mPolicyManager.destroy();
-            mPolicyManager = null;
+            CombinedPolicyProvider.get().destroy();
         }
     }
 
@@ -468,9 +477,6 @@ public class ChromeApplication extends ContentApplication {
         AppBannerManager.setAppDetailsDelegate(createAppDetailsDelegate());
         mChromeLifetimeController = new ChromeLifetimeController(this);
 
-        mPolicyManager.initializeNative();
-        registerPolicyProviders(mPolicyManager);
-
         PrefServiceBridge.getInstance().migratePreferences(this);
     }
 
@@ -492,6 +498,9 @@ public class ChromeApplication extends ContentApplication {
     public void startChromeBrowserProcessesAsync(BrowserStartupController.StartupCallback callback)
             throws ProcessInitException {
         assert ThreadUtils.runningOnUiThread() : "Tried to start the browser on the wrong thread";
+        // The policies are used by browser startup, so we need to register the policy providers
+        // before starting the browser process.
+        registerPolicyProviders(CombinedPolicyProvider.get());
         Context applicationContext = getApplicationContext();
         BrowserStartupController.get(applicationContext, LibraryProcessType.PROCESS_BROWSER)
                 .startBrowserProcessesAsync(callback);
@@ -512,6 +521,9 @@ public class ChromeApplication extends ContentApplication {
         LibraryLoader libraryLoader = LibraryLoader.get(LibraryProcessType.PROCESS_BROWSER);
         libraryLoader.ensureInitialized(context);
         libraryLoader.asyncPrefetchLibrariesToMemory();
+        // The policies are used by browser startup, so we need to register the policy providers
+        // before starting the browser process.
+        registerPolicyProviders(CombinedPolicyProvider.get());
         BrowserStartupController.get(context, LibraryProcessType.PROCESS_BROWSER)
                 .startBrowserProcessesSync(false);
         if (initGoogleServicesManager) {
@@ -582,6 +594,13 @@ public class ChromeApplication extends ContentApplication {
     // instead.
     protected PKCS11AuthenticationManager getPKCS11AuthenticationManager() {
         return EmptyPKCS11AuthenticationManager.getInstance();
+    }
+
+    /**
+     * @return A provider of network quality.
+     */
+    public NetworkQualityProvider createNetworkQualityProvider() {
+        return new NetworkQualityProvider();
     }
 
     /**
@@ -666,6 +685,15 @@ public class ChromeApplication extends ContentApplication {
         if (activity instanceof ChromeActivity) return new ChromeWindow((ChromeActivity) activity);
         return new ActivityWindowAndroid(activity);
     }
+
+    /**
+     * @return An instance of {@link CustomTabsConnection}. Should not be called
+     * outside of {@link CustomTabsConnection#getInstance()}.
+     */
+    public CustomTabsConnection createCustomTabsConnection() {
+        return new CustomTabsConnection(this);
+    }
+
     /**
      * @return Instance of printing controller that is shared among all chromium activities. May
      *         return null if printing is not supported on the platform.
@@ -690,33 +718,28 @@ public class ChromeApplication extends ContentApplication {
         return new GSAHelper();
     }
 
-    @VisibleForTesting
-    public PolicyManager getPolicyManagerForTesting() {
-        return mPolicyManager;
-    }
-
-    /**
+   /**
      * Registers various policy providers with the policy manager.
      * Providers are registered in increasing order of precedence so overrides should call this
      * method in the end for this method to maintain the highest precedence.
-     * @param manager The {@link PolicyManager} to register the providers with.
+     * @param combinedProvider The {@link CombinedPolicyProvider} to register the providers with.
      */
-    protected void registerPolicyProviders(PolicyManager manager) {
-        manager.registerProvider(new AppRestrictionsPolicyProvider(getApplicationContext()));
+    protected void registerPolicyProviders(CombinedPolicyProvider combinedProvider) {
+        combinedProvider.registerProvider(new AppRestrictionsProvider(getApplicationContext()));
     }
 
     /**
      * Add a listener to be notified upon policy changes.
      */
     public void addPolicyChangeListener(PolicyChangeListener listener) {
-        mPolicyManager.addPolicyChangeListener(listener);
+        CombinedPolicyProvider.get().addPolicyChangeListener(listener);
     }
 
     /**
      * Remove a listener to be notified upon policy changes.
      */
     public void removePolicyChangeListener(PolicyChangeListener listener) {
-        mPolicyManager.removePolicyChangeListener(listener);
+        CombinedPolicyProvider.get().removePolicyChangeListener(listener);
     }
 
     /**
@@ -761,8 +784,9 @@ public class ChromeApplication extends ContentApplication {
     public static DocumentTabModelSelector getDocumentTabModelSelector() {
         ThreadUtils.assertOnUiThread();
         if (sDocumentTabModelSelector == null) {
-            sDocumentTabModelSelector = new DocumentTabModelSelector(
-                    new ActivityDelegate(DocumentActivity.class, IncognitoDocumentActivity.class),
+            ActivityDelegateImpl activityDelegate = new ActivityDelegateImpl(
+                    DocumentActivity.class, IncognitoDocumentActivity.class);
+            sDocumentTabModelSelector = new DocumentTabModelSelector(activityDelegate,
                     new StorageDelegate(), new TabDelegate(false), new TabDelegate(true));
         }
         return sDocumentTabModelSelector;
@@ -781,6 +805,14 @@ public class ChromeApplication extends ContentApplication {
      */
     public RevenueStats createRevenueStatsInstance() {
         return new RevenueStats();
+    }
+
+    /**
+     * Creates a new {@link AccountManagerDelegate}.
+     * @return the created {@link AccountManagerDelegate}.
+     */
+    public AccountManagerDelegate createAccountManagerDelegate() {
+        return new SystemAccountManagerDelegate(this);
     }
 
     /**

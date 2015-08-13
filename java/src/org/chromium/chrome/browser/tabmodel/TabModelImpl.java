@@ -5,10 +5,10 @@
 package org.chromium.chrome.browser.tabmodel;
 
 import org.chromium.chrome.browser.ChromeActivity;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.compositor.layouts.content.TabContentManager;
 import org.chromium.chrome.browser.device.DeviceClassManager;
 import org.chromium.chrome.browser.partnercustomizations.HomepageManager;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 
@@ -96,7 +96,7 @@ public class TabModelImpl extends TabModelBase {
     }
 
     @Override
-    protected Tab createTabWithWebContents(boolean incognito, WebContents webContents,
+    protected boolean createTabWithWebContents(boolean incognito, WebContents webContents,
             int parentId) {
         return mActivity.getTabCreator(incognito).createTabWithWebContents(webContents,
                 parentId, TabLaunchType.FROM_LONGPRESS_BACKGROUND);

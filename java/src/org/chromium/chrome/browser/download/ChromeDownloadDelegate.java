@@ -15,13 +15,13 @@ import android.webkit.MimeTypeMap;
 import android.webkit.URLUtil;
 import android.widget.Toast;
 
-import org.chromium.base.CalledByNative;
 import org.chromium.base.VisibleForTesting;
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.infobar.ConfirmInfoBar;
 import org.chromium.chrome.browser.infobar.InfoBar;
 import org.chromium.chrome.browser.infobar.InfoBarListeners;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.content.browser.ContentViewDownloadDelegate;
 import org.chromium.content.browser.DownloadInfo;
@@ -497,8 +497,9 @@ public class ChromeDownloadDelegate
         String scheme = uri.normalizeScheme().getScheme();
         if (!"http".equals(scheme) && !"https".equals(scheme)) return false;
         String path = uri.getPath();
-        // OMA downloads have extension "dm" or "dd".
-        if (path != null && (path.endsWith(".dm") || path.endsWith(".dd"))) {
+        // OMA downloads have extension "dm" or "dd". For the latter, it
+        // can be handled when native download completes.
+        if (path != null && (path.endsWith(".dm"))) {
             DownloadInfo downloadInfo = new DownloadInfo.Builder().setUrl(url).build();
             onDownloadStartNoStream(downloadInfo);
             return true;

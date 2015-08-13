@@ -92,8 +92,7 @@ public class DeferredStartupHandler {
                     BookmarkThumbnailWidgetProviderBase.refreshAllWidgets(application);
 
                     // Initialize whether or not precaching is enabled.
-                    PrecacheLauncher.updatePrecachingEnabled(
-                            PrivacyPreferencesManager.getInstance(application), application);
+                    PrecacheLauncher.updatePrecachingEnabled(application);
 
                     return null;
                 } finally {
@@ -101,6 +100,8 @@ public class DeferredStartupHandler {
                 }
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+
+        AfterStartupTaskUtils.setStartupComplete();
 
         // TODO(aruslan): http://b/6397072 This will be moved elsewhere
         PartnerBookmarksShim.kickOffReading(application);

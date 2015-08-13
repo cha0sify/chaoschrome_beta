@@ -168,6 +168,23 @@ public abstract class ChromeSwitches {
      */
     public static final String ENABLE_ANDROID_SPELLCHECKER = "enable-android-spellchecker";
 
+    /**
+     * Enable the menu trimming that removes "Bookmarks" and "Recent tabs" menu items.
+     */
+    public static final String ENABLE_MENU_TRIMMING = "enable-menu-trimming";
+
+    /**
+     * Disable speculative TCP/IP preconnection.
+     * Native switch - switches::kDisablePreconnect
+     */
+    public static final String DISABLE_PRECONNECT = "disable-preconnect";
+
+    /**
+     * Specifies Android phone page loading progress bar animation.
+     * Native switch - switches::kProgressBarAnimation
+     */
+    public static final String PROGRESS_BAR_ANIMATION = "progress-bar-animation";
+
     // Prevent instantiation.
     private ChromeSwitches() {}
 }

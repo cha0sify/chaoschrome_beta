@@ -18,10 +18,10 @@ import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.NavigationPopup;
-import org.chromium.chrome.browser.Tab;
 import org.chromium.chrome.browser.device.DeviceClassManager;
 import org.chromium.chrome.browser.omnibox.LocationBar;
 import org.chromium.chrome.browser.partnercustomizations.HomepageManager;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.widget.TintedImageButton;
 
 /**
@@ -188,6 +188,7 @@ public class ToolbarTablet extends ToolbarLayout implements OnClickListener {
 
         mAccessibilitySwitcherButton.setOnClickListener(this);
         mBookmarkButton.setOnClickListener(this);
+
         mMenuButton.setOnKeyListener(new KeyboardNavigationListener() {
             @Override
             public View getNextFocusForward() {
@@ -343,7 +344,7 @@ public class ToolbarTablet extends ToolbarLayout implements OnClickListener {
     }
 
     @Override
-    protected void updateBookmarkButtonVisibility(boolean isBookmarked) {
+    protected void updateBookmarkButton(boolean isBookmarked, boolean editingAllowed) {
         int tintColor = isIncognito() ? R.color.light_mode_tint : R.color.dark_mode_tint;
         if (isBookmarked) {
             mBookmarkButton.setImageResource(R.drawable.btn_star_filled);
@@ -354,6 +355,7 @@ public class ToolbarTablet extends ToolbarLayout implements OnClickListener {
         }
         ColorStateList tint = getResources().getColorStateList(tintColor);
         mBookmarkButton.setTint(tint);
+        mBookmarkButton.setEnabled(editingAllowed);
     }
 
     @Override

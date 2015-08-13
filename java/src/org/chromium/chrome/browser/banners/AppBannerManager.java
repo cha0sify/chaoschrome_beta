@@ -8,13 +8,13 @@ import android.content.Context;
 import android.text.TextUtils;
 
 import org.chromium.base.ApplicationStatus;
-import org.chromium.base.CalledByNative;
-import org.chromium.base.JNINamespace;
 import org.chromium.base.VisibleForTesting;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.BookmarkUtils;
-import org.chromium.chrome.browser.EmptyTabObserver;
-import org.chromium.chrome.browser.Tab;
+import org.chromium.chrome.browser.tab.EmptyTabObserver;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.content_public.browser.WebContents;
 
 /**
@@ -70,8 +70,11 @@ public class AppBannerManager extends EmptyTabObserver {
      * @param tab Tab that the AppBannerManager will be attached to.
      */
     public AppBannerManager(Tab tab, Context context) {
-        int iconSize = context.getResources().getDimensionPixelSize(R.dimen.app_banner_icon_size);
-        mNativePointer = nativeInit(iconSize);
+        int iconSizePx = context.getResources().getDimensionPixelSize(R.dimen.app_banner_icon_size);
+        float density = context.getResources().getDisplayMetrics().density;
+        int iconSizeDp = (int) (iconSizePx / density);
+
+        mNativePointer = nativeInit(iconSizeDp);
         mTab = tab;
         updatePointers();
     }
@@ -107,10 +110,10 @@ public class AppBannerManager extends EmptyTabObserver {
      * @param packageName Name of the package that is being advertised.
      */
     @CalledByNative
-    private void fetchAppDetails(String url, String packageName, int iconSize) {
+    private void fetchAppDetails(String url, String packageName, String referrer, int iconSize) {
         if (sAppDetailsDelegate == null) return;
         sAppDetailsDelegate.getAppDetailsAsynchronously(
-                createAppDetailsObserver(), url, packageName, iconSize);
+                createAppDetailsObserver(), url, packageName, referrer, iconSize);
     }
 
     private AppDetailsDelegate.Observer createAppDetailsObserver() {
@@ -151,6 +154,13 @@ public class AppBannerManager extends EmptyTabObserver {
         nativeDisableSecureSchemeCheckForTesting();
     }
 
+    /** Sets the weights of direct and indirect page navigations for testing. */
+    @VisibleForTesting
+    static void forceEngagementWeightsForTesting(double directEngagement,
+            double indirectEngagement) {
+        nativeForceEngagementWeightsForTesting(directEngagement, indirectEngagement);
+    }
+
     /** Returns whether a AppBannerDataFetcher is actively retrieving data. */
     @VisibleForTesting
     public boolean isFetcherActiveForTesting() {
@@ -168,5 +178,7 @@ public class AppBannerManager extends EmptyTabObserver {
     // Testing methods.
     private static native void nativeSetTimeDeltaForTesting(int days);
     private static native void nativeDisableSecureSchemeCheckForTesting();
+    private static native void nativeForceEngagementWeightsForTesting(
+            double directEngagement, double indirectEngagement);
     private native boolean nativeIsFetcherActive(long nativeAppBannerManagerAndroid);
 }

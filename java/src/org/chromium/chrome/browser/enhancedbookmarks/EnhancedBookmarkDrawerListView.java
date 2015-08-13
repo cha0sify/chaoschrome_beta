@@ -54,6 +54,9 @@ class EnhancedBookmarkDrawerListView extends ListView implements EnhancedBookmar
                     case EnhancedBookmarkDrawerListViewAdapter.TYPE_ALL_ITEMS:
                         mDelegate.openAllBookmarks();
                         break;
+                    case EnhancedBookmarkDrawerListViewAdapter.TYPE_FILTER:
+                        mDelegate.openFilter(item.mFilter);
+                        break;
                     default:
                         assert false;
                 }
@@ -72,14 +75,14 @@ class EnhancedBookmarkDrawerListView extends ListView implements EnhancedBookmar
     @Override
     public void onEnhancedBookmarkDelegateInitialized(EnhancedBookmarkDelegate delegate) {
         mDelegate = delegate;
-        delegate.getModel().addModelObserver(mBookmarkModelObserver);
+        delegate.getModel().addObserver(mBookmarkModelObserver);
         mAdapter.setEnhancedBookmarkUIDelegate(delegate);
         delegate.addUIObserver(this);
     }
 
     @Override
     public void onDestroy() {
-        mDelegate.getModel().removeModelObserver(mBookmarkModelObserver);
+        mDelegate.getModel().removeObserver(mBookmarkModelObserver);
         mDelegate.removeUIObserver(this);
     }
 
@@ -95,6 +98,12 @@ class EnhancedBookmarkDrawerListView extends ListView implements EnhancedBookmar
         mAdapter.updateList();
         setItemChecked(mAdapter.getItemPosition(UIState.STATE_FOLDER, folder),
                 true);
+    }
+
+    @Override
+    public void onFilterStateSet(EnhancedBookmarkFilter filter) {
+        mAdapter.updateList();
+        setItemChecked(mAdapter.getItemPosition(UIState.STATE_FILTER, filter), true);
     }
 
     @Override

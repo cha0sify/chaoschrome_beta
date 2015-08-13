@@ -18,7 +18,6 @@ import android.view.View.OnClickListener;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.BookmarksBridge.BookmarkItem;
 import org.chromium.chrome.browser.BookmarksBridge.BookmarkModelObserver;
-import org.chromium.chrome.browser.enhanced_bookmarks.EnhancedBookmarksModel;
 import org.chromium.chrome.browser.widget.NumberRollView;
 import org.chromium.components.bookmarks.BookmarkId;
 import org.chromium.components.bookmarks.BookmarkType;
@@ -190,13 +189,13 @@ public class EnhancedBookmarkActionBar extends Toolbar implements EnhancedBookma
     public void onEnhancedBookmarkDelegateInitialized(EnhancedBookmarkDelegate delegate) {
         mDelegate = delegate;
         mDelegate.addUIObserver(this);
-        delegate.getModel().addModelObserver(mBookmarkModelObserver);
+        delegate.getModel().addObserver(mBookmarkModelObserver);
     }
 
     @Override
     public void onDestroy() {
         mDelegate.removeUIObserver(this);
-        mDelegate.getModel().removeModelObserver(mBookmarkModelObserver);
+        mDelegate.getModel().removeObserver(mBookmarkModelObserver);
     }
 
     @Override
@@ -228,6 +227,14 @@ public class EnhancedBookmarkActionBar extends Toolbar implements EnhancedBookma
     }
 
     @Override
+    public void onFilterStateSet(EnhancedBookmarkFilter filter) {
+        assert filter == EnhancedBookmarkFilter.OFFLINE_PAGES;
+        setTitle(R.string.enhanced_bookmark_title_bar_all_items_offline_pages);
+        setNavigationButton(NAVIGATION_BUTTON_MENU);
+        getMenu().findItem(R.id.edit_menu_id).setVisible(false);
+    }
+
+    @Override
     public void onSelectionStateChange(List<BookmarkId> selectedBookmarks) {
         boolean wasSelectionEnabled = mIsSelectionEnabled;
         mIsSelectionEnabled = mDelegate.isSelectionEnabled();
@@ -250,8 +257,7 @@ public class EnhancedBookmarkActionBar extends Toolbar implements EnhancedBookma
                 }
             }
 
-            setBackgroundColor(getResources().getColor(
-                    R.color.enhanced_bookmark_selection_action_bar_background));
+            setBackgroundColor(getResources().getColor(R.color.light_active_color));
 
             numberRollView.setVisibility(View.VISIBLE);
             if (!wasSelectionEnabled) numberRollView.setNumber(0, false);

@@ -12,12 +12,12 @@ import android.content.pm.PackageManager;
 import android.os.Looper;
 
 import org.chromium.base.ApplicationStatus;
-import org.chromium.base.CalledByNative;
-import org.chromium.base.JNINamespace;
 import org.chromium.base.VisibleForTesting;
-import org.chromium.chrome.browser.Tab;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
 import org.chromium.chrome.browser.banners.AppData;
 import org.chromium.chrome.browser.banners.InstallerDelegate;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.ui.base.WindowAndroid;
 
 /**

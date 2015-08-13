@@ -13,6 +13,7 @@ import android.text.TextUtils;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.UrlUtils;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.test.ChromeActivityTestCaseBase;
 import org.chromium.chrome.test.util.browser.TabLoadObserver;
 import org.chromium.content.browser.test.util.Criteria;
@@ -184,7 +185,7 @@ public class ShortcutHelperTest extends ChromeActivityTestCaseBase<ChromeActivit
                 // Calling initialize() isn't strictly required but it is testing this code path.
                 helper.initialize(new ShortcutHelper.ShortcutHelperObserver() {
                     @Override
-                    public void onTitleAvailable(String t) {
+                    public void onUserTitleAvailable(String t) {
                     }
 
                     @Override

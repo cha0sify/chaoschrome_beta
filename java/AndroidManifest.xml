@@ -22,10 +22,20 @@ by a child template that "extends" this file.
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!--
+      Enable Bluetooth permission via uses-permission in tip of tree builds
+      only for ease of development on Android L and earlier. For consumer
+      channels use "runtime permission" uses-permission-sdk-m which provides
+      permission on Android M and later without a prompt.
+    -->
     {% if channel in ['default'] %}
         <uses-permission android:name="android.permission.BLUETOOTH"/>
         <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
     {% endif %}
+    <uses-permission-sdk-m android:name="android.permission.BLUETOOTH"/>
+    <uses-permission-sdk-m android:name="android.permission.BLUETOOTH_ADMIN"/>
+
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.GET_ACCOUNTS"/>
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -108,8 +118,8 @@ by a child template that "extends" this file.
             android:resource="@xml/app_restrictions"/>
         {% endif %}
 
-        <!-- Note: Set android:hardwareAccelerated to "false" in the ".Main"
-             activity below to go into software, browser tiling mode.
+        <!-- Note: All activities directly or indirectly derived from ChromeActivity
+             must specify android:hardwareAccelerated="false".
 
              Since this activity (shown in the launcher) and the application
              (shown in Android's Settings/Apps list) share the same label, we
@@ -196,7 +206,7 @@ by a child template that "extends" this file.
             android:persistableMode="persistAcrossReboots"
             android:autoRemoveFromRecents="false"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc"
-            android:hardwareAccelerated="true">
+            android:hardwareAccelerated="false">
         </activity>
         <activity-alias android:name="com.google.android.apps.chrome.document.DocumentActivity"
             android:targetActivity="org.chromium.chrome.browser.document.DocumentActivity"
@@ -210,7 +220,7 @@ by a child template that "extends" this file.
             android:persistableMode="persistNever"
             android:autoRemoveFromRecents="false"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc"
-            android:hardwareAccelerated="true">
+            android:hardwareAccelerated="false">
         </activity>
         <activity-alias android:name="com.google.android.apps.chrome.document.IncognitoDocumentActivity"
             android:targetActivity="org.chromium.chrome.browser.document.IncognitoDocumentActivity"
@@ -220,7 +230,7 @@ by a child template that "extends" this file.
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc"
-            android:hardwareAccelerated="true">
+            android:hardwareAccelerated="false">
         </activity>
         <activity android:name="org.chromium.chrome.browser.ChromeTabbedActivity"
              android:theme="@style/MainTheme"
@@ -229,7 +239,7 @@ by a child template that "extends" this file.
              android:windowSoftInputMode="adjustResize"
              android:launchMode="singleTask"
              android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc"
-             android:hardwareAccelerated="true">
+             android:hardwareAccelerated="false">
         </activity>
         <activity android:name="org.chromium.chrome.browser.multiwindow.MultiInstanceChromeTabbedActivity"
             android:theme="@style/MainTheme"
@@ -237,7 +247,7 @@ by a child template that "extends" this file.
             android:windowBackground="@drawable/window_background"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc"
-            android:hardwareAccelerated="true">
+            android:hardwareAccelerated="false">
         </activity>
         <activity android:name="org.chromium.chrome.browser.sync.ui.PassphraseActivity"
             android:theme="@style/MainTheme"
@@ -276,7 +286,7 @@ by a child template that "extends" this file.
         </activity>
         <activity android:name="org.chromium.chrome.browser.EmbedContentViewActivity"
             android:theme="@style/ThemeWithActionBar"
-            android:hardwareAccelerated="true"
+            android:hardwareAccelerated="false"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc">
         </activity>
         <activity android:name="org.chromium.chrome.browser.prerender.PrerenderAPITestActivity"
@@ -315,12 +325,17 @@ by a child template that "extends" this file.
                                that users don't have any instances of the original Activity still
                                running.
         -->
-        <activity-alias android:name="com.google.android.apps.chrome.webapps.WebappManager"
-            android:targetActivity="org.chromium.chrome.browser.document.ChromeLauncherActivity">
+        <activity android:name="org.chromium.chrome.browser.webapps.WebappLauncherActivity"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:taskAffinity=""
+            android:excludeFromRecents="true">
             <intent-filter>
                 <action android:name="com.google.android.apps.chrome.webapps.WebappManager.ACTION_START_WEBAPP" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+        </activity>
+        <activity-alias android:name="com.google.android.apps.chrome.webapps.WebappManager"
+            android:targetActivity="org.chromium.chrome.browser.webapps.WebappLauncherActivity">
         </activity-alias>
         <activity android:name="org.chromium.chrome.browser.webapps.WebappActivity"
             android:theme="@style/MainTheme"
@@ -328,7 +343,7 @@ by a child template that "extends" this file.
             android:documentLaunchMode="intoExisting"
             android:windowSoftInputMode="adjustResize"
             android:persistableMode="persistNever"
-            android:hardwareAccelerated="true"
+            android:hardwareAccelerated="false"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc">
         </activity>
         <activity-alias android:name="com.google.android.apps.chrome.webapps.WebappActivity"
@@ -343,7 +358,7 @@ by a child template that "extends" this file.
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:persistableMode="persistNever"
-            android:hardwareAccelerated="true"
+            android:hardwareAccelerated="false"
             android:taskAffinity="{{ manifest_package }}.webapps.WebappActivity{{ i }}"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc">
         </activity>
@@ -370,10 +385,22 @@ by a child template that "extends" this file.
             android:excludeFromRecents="true">
         </activity>
 
+        <!-- This activity is started along with IncognitoDocumentActivity, so it also must
+             disable hardware acceleration. Besides, it doesn't have any UI. -->
         <activity android:name="org.chromium.chrome.browser.document.CipherKeyActivity"
             android:launchMode="singleInstance"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:excludeFromRecents="true">
+            android:excludeFromRecents="true"
+            android:hardwareAccelerated="false">
+        </activity>
+
+        <!-- This activity is used to restart the main Chrome process.  Should never be exported. -->
+        <activity android:name="org.chromium.chrome.browser.BrowserRestartActivity"
+            android:launchMode="singleInstance"
+            android:exported="false"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:excludeFromRecents="true"
+            android:process=":browser_restart_process">
         </activity>
 
         <!-- Providers for chrome data. -->
@@ -537,8 +564,8 @@ by a child template that "extends" this file.
             android:exported="true"
             tools:ignore="ExportedService" />
         <service android:name="org.chromium.chrome.browser.customtabs.CustomTabsConnectionService"
-             android:exported="{{ 'true' if channel in ['dev', 'canary', 'default'] else 'false' }}"
-             tools:ignore="ExportedService">
+            android:exported="true"
+            tools:ignore="ExportedService">
             <intent-filter>
               <action android:name="android.support.customtabs.action.CustomTabsService" />
             </intent-filter>
