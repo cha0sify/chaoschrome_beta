@@ -10,8 +10,8 @@
         # Use the chromium linker unless cygprofile instrumentation is active.
         # Chromium linker causes instrumentation to return incorrect results.
         ['order_profiling == 0', {
-          'chrome_apk_use_chromium_linker%': 1,
-          'chrome_apk_load_library_from_zip%': 1,
+          'chrome_apk_use_chromium_linker%': 0,
+          'chrome_apk_load_library_from_zip%': 0,
         }, {
           'chrome_apk_use_chromium_linker%': 0,
           'chrome_apk_load_library_from_zip%': 0,
