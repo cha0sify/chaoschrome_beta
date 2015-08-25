@@ -68,6 +68,7 @@ public class StripLayoutHelper {
     private static final int RESIZE_DELAY_MS = 1500;
     private static final int SPINNER_UPDATE_DELAY_MS = 66;
     // Degrees per milisecond.
+    private static final float SPINNER_DPMS = 0.33f;
     private static final int EXPAND_DURATION_MS = 250;
     private static final int ANIM_TAB_CREATED_MS = 150;
     private static final int ANIM_TAB_CLOSED_MS = 150;
@@ -135,9 +136,11 @@ public class StripLayoutHelper {
     private CompositorButton mLastPressedCloseButton;
     private float mWidth;
     private float mHeight;
+    private long mLastSpinnerUpdate;
     private float mLeftMargin;
     private float mRightMargin;
     private final boolean mIncognito;
+    private float mBrightness;
 
     // Tab menu item IDs
     public static final int ID_CLOSE_ALL_TABS = 0;
@@ -182,6 +185,7 @@ public class StripLayoutHelper {
                 res.getString(R.string.accessibility_toolbar_btn_new_incognito_tab));
         mContext = context;
         mIncognito = incognito;
+        mBrightness = 1.f;
 
         // Create tab menu
         mTabMenu = new ListPopupWindow(mContext);
@@ -240,8 +244,22 @@ public class StripLayoutHelper {
     /**
      * @return The brightness of background tabs in the tabstrip.
      */
-    public float getStripBrightness() {
+    public float getBackgroundTabBrightness() {
         return mInReorderMode ? 0.75f : 1.0f;
+    }
+
+    /**
+     * Sets the brightness for the entire tabstrip.
+     */
+    public void setBrightness(float brightness) {
+        mBrightness = brightness;
+    }
+
+    /**
+     * @return The brightness of the entire tabstrip.
+     */
+    public float getBrightness() {
+        return mBrightness;
     }
 
     /**
@@ -750,7 +768,7 @@ public class StripLayoutHelper {
         }
 
         // 5. Update tab spinners.
-        updateSpinners();
+        updateSpinners(time);
 
         // 6. Stop any flings if we're trying to stop animations.
         if (jumpToEnd) mScroller.forceFinished(true);
@@ -812,15 +830,19 @@ public class StripLayoutHelper {
         mLayoutAnimations.cancel(tab, property);
     }
 
-    private void updateSpinners() {
+    private void updateSpinners(long time) {
+        long diff = time - mLastSpinnerUpdate;
+        float degrees = diff * SPINNER_DPMS;
         boolean tabsToLoad = false;
         for (int i = 0; i < mStripTabs.length; i++) {
             StripLayoutTab tab = mStripTabs[i];
             // TODO(clholgat): Only update if the tab is visible.
             if (tab.isLoading()) {
+                tab.addLoadingSpinnerRotation(degrees);
                 tabsToLoad = true;
             }
         }
+        mLastSpinnerUpdate = time;
         if (tabsToLoad) {
             mStripTabEventHandler.removeMessages(MESSAGE_UPDATE_SPINNER);
             mStripTabEventHandler.sendEmptyMessageDelayed(

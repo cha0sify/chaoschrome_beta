@@ -159,10 +159,8 @@ public class NewTabPage
         }
     }
 
-    public static void launchRecentTabsDialog(Activity activity, Tab tab,
-            boolean finishActivityOnOpen) {
-        DocumentRecentTabsManager manager =
-                new DocumentRecentTabsManager(tab, activity, finishActivityOnOpen);
+    public static void launchRecentTabsDialog(Activity activity, Tab tab) {
+        DocumentRecentTabsManager manager = new DocumentRecentTabsManager(tab, activity);
         NativePage page = new RecentTabsPage(activity, manager);
         page.updateForUrl(UrlConstants.RECENT_TABS_URL);
         Dialog dialog = new NativePageDialog(activity, page);
@@ -192,6 +190,8 @@ public class NewTabPage
         private void recordOpenedMostVisitedItem(MostVisitedItem item) {
             if (mIsDestroyed) return;
             NewTabPageUma.recordAction(NewTabPageUma.ACTION_OPENED_MOST_VISITED_ENTRY);
+            NewTabPageUma.recordExplicitUserNavigation(
+                    item.getUrl(), NewTabPageUma.RAPPOR_ACTION_VISITED_SUGGESTED_TILE);
             RecordHistogram.recordEnumeratedHistogram("NewTabPage.MostVisited", item.getIndex(),
                     NewTabPageView.MAX_MOST_VISITED_SITES);
             mMostVisitedSites.recordOpenedMostVisitedItem(item.getIndex());
@@ -294,7 +294,7 @@ public class NewTabPage
             if (mIsDestroyed) return;
             RecordUserAction.record("MobileNTPSwitchToOpenTabs");
             if (FeatureUtilities.isDocumentMode(mActivity)) {
-                launchRecentTabsDialog(mActivity, mTab, true);
+                launchRecentTabsDialog(mActivity, mTab);
             } else {
                 mTab.loadUrl(new LoadUrlParams(UrlConstants.RECENT_TABS_URL));
             }
@@ -337,8 +337,8 @@ public class NewTabPage
         @Override
         public void getLargeIconForUrl(String url, int size, LargeIconCallback callback) {
             if (mIsDestroyed) return;
-            if (mLargeIconBridge == null) mLargeIconBridge = new LargeIconBridge();
-            mLargeIconBridge.getLargeIconForUrl(mProfile, url, size, callback);
+            if (mLargeIconBridge == null) mLargeIconBridge = new LargeIconBridge(mProfile);
+            mLargeIconBridge.getLargeIconForUrl(url, size, callback);
         }
 
         @Override

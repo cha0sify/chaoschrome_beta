@@ -5,21 +5,28 @@
 package org.chromium.chrome.browser.enhancedbookmarks;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.content.Context;
 import android.preference.PreferenceManager;
 import android.support.v4.widget.DrawerLayout;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ViewSwitcher;
 
+import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ObserverList;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.BookmarksBridge.BookmarkItem;
 import org.chromium.chrome.browser.BookmarksBridge.BookmarkModelObserver;
 import org.chromium.chrome.browser.UrlConstants;
+import org.chromium.chrome.browser.favicon.LargeIconBridge;
 import org.chromium.chrome.browser.ntp.NewTabPageUma;
 import org.chromium.chrome.browser.partnerbookmarks.PartnerBookmarksShim;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.snackbar.SnackbarManager.SnackbarManageable;
 import org.chromium.components.bookmarks.BookmarkId;
 
@@ -39,6 +46,7 @@ import java.util.Stack;
  */
 public class EnhancedBookmarkManager implements EnhancedBookmarkDelegate {
     private static final String PREF_LAST_USED_URL = "enhanced_bookmark_last_used_url";
+    private static final int FAVICON_MAX_CACHE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
     private Activity mActivity;
     private ViewGroup mMainView;
@@ -49,9 +57,12 @@ public class EnhancedBookmarkManager implements EnhancedBookmarkDelegate {
     private Set<BookmarkId> mSelectedBookmarks = new HashSet<>();
     private EnhancedBookmarkStateChangeListener mUrlChangeListener;
     private EnhancedBookmarkContentView mContentView;
+    private EnhancedBookmarkSearchView mSearchView;
+    private ViewSwitcher mViewSwitcher;
     private DrawerLayout mDrawer;
     private EnhancedBookmarkDrawerListView mDrawerListView;
     private final Stack<UIState> mStateStack = new Stack<>();
+    private LargeIconBridge mLargeIconBridge;
 
     private final BookmarkModelObserver mBookmarkModelObserver = new BookmarkModelObserver() {
         @Override
@@ -105,8 +116,10 @@ public class EnhancedBookmarkManager implements EnhancedBookmarkDelegate {
         mDrawerListView = (EnhancedBookmarkDrawerListView) mMainView.findViewById(
                 R.id.eb_drawer_list);
         mContentView = (EnhancedBookmarkContentView) mMainView.findViewById(R.id.eb_content_view);
+        mViewSwitcher = (ViewSwitcher) mMainView.findViewById(R.id.eb_view_switcher);
         mUndoController = new EnhancedBookmarkUndoController(activity, mEnhancedBookmarksModel,
                 ((SnackbarManageable) activity).getSnackbarManager());
+        mSearchView = (EnhancedBookmarkSearchView) getView().findViewById(R.id.eb_search_view);
         mEnhancedBookmarksModel.addObserver(mBookmarkModelObserver);
         initializeIfBookmarkModelLoaded();
 
@@ -114,6 +127,13 @@ public class EnhancedBookmarkManager implements EnhancedBookmarkDelegate {
         // code, but that might be executed much later. Especially on L, showing loading
         // progress bar blocks that so it won't be loaded. http://crbug.com/429383
         PartnerBookmarksShim.kickOffReading(activity);
+
+        mLargeIconBridge = new LargeIconBridge(Profile.getLastUsedProfile().getOriginalProfile());
+        ActivityManager activityManager = ((ActivityManager) ApplicationStatus
+                .getApplicationContext().getSystemService(Context.ACTIVITY_SERVICE));
+        int maxSize = Math.min(activityManager.getMemoryClass() / 4 * 1024 * 1024,
+                FAVICON_MAX_CACHE_SIZE_BYTES);
+        mLargeIconBridge.createCache(maxSize);
     }
 
     /**
@@ -132,6 +152,8 @@ public class EnhancedBookmarkManager implements EnhancedBookmarkDelegate {
         mEnhancedBookmarksModel.removeObserver(mBookmarkModelObserver);
         mEnhancedBookmarksModel.destroy();
         mEnhancedBookmarksModel = null;
+        mLargeIconBridge.destroy();
+        mLargeIconBridge = null;
     }
 
     /**
@@ -207,6 +229,7 @@ public class EnhancedBookmarkManager implements EnhancedBookmarkDelegate {
      */
     private void initializeIfBookmarkModelLoaded() {
         if (mEnhancedBookmarksModel.isBookmarkModelLoaded()) {
+            mSearchView.onEnhancedBookmarkDelegateInitialized(this);
             mDrawerListView.onEnhancedBookmarkDelegateInitialized(this);
             mContentView.onEnhancedBookmarkDelegateInitialized(this);
             if (mStateStack.isEmpty()) {
@@ -292,11 +315,13 @@ public class EnhancedBookmarkManager implements EnhancedBookmarkDelegate {
 
     @Override
     public void openFolder(BookmarkId folder) {
+        closeSearchUI();
         setState(UIState.createFolderState(folder, mEnhancedBookmarksModel));
     }
 
     @Override
     public void openAllBookmarks() {
+        closeSearchUI();
         setState(UIState.createAllBookmarksState(mEnhancedBookmarksModel));
     }
 
@@ -386,13 +411,28 @@ public class EnhancedBookmarkManager implements EnhancedBookmarkDelegate {
     public void openBookmark(BookmarkId bookmark, int launchLocation) {
         clearSelection();
         if (mEnhancedBookmarksModel.getBookmarkById(bookmark) != null) {
+            String url = mEnhancedBookmarksModel.getBookmarkLaunchUrl(bookmark);
+            // TODO(jianli): Notify the user about the failure.
+            if (TextUtils.isEmpty(url)) return;
+
             NewTabPageUma.recordAction(NewTabPageUma.ACTION_OPENED_BOOKMARK);
             RecordHistogram.recordEnumeratedHistogram("Stars.LaunchLocation", launchLocation,
                     LaunchLocation.COUNT);
-            EnhancedBookmarkUtils.openBookmark(mActivity,
-                    mEnhancedBookmarksModel.getBookmarkById(bookmark).getUrl());
+            EnhancedBookmarkUtils.openBookmark(mActivity, url);
             finishActivityOnPhone();
         }
+    }
+
+    @Override
+    public void openSearchUI() {
+        // Give search view focus, because it needs to handle back key event.
+        mViewSwitcher.showNext();
+    }
+
+    @Override
+    public void closeSearchUI() {
+        if (mSearchView.getVisibility() != View.VISIBLE) return;
+        mViewSwitcher.showPrevious();
     }
 
     @Override
@@ -422,6 +462,11 @@ public class EnhancedBookmarkManager implements EnhancedBookmarkDelegate {
     public int getCurrentState() {
         if (mStateStack.isEmpty()) return UIState.STATE_LOADING;
         return mStateStack.peek().mState;
+    }
+
+    @Override
+    public LargeIconBridge getLargeIconBridge() {
+        return mLargeIconBridge;
     }
 
     /**

@@ -32,7 +32,6 @@ import org.chromium.chrome.browser.FrozenNativePage;
 import org.chromium.chrome.browser.IntentHandler.TabOpenType;
 import org.chromium.chrome.browser.NativePage;
 import org.chromium.chrome.browser.TabState;
-import org.chromium.chrome.browser.UrlConstants;
 import org.chromium.chrome.browser.contextmenu.ChromeContextMenuPopulator;
 import org.chromium.chrome.browser.contextmenu.ContextMenuParams;
 import org.chromium.chrome.browser.contextmenu.ContextMenuPopulator;
@@ -58,6 +57,7 @@ import org.chromium.chrome.browser.policy.PolicyAuditor.AuditEvent;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.rlz.RevenueStats;
 import org.chromium.chrome.browser.search_engines.TemplateUrlService;
+import org.chromium.chrome.browser.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.tab.TabUma.TabCreationState;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager.TabCreator;
 import org.chromium.chrome.browser.tabmodel.TabModel;
@@ -72,8 +72,8 @@ import org.chromium.content.browser.ActivityContentVideoViewClient;
 import org.chromium.content.browser.ContentVideoViewClient;
 import org.chromium.content.browser.ContentViewClient;
 import org.chromium.content.browser.ContentViewCore;
-import org.chromium.content.browser.SelectActionMode;
-import org.chromium.content.browser.SelectActionModeCallback.ActionHandler;
+import org.chromium.content.browser.WebActionMode;
+import org.chromium.content.browser.WebActionModeCallback.ActionHandler;
 import org.chromium.content.browser.crypto.CipherFactory;
 import org.chromium.content_public.browser.GestureStateListener;
 import org.chromium.content_public.browser.InvalidateTypes;
@@ -702,8 +702,6 @@ public class ChromeTab extends Tab {
                 RecordUserAction.record("MobileContextMenuLink");
             } else if (params.isImage()) {
                 RecordUserAction.record("MobileContextMenuImage");
-            } else if (params.isSelectedText()) {
-                RecordUserAction.record("MobileContextMenuText");
             } else if (params.isVideo()) {
                 RecordUserAction.record("MobileContextMenuVideo");
             }
@@ -763,13 +761,13 @@ public class ChromeTab extends Tab {
             }
 
             @Override
-            public SelectActionMode startActionMode(
+            public WebActionMode startActionMode(
                     View view, ActionHandler actionHandler, boolean floating) {
                 if (floating) return null;
-                ChromeSelectActionModeCallback callback =
-                        new ChromeSelectActionModeCallback(view.getContext(), actionHandler);
+                ChromeWebActionModeCallback callback =
+                        new ChromeWebActionModeCallback(view.getContext(), actionHandler);
                 ActionMode actionMode = view.startActionMode(callback);
-                return actionMode != null ? new SelectActionMode(actionMode) : null;
+                return actionMode != null ? new WebActionMode(actionMode) : null;
             }
 
             @Override
@@ -823,20 +821,6 @@ public class ChromeTab extends Tab {
             @Override
             public void didFailLoad(boolean isProvisionalLoad, boolean isMainFrame, int errorCode,
                     String description, String failingUrl, boolean wasIgnoredByHandler) {
-                if (isMainFrame) {
-                    if (failingUrl.startsWith("chrome://newtab/")
-                            || failingUrl.startsWith("chrome://welcome/")) {
-                        // If a tab was showing the old NTP or welcome page in a previous version
-                        // of Chrome, that tab will appear as a blank page after Chrome updates.
-                        // To fix this, these obsolete URLs are redirected to the NTP.
-                        // TODO(newt): remove this once most users have upgraded past M39.
-                        // http://crbug.com/491878
-                        loadUrl(new LoadUrlParams(UrlConstants.NTP_URL,
-                                PageTransition.AUTO_TOPLEVEL));
-                        return;
-                    }
-                }
-
                 PolicyAuditor auditor =
                         ((ChromeApplication) getApplicationContext()).getPolicyAuditor();
                 auditor.notifyAuditEvent(getApplicationContext(), AuditEvent.OPEN_URL_FAILURE,
@@ -1382,5 +1366,10 @@ public class ChromeTab extends Tab {
     @VisibleForTesting
     public OverrideUrlLoadingResult getLastOverrideUrlLoadingResultForTests() {
         return mLastOverrideUrlLoadingResult;
+    }
+
+    @Override
+    public SnackbarManager getSnackbarManager() {
+        return mActivity.getSnackbarManager();
     }
 }

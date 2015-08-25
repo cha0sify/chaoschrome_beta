@@ -38,7 +38,6 @@
     <!-- Website Settings Popup colors -->
     <color name="website_settings_popup_text">#444444</color>
     <color name="website_settings_popup_button_text">#444444</color>
-    <color name="website_settings_connection_broken_leading_text">#db4437</color>
     <color name="website_settings_popup_permission_spinner_text">#646464</color>
     <color name="website_settings_popup_text_link">#4285f4</color>
 
@@ -86,7 +85,7 @@
     <!-- Sad Tab colors -->
     <color name="sad_tab_header_text_color">#333333</color>
     <color name="sad_tab_body_text_color">#646464</color>
-    
+
     <!-- NTP Colors. Used on the bookmarks and recent tabs pages. -->
     <color name="ntp_bg">#fff</color>
     <color name="ntp_bg_incognito">#222</color>
@@ -136,6 +135,7 @@
     <color name="reader_mode_header_bg">#ff494949</color>
 
     <!-- WebappActivity colors -->
+    <color name="webapp_default_bg">#fafafa</color>
     <color name="webapp_url_bar_bg">#fafafa</color>
     <color name="webapp_url_bar_separator">#e1e1e1</color>
 

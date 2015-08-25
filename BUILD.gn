@@ -43,10 +43,10 @@ locale_pak_resources("chrome_locale_paks") {
 
 # GYP: //chrome/chrome.gyp:chrome_java (resources part)
 android_resources("chrome_java_resources") {
-  resource_dirs = [
-    "java/res",
-    "java/res_default",
-  ]
+  if (!defined(android_branding_res_dirs)) {
+    android_branding_res_dirs = [ "//chrome/android/java/res_chromium" ]
+  }
+  resource_dirs = [ "java/res" ] + android_branding_res_dirs
   deps = [
     ":chrome_locale_paks",
     ":chrome_strings_grd",
@@ -151,16 +151,13 @@ android_library("chrome_java") {
     "//third_party/cacheinvalidation:cacheinvalidation_javalib",
     "//third_party/cacheinvalidation:cacheinvalidation_proto_java",
     "//third_party/jsr-305:jsr_305_javalib",
+    "//third_party/WebKit/public:blink_headers_java",
     "//media/base/android:media_java",
     "//media/midi:midi_java",
     "//ui/android:ui_java",
     "//ui/android:ui_java_resources",
     google_play_services_library,
   ]
-
-  if (android_sdk_version != "M") {
-    deps += [ "//third_party/android_tools:preview_java_sources" ]
-  }
 
   srcjar_deps = [
     ":chrome_android_java_enums_srcjar",
@@ -463,6 +460,7 @@ android_library("chrome_javatests") {
     "//third_party/android_protobuf:protobuf_nano_javalib",
     "//third_party/android_tools:android_support_v13_java",
     "//third_party/android_tools:android_support_v7_appcompat_java",
+    "//third_party/android_tools:legacy_http_javalib",
     "//third_party/cacheinvalidation:cacheinvalidation_javalib",
     "//third_party/cacheinvalidation:cacheinvalidation_proto_java",
     "//third_party/jsr-305:jsr_305_javalib",
@@ -549,8 +547,8 @@ if (false) {
   }
 }
 
-# GYP: //chrome/chrome_tests.gypi:chrome_shell_uiautomator_tests_java
-android_library("uiautomator_tests_java") {
+# GYP: //chrome/chrome_tests.gypi:chrome_uiautomator_tests_java
+android_library("chrome_uiautomator_tests_java") {
   testonly = true
   DEPRECATED_java_in_dir = "uiautomator_tests/src"
   deps = [
@@ -559,11 +557,11 @@ android_library("uiautomator_tests_java") {
   ]
 }
 
-# GYP: //chrome/chrome_tests.gypi:chrome_shell_uiautomator_tests
-uiautomator_test("uiautomator_tests") {
+# GYP: //chrome/chrome_tests.gypi:chrome_uiautomator_tests
+uiautomator_test("chrome_uiautomator_tests") {
   testonly = true
   deps = [
-    ":uiautomator_tests_java",
+    ":chrome_uiautomator_tests_java",
   ]
 }
 
@@ -631,11 +629,17 @@ android_library("chrome_shared_test_java") {
     "//third_party/android_tools:android_support_v7_appcompat_java",
     "//third_party/android_tools:android_support_v7_recyclerview_java",
     "//third_party/android_tools:android_support_v13_java",
+    "//third_party/android_tools:legacy_http_javalib",
     "//third_party/cacheinvalidation:cacheinvalidation_javalib",
     "//third_party/jsr-305:jsr_305_javalib",
     "//ui/android:ui_java",
     "//ui/android:ui_javatests",
   ]
+}
+
+android_resources("chrome_public_apk_resources") {
+  resource_dirs = [ "java/res_chromium" ]
+  custom_package = "org.chromium.chrome"
 }
 
 chrome_public_apk_assets_dir = "$root_build_dir/chrome_public_apk_assets"
@@ -671,7 +675,7 @@ jinja_template("chrome_public_apk_manifest") {
   variables = jinja_variables
   variables += [
     "min_sdk_version=16",
-    "target_sdk_version=22",
+    "target_sdk_version=23",
   ]
 }
 
@@ -727,9 +731,10 @@ android_apk("chrome_public_apk") {
     ":chrome_public",
     ":chrome_public_apk_assets",
     ":chrome_public_apk_manifest",
+    ":chrome_public_apk_resources",
     ":chrome_public_template_resources",
     "//base:base_java",
-    "//third_party/android_tools:google_play_services_default_resources",
+    google_play_services_resources,
   ]
 }
 

@@ -24,9 +24,6 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.BookmarksBridge;
 import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.ChromeBrowserProviderClient;
-import org.chromium.chrome.browser.ContextualMenuBar;
-import org.chromium.chrome.browser.ContextualMenuBar.ActionBarDelegate;
-import org.chromium.chrome.browser.CustomSelectionActionModeCallback;
 import org.chromium.chrome.browser.TabLoadStatus;
 import org.chromium.chrome.browser.UrlConstants;
 import org.chromium.chrome.browser.WindowDelegate;
@@ -65,6 +62,7 @@ import org.chromium.chrome.browser.tabmodel.TabModel.TabSelectionType;
 import org.chromium.chrome.browser.tabmodel.TabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
+import org.chromium.chrome.browser.toolbar.ActionModeController.ActionBarDelegate;
 import org.chromium.chrome.browser.widget.findinpage.FindToolbarManager;
 import org.chromium.chrome.browser.widget.findinpage.FindToolbarObserver;
 import org.chromium.content_public.browser.LoadUrlParams;
@@ -130,7 +128,7 @@ public class ToolbarManager implements ToolbarTabController, UrlFocusChangeListe
     private final OverviewModeObserver mOverviewModeObserver;
     private final SceneChangeObserver mSceneChangeObserver;
     private final ActionBarDelegate mActionBarDelegate;
-    private final ContextualMenuBar mContextualMenuBar;
+    private final ActionModeController mActionModeController;
     private final LoadProgressSimulator mLoadProgressSimulator;
 
     private ChromeFullscreenManager mFullscreenManager;
@@ -158,7 +156,7 @@ public class ToolbarManager implements ToolbarTabController, UrlFocusChangeListe
             ToolbarControlContainer controlContainer, final AppMenuHandler menuHandler,
             ChromeAppMenuPropertiesDelegate appMenuPropertiesDelegate,
             Invalidator invalidator) {
-        mActionBarDelegate = new ContextualMenuBar.ActionBarDelegate() {
+        mActionBarDelegate = new ActionModeController.ActionBarDelegate() {
             @Override
             public void setControlTopMargin(int margin) {
                 FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams)
@@ -186,9 +184,6 @@ public class ToolbarManager implements ToolbarTabController, UrlFocusChangeListe
                 // TODO(tedchoc): Add support for changing the color based on the brand color.
             }
         };
-        mContextualMenuBar = new ContextualMenuBar(activity, mActionBarDelegate);
-        mContextualMenuBar.setCustomSelectionActionModeCallback(
-                new CustomSelectionActionModeCallback());
 
         mToolbarModel = new ToolbarModelImpl();
         mControlContainer = controlContainer;
@@ -197,6 +192,11 @@ public class ToolbarManager implements ToolbarTabController, UrlFocusChangeListe
         mToolbar = (ToolbarLayout) controlContainer.findViewById(R.id.toolbar);
 
         mToolbar.setPaintInvalidator(invalidator);
+
+        mActionModeController = new ActionModeController(activity, mActionBarDelegate);
+        mActionModeController.setCustomSelectionActionModeCallback(
+                new ToolbarActionModeCallback());
+        mActionModeController.setTabStripHeight(mToolbar.getTabStripHeight());
 
         MenuDelegatePhone menuDelegate = new MenuDelegatePhone() {
             @Override
@@ -213,10 +213,10 @@ public class ToolbarManager implements ToolbarTabController, UrlFocusChangeListe
         mLocationBar.setToolbarDataProvider(mToolbarModel);
         mLocationBar.setUrlFocusChangeListener(this);
         mLocationBar.setDefaultTextEditActionModeCallback(
-                mContextualMenuBar.getCustomSelectionActionModeCallback());
+                mActionModeController.getActionModeCallback());
         mLocationBar.initializeControls(
                 new WindowDelegate(activity.getWindow()),
-                mContextualMenuBar.getActionBarDelegate(),
+                mActionModeController.getActionBarDelegate(),
                 activity.getWindowAndroid());
         mLocationBar.setIgnoreURLBarModification(false);
 
@@ -426,9 +426,9 @@ public class ToolbarManager implements ToolbarTabController, UrlFocusChangeListe
                 if (!visible && actionBar != null) actionBar.hide();
                 if (DeviceFormFactor.isTablet(activity)) {
                     if (visible) {
-                        mContextualMenuBar.showControls();
+                        mActionModeController.startShowAnimation();
                     } else {
-                        mContextualMenuBar.hideControls();
+                        mActionModeController.startHideAnimation();
                     }
                 }
             }
@@ -597,10 +597,10 @@ public class ToolbarManager implements ToolbarTabController, UrlFocusChangeListe
     }
 
     /**
-     * @return The menu bar for handling contextual text selection.
+     * @return The controller for toolbar action mode.
      */
-    public ContextualMenuBar getContextualMenuBar() {
-        return mContextualMenuBar;
+    public ActionModeController getActionModeController() {
+        return mActionModeController;
     }
 
     /**
@@ -640,7 +640,7 @@ public class ToolbarManager implements ToolbarTabController, UrlFocusChangeListe
      * Called when the orientation of the activity has changed.
      */
     public void onOrientationChange() {
-        mContextualMenuBar.showControlsOnOrientationChange();
+        mActionModeController.showControlsOnOrientationChange();
     }
 
     /**

@@ -54,6 +54,7 @@ import org.chromium.chrome.browser.metrics.UmaSessionStats;
 import org.chromium.chrome.browser.metrics.UmaUtils;
 import org.chromium.chrome.browser.printing.TabPrinter;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ssl.ConnectionSecurity;
 import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
 import org.chromium.chrome.browser.tab.TabUma.TabCreationState;
@@ -925,19 +926,15 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
             // We load the URL from the tab rather than directly from the ContentView so the tab has
             // a chance of using a prerenderer page is any.
-            int loadType = nativeLoadUrl(
-                    mNativeTabAndroid,
-                    params.getUrl(),
-                    params.getVerbatimHeaders(),
-                    params.getPostData(),
-                    params.getTransitionType(),
+            int loadType = nativeLoadUrl(mNativeTabAndroid, params.getUrl(),
+                    params.getVerbatimHeaders(), params.getPostData(), params.getTransitionType(),
                     params.getReferrer() != null ? params.getReferrer().getUrl() : null,
                     // Policy will be ignored for null referrer url, 0 is just a placeholder.
                     // TODO(ppi): Should we pass Referrer jobject and add JNI methods to read it
                     //            from the native?
                     params.getReferrer() != null ? params.getReferrer().getPolicy() : 0,
-                    params.getIsRendererInitiated(), params.getIntentReceivedTimestamp(),
-                    params.getHasUserGesture());
+                    params.getIsRendererInitiated(), params.getShouldReplaceCurrentEntry(),
+                    params.getIntentReceivedTimestamp(), params.getHasUserGesture());
 
             for (TabObserver observer : mObservers) {
                 observer.onLoadUrl(this, params, loadType);
@@ -1390,7 +1387,15 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
         NativePage previousNativePage = mNativePage;
         mNativePage = nativePage;
         pushNativePageStateToNavigationEntry();
-        for (TabObserver observer : mObservers) observer.onContentChanged(this);
+        // Notifying of theme color change before content change because some of
+        // the observers depend on the theme information being correct in
+        // onContentChanged().
+        for (TabObserver observer : mObservers) {
+            observer.onDidChangeThemeColor(this, mDefaultThemeColor);
+        }
+        for (TabObserver observer : mObservers) {
+            observer.onContentChanged(this);
+        }
         destroyNativePageInternal(previousNativePage);
     }
 
@@ -2243,6 +2248,14 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     }
 
     /**
+     * Returns the SnackbarManager for the activity that owns this Tab, if any. May
+     * return null.
+     */
+    public SnackbarManager getSnackbarManager() {
+        return null;
+    }
+
+    /**
      * @return The native pointer representing the native side of this {@link Tab} object.
      */
     @CalledByNative
@@ -2649,6 +2662,13 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     }
 
     /**
+     * @return True if the offline page is opened.
+     */
+    public boolean isOfflinePage() {
+        return isFrozen() ? false : nativeIsOfflinePage(mNativeTabAndroid);
+    }
+
+    /**
      * Request that this tab receive focus. Currently, this function requests focus for the main
      * View (usually a ContentView).
      */
@@ -2742,23 +2762,6 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     }
 
     /**
-     * Check if the tab is covered by its child activity.
-     * @return Whether the tab is covered by its child activity.
-     */
-    public boolean isCoveredByChildActivity() {
-        // Default return value, this is only used by subclasses.
-        return false;
-    }
-
-    /**
-     * Update whether the tab is covered by its child activity.
-     * @param isCoveredByChildActivity Whether the tab is covered by its child activity.
-     */
-    public void setCoveredByChildActivity(boolean isCoveredByChildActivity) {
-        // Empty implementation, only used by subclasses.
-    }
-
-    /**
      * @return the UMA object for the tab. Note that this may be null in some
      * cases.
      */
@@ -2827,7 +2830,8 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     private native Profile nativeGetProfileAndroid(long nativeTabAndroid);
     private native int nativeLoadUrl(long nativeTabAndroid, String url, String extraHeaders,
             byte[] postData, int transition, String referrerUrl, int referrerPolicy,
-            boolean isRendererInitiated, long intentReceivedTimestamp, boolean hasUserGesture);
+            boolean isRendererInitiated, boolean shoulReplaceCurrentEntry,
+            long intentReceivedTimestamp, boolean hasUserGesture);
     private native void nativeSetActiveNavigationEntryTitleForUrl(long nativeTabAndroid, String url,
             String title);
     private native boolean nativePrint(long nativeTabAndroid);
@@ -2838,6 +2842,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     private native void nativeLoadOriginalImage(long nativeTabAndroid);
     private native void nativeSearchByImageInNewTabAsync(long nativeTabAndroid);
     private native long nativeGetBookmarkId(long nativeTabAndroid, boolean onlyEditable);
+    private native boolean nativeIsOfflinePage(long nativeTabAndroid);
     private native void nativeSetInterceptNavigationDelegate(long nativeTabAndroid,
             InterceptNavigationDelegate delegate);
     private native void nativeAttachToTabContentManager(long nativeTabAndroid,

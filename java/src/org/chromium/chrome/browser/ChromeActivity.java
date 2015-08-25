@@ -15,6 +15,8 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -95,7 +97,9 @@ import org.chromium.chrome.browser.preferences.PreferencesLauncher;
 import org.chromium.chrome.browser.printing.TabPrinter;
 import org.chromium.chrome.browser.share.ShareHelper;
 import org.chromium.chrome.browser.snackbar.LoFiBarPopupController;
+import org.chromium.chrome.browser.snackbar.Snackbar;
 import org.chromium.chrome.browser.snackbar.SnackbarManager;
+import org.chromium.chrome.browser.snackbar.SnackbarManager.SnackbarController;
 import org.chromium.chrome.browser.snackbar.SnackbarManager.SnackbarManageable;
 import org.chromium.chrome.browser.sync.ProfileSyncService;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
@@ -105,7 +109,6 @@ import org.chromium.chrome.browser.tabmodel.ChromeTabCreator;
 import org.chromium.chrome.browser.tabmodel.EmptyTabModel;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModel;
-import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
@@ -239,7 +242,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         super.preInflationStartup();
         ApplicationInitialization.enableFullscreenFlags(
                 getResources(), this, getControlContainerHeightResource());
-        getWindow().setBackgroundDrawableResource(R.color.light_background_color);
+        getWindow().setBackgroundDrawable(getBackgroundDrawable());
     }
 
     @SuppressLint("NewApi")
@@ -317,6 +320,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     protected final void setContentView() {
         final long begin = SystemClock.elapsedRealtime();
         TraceEvent.begin("onCreate->setContentView()");
+
+        enableHardwareAcceleration();
+        setLowEndTheme();
+
         if (WarmupManager.getInstance().hasBuiltViewHierarchy()) {
             View placeHolderView = new View(this);
             setContentView(placeHolderView);
@@ -342,8 +349,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
         mCompositorViewHolder = (CompositorViewHolder) findViewById(R.id.compositor_view_holder);
         mCompositorViewHolder.setRootView(getWindow().getDecorView().getRootView());
-
-        enableHardwareAcceleration();
     }
 
     /**
@@ -491,6 +496,27 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             public void onLoadStopped(Tab tab) {
                 postDeferredStartupIfNeeded();
                 showUpdateInfoBarIfNecessary();
+            }
+
+            @Override
+            public void onPageLoadStarted(Tab tab, String url) {
+                // If an offline page is being opened, show the hint.
+                // TODO(jianli): Show a reload button when there is a network.
+                if (tab.isOfflinePage()) {
+                    getSnackbarManager().showSnackbar(Snackbar.make(
+                            getString(R.string.enhanced_bookmark_viewing_offline_page),
+                            new SnackbarController() {
+                                @Override
+                                public void onAction(Object actionData) {}
+
+                                @Override
+                                public void onDismissNoAction(Object actionData) {}
+
+                                @Override
+                                public void onDismissForEachType(boolean isTimeout) {}
+                            }
+                    ));
+                }
             }
 
             @Override
@@ -801,6 +827,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         return mSnackbarManager;
     }
 
+    protected Drawable getBackgroundDrawable() {
+        return new ColorDrawable(getResources().getColor(R.color.light_background_color));
+    }
+
     /**
      * Called when the accessibility status of this device changes.  This might be triggered by
      * touch exploration or general accessibility status updates.  It is an aggregate of two other
@@ -951,7 +981,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         // TODO(bauerb): This does not take partner bookmarks into account.
         final long bookmarkId = tabToBookmark.getUserBookmarkId();
 
-        if (EnhancedBookmarkUtils.isEnhancedBookmarkEnabled(tabToBookmark.getProfile())) {
+        if (EnhancedBookmarkUtils.isEnhancedBookmarkEnabled()) {
             final EnhancedBookmarksModel bookmarkModel = new EnhancedBookmarksModel();
             if (bookmarkModel.isBookmarkModelLoaded()) {
                 EnhancedBookmarkUtils.addOrEditBookmark(bookmarkId, bookmarkModel,
@@ -1239,16 +1269,16 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     }
 
     @Override
-    public boolean createContextualSearchTab(ContentViewCore searchContentViewCore) {
+    public void createContextualSearchTab(String searchUrl) {
         Tab currentTab = getActivityTab();
-        if (currentTab == null) return false;
+        if (currentTab == null) return;
 
         TabCreator tabCreator = getTabCreator(currentTab.isIncognito());
-        if (tabCreator == null) return false;
+        if (tabCreator == null) return;
 
-        tabCreator.createTabWithWebContents(searchContentViewCore.getWebContents(),
-                currentTab.getId(), TabLaunchType.FROM_LONGPRESS_FOREGROUND);
-        return true;
+        tabCreator.createNewTab(
+                new LoadUrlParams(searchUrl, PageTransition.LINK),
+                TabModel.TabLaunchType.FROM_LINK, getActivityTab());
     }
 
     /**
@@ -1493,6 +1523,13 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             // to know 'appToken' argument until window's view is attached to the window (!!),
             // we have to do the workaround in onAttachedToWindow()
             mSetWindowHWA = true;
+        }
+    }
+
+    private void setLowEndTheme() {
+        if (SysUtils.isLowEndDevice()
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            setTheme(R.style.MainTheme_LowEnd);
         }
     }
 }

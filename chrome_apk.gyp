@@ -113,7 +113,7 @@
           'configuration_policy=<(configuration_policy)',
           'manifest_package=<(manifest_package)',
           'min_sdk_version=16',
-          'target_sdk_version=22',
+          'target_sdk_version=23',
         ],
       },
       'includes': [ '../../build/android/jinja_template.gypi' ],
@@ -127,6 +127,7 @@
         'apk_name': 'ChromePublic',
         'native_lib_target': 'libchrome_public',
         'java_in_dir': 'java',
+        'resource_dir': '../../chrome/android/java/res_chromium',
         'conditions': [
           # Only attempt loading the library from the APK for 64 bit devices
           # until the number of 32 bit devices which don't support this

@@ -76,7 +76,7 @@ public class EnhancedBookmarkBookmarkRow extends EnhancedBookmarkRow implements 
         mUrl = item.getUrl();
         mIconImageView.setImageDrawable(null);
         mTitleView.setText(item.getTitle());
-        mDelegate.getModel().getLargeIcon(mUrl, mMinIconSize, this);
+        mDelegate.getLargeIconBridge().getLargeIconForUrl(mUrl, mMinIconSize, this);
         return item;
     }
 
@@ -91,7 +91,7 @@ public class EnhancedBookmarkBookmarkRow extends EnhancedBookmarkRow implements 
         } else {
             RoundedBitmapDrawable roundedIcon = RoundedBitmapDrawableFactory.create(
                     getResources(),
-                    Bitmap.createScaledBitmap(icon, mDisplayedIconSize, mDisplayedIconSize, true));
+                    Bitmap.createScaledBitmap(icon, mDisplayedIconSize, mDisplayedIconSize, false));
             roundedIcon.setCornerRadius(mCornerRadius);
             mIconImageView.setImageDrawable(roundedIcon);
         }

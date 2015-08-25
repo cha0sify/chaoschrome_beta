@@ -17,7 +17,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
-import android.widget.Toast;
 
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.appmenu.AppMenuButtonHelper;
@@ -29,6 +28,7 @@ import org.chromium.chrome.browser.util.ViewUtils;
 import org.chromium.chrome.browser.widget.TintedImageButton;
 import org.chromium.chrome.browser.widget.ToolbarProgressBar;
 import org.chromium.ui.UiUtils;
+import org.chromium.ui.widget.Toast;
 
 /**
  * Layout class that contains the base shared logic for manipulating the toolbar component. For
@@ -390,6 +390,13 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
      */
     public void addCustomActionButton(Drawable drawable, String description,
             OnClickListener listener) { }
+
+    /**
+     * @return The height of the tab strip. Return 0 for toolbars that do not have a tabstrip.
+     */
+    public int getTabStripHeight() {
+        return getResources().getDimensionPixelSize(R.dimen.tab_strip_height);
+    }
 
     /**
      * Triggered when the content view for the specified tab has changed.

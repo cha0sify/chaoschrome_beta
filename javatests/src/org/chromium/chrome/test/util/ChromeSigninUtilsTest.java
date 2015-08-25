@@ -6,8 +6,9 @@ package org.chromium.chrome.test.util;
 
 import android.test.FlakyTest;
 import android.test.InstrumentationTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
 
+import org.chromium.base.test.util.DisabledTest;
+import org.chromium.base.test.util.EnormousTest;
 import org.chromium.base.test.util.Restriction;
 import org.chromium.sync.signin.ChromeSigninController;
 
@@ -27,14 +28,18 @@ public class ChromeSigninUtilsTest extends InstrumentationTestCase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        mSigninUtil = new ChromeSigninUtils(this);
+        mSigninUtil = new ChromeSigninUtils(getInstrumentation());
         mSigninController = ChromeSigninController.get(getInstrumentation().getTargetContext());
         mSigninController.clearSignedInUser();
         mSigninUtil.removeAllFakeAccountsFromOs();
         mSigninUtil.removeAllGoogleAccountsFromOs();
     }
 
-    @SmallTest
+    /**
+     * Fails on M; https://crbug.com/520847
+     * @SmallTest
+     */
+    @DisabledTest
     public void testActivityIsNotSignedInOnAppOrFakeOSorGoogleOS() {
         assertFalse("Should not be signed into app.",
                 mSigninController.isSignedIn());
@@ -44,7 +49,11 @@ public class ChromeSigninUtilsTest extends InstrumentationTestCase {
                 mSigninUtil.isExistingGoogleAccountOnOs(GOOGLE_ACCOUNT_USERNAME));
     }
 
-    @SmallTest
+    /**
+     * Fails on M; https://crbug.com/520847
+     * @SmallTest
+     */
+    @DisabledTest
     public void testIsSignedInOnApp() {
         mSigninUtil.addAccountToApp(FAKE_ACCOUNT_USERNAME);
         assertTrue("Should be signed on app.",
@@ -55,7 +64,11 @@ public class ChromeSigninUtilsTest extends InstrumentationTestCase {
                 mSigninUtil.isExistingGoogleAccountOnOs(GOOGLE_ACCOUNT_USERNAME));
     }
 
-    @SmallTest
+    /**
+     * Fails on M; https://crbug.com/520847
+     * @SmallTest
+     */
+    @DisabledTest
     public void testIsSignedInOnFakeOS() {
         mSigninUtil.addFakeAccountToOs(FAKE_ACCOUNT_USERNAME, FAKE_ACCOUNT_PASSWORD);
         assertFalse("Should not be signed in on app.",
@@ -66,7 +79,9 @@ public class ChromeSigninUtilsTest extends InstrumentationTestCase {
                 mSigninUtil.isExistingGoogleAccountOnOs(GOOGLE_ACCOUNT_USERNAME));
     }
 
+    // https://crbug.com/517849
     @FlakyTest
+    @EnormousTest
     @Restriction(Restriction.RESTRICTION_TYPE_INTERNET)
     public void testIsSignedInOnGoogleOS() {
         mSigninUtil.addGoogleAccountToOs(GOOGLE_ACCOUNT_USERNAME, GOOGLE_ACCOUNT_PASSWORD,
@@ -79,7 +94,11 @@ public class ChromeSigninUtilsTest extends InstrumentationTestCase {
                 mSigninUtil.isExistingGoogleAccountOnOs(GOOGLE_ACCOUNT_USERNAME));
     }
 
-    @SmallTest
+    /**
+     * Fails on M; https://crbug.com/520847
+     * @SmallTest
+     */
+    @DisabledTest
     public void testIsSignedInOnFakeOSandApp() {
         mSigninUtil.addAccountToApp(FAKE_ACCOUNT_USERNAME);
         mSigninUtil.addFakeAccountToOs(FAKE_ACCOUNT_USERNAME, FAKE_ACCOUNT_PASSWORD);
@@ -91,7 +110,9 @@ public class ChromeSigninUtilsTest extends InstrumentationTestCase {
                 mSigninUtil.isExistingGoogleAccountOnOs(GOOGLE_ACCOUNT_USERNAME));
     }
 
+    // https://crbug.com/517849
     @FlakyTest
+    @EnormousTest
     @Restriction(Restriction.RESTRICTION_TYPE_INTERNET)
     public void testIsSignedInOnAppAndGoogleOS() {
         mSigninUtil.addAccountToApp(FAKE_ACCOUNT_USERNAME);
@@ -105,7 +126,9 @@ public class ChromeSigninUtilsTest extends InstrumentationTestCase {
                 mSigninUtil.isExistingGoogleAccountOnOs(GOOGLE_ACCOUNT_USERNAME));
     }
 
+    // https://crbug.com/517849
     @FlakyTest
+    @EnormousTest
     @Restriction(Restriction.RESTRICTION_TYPE_INTERNET)
     public void testIsSignedInOnFakeOSandGoogleOS() {
         mSigninUtil.addFakeAccountToOs(FAKE_ACCOUNT_USERNAME, FAKE_ACCOUNT_PASSWORD);
@@ -119,7 +142,9 @@ public class ChromeSigninUtilsTest extends InstrumentationTestCase {
                 mSigninUtil.isExistingGoogleAccountOnOs(GOOGLE_ACCOUNT_USERNAME));
     }
 
+    // https://crbug.com/517849
     @FlakyTest
+    @EnormousTest
     @Restriction(Restriction.RESTRICTION_TYPE_INTERNET)
     public void testIsSignedInOnAppAndFakeOSandGoogleOS() {
         mSigninUtil.addAccountToApp(FAKE_ACCOUNT_USERNAME);

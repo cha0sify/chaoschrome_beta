@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.contextualsearch;
 
 import org.chromium.chrome.browser.compositor.bottombar.contextualsearch.ContextualSearchPanel.StateChangeReason;
 import org.chromium.chrome.browser.compositor.bottombar.contextualsearch.ContextualSearchPanelDelegate;
+import org.chromium.chrome.browser.customtabs.CustomTab;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.content.browser.ContentViewCore;
 import org.chromium.content_public.common.TopControlsState;
@@ -49,9 +50,8 @@ public interface ContextualSearchManagementDelegate {
 
     /**
      * Promotes the current Content View Core in the Contextual Search Panel to its own Tab.
-     * @param shouldFocusOmnibox Whether the Omnibox should be focused after promoting.
      */
-    void promoteToTab(boolean shouldFocusOmnibox);
+    void promoteToTab();
 
     /**
      * Resets the Search Content View scroll position.

@@ -63,7 +63,6 @@ import org.chromium.chrome.browser.widget.RoundedIconGenerator;
 import org.chromium.chrome.browser.widget.findinpage.FindToolbarManager;
 import org.chromium.components.service_tab_launcher.ServiceTabLauncher;
 import org.chromium.content.browser.ContentVideoView;
-import org.chromium.content.browser.ContentViewCore;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.NavigationEntry;
 import org.chromium.ui.base.PageTransition;
@@ -517,8 +516,8 @@ public class DocumentActivity extends ChromeActivity {
                 (ViewGroup) findViewById(android.R.id.content), controlContainer);
 
         mFindToolbarManager = new FindToolbarManager(this, getTabModelSelector(),
-                getToolbarManager().getContextualMenuBar()
-                        .getCustomSelectionActionModeCallback());
+                getToolbarManager().getActionModeController()
+                        .getActionModeCallback());
 
         getToolbarManager().initializeWithNative(getTabModelSelector(), getFullscreenManager(),
                 mFindToolbarManager, null, layoutDriver, null, null, null, null);
@@ -629,11 +628,6 @@ public class DocumentActivity extends ChromeActivity {
                 if (!isIncognito()) finish();
             }
 
-            @Override
-            public void onSetCoveredByChildActivity() {
-                mTabModel.updateEntry(getIntent(), mDocumentTab);
-            }
-
             private boolean hasSecurityWarningOrError(Tab tab) {
                 int securityLevel = tab.getSecurityLevel();
                 return securityLevel == ConnectionSecurityLevel.SECURITY_ERROR
@@ -694,18 +688,12 @@ public class DocumentActivity extends ChromeActivity {
     }
 
     @Override
-    public boolean createContextualSearchTab(ContentViewCore searchContentViewCore) {
-        NavigationEntry entry =
-                searchContentViewCore.getWebContents().getNavigationController().getPendingEntry();
-        String url = entry != null
-                ? entry.getUrl() : searchContentViewCore.getWebContents().getUrl();
-
+    public void createContextualSearchTab(String searchUrl) {
         AsyncTabCreationParams asyncParams =
-                new AsyncTabCreationParams(new LoadUrlParams(url, PageTransition.LINK));
+                new AsyncTabCreationParams(new LoadUrlParams(searchUrl, PageTransition.LINK));
         asyncParams.setDocumentStartedBy(DocumentMetricIds.STARTED_BY_CONTEXTUAL_SEARCH);
         getTabCreator(false).createNewTab(
                 asyncParams, TabLaunchType.FROM_MENU_OR_OVERVIEW, getActivityTab().getId());
-        return false;
     }
 
     @Override
@@ -736,7 +724,7 @@ public class DocumentActivity extends ChromeActivity {
             }
             RecordUserAction.record("MobileMenuAllBookmarks");
         } else if (id == R.id.recent_tabs_menu_id) {
-            NewTabPage.launchRecentTabsDialog(this, mDocumentTab, false);
+            NewTabPage.launchRecentTabsDialog(this, mDocumentTab);
             RecordUserAction.record("MobileMenuOpenTabs");
         } else if (id == R.id.find_in_page_id) {
             mFindToolbarManager.showToolbar();

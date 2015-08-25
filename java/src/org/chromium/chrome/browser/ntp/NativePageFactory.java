@@ -39,8 +39,8 @@ public class NativePageFactory {
 
         protected NativePage buildBookmarksPage(Activity activity, Tab tab,
                 TabModelSelector tabModelSelector) {
-            if (EnhancedBookmarkUtils.isEnhancedBookmarkEnabled(
-                    tab.getProfile().getOriginalProfile()) && DeviceFormFactor.isTablet(activity)) {
+            if (EnhancedBookmarkUtils.isEnhancedBookmarkEnabled()
+                    && DeviceFormFactor.isTablet(activity)) {
                 return EnhancedBookmarkPage.buildPage(activity, tab);
             } else {
                 return BookmarksPage.buildPage(activity, tab, tabModelSelector);
@@ -49,7 +49,7 @@ public class NativePageFactory {
 
         protected NativePage buildRecentTabsPage(Activity activity, Tab tab) {
             RecentTabsManager recentTabsManager = FeatureUtilities.isDocumentMode(activity)
-                    ? new DocumentRecentTabsManager(tab, activity, false)
+                    ? new DocumentRecentTabsManager(tab, activity)
                     : new RecentTabsManager(tab, tab.getProfile(), activity);
             return new RecentTabsPage(activity, recentTabsManager);
         }

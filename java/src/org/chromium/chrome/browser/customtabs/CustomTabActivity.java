@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.customtabs;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.IBinder;
+import android.support.customtabs.CustomTabsCallback;
 import android.support.customtabs.CustomTabsIntent;
 import android.text.TextUtils;
 import android.view.MenuItem;
@@ -35,9 +36,8 @@ import org.chromium.chrome.browser.tabmodel.TabModel.TabLaunchType;
 import org.chromium.chrome.browser.toolbar.ToolbarControlContainer;
 import org.chromium.chrome.browser.util.IntentUtils;
 import org.chromium.chrome.browser.widget.findinpage.FindToolbarManager;
-import org.chromium.content.browser.ContentViewCore;
 import org.chromium.content_public.browser.LoadUrlParams;
-import org.chromium.content_public.browser.NavigationEntry;
+import org.chromium.content_public.common.Referrer;
 
 /**
  * The activity for custom tabs. It will be launched on top of a client's task.
@@ -158,9 +158,15 @@ public class CustomTabActivity extends ChromeActivity {
 
     @Override
     public void finishNativeInitialization() {
-        String url = IntentHandler.getUrlFromIntent(getIntent());
-        String referrer = IntentHandler.getReferrerUrlIncludingExtraHeaders(getIntent(), this);
         mSession = mIntentDataProvider.getSession();
+        String url = IntentHandler.getUrlFromIntent(getIntent());
+        // Get any referrer that has been explicitly set by the app.
+        String referrerUrl = IntentHandler.getReferrerUrlIncludingExtraHeaders(getIntent(), this);
+        if (referrerUrl == null) {
+            Referrer referrer = CustomTabsConnection.getInstance(getApplication())
+                    .getReferrerForSession(mSession);
+            if (referrer != null) referrerUrl = referrer.getUrl();
+        }
         // If extra headers have been passed, cancel any current prerender, as
         // prerendering doesn't support extra headers.
         if (IntentHandler.getExtraHeadersFromIntent(getIntent()) != null) {
@@ -168,7 +174,8 @@ public class CustomTabActivity extends ChromeActivity {
                     .takePrerenderedUrl(mSession, "", null);
         }
 
-        mTab = new CustomTab(this, getWindowAndroid(), mSession, url, referrer, Tab.INVALID_TAB_ID);
+        mTab = new CustomTab(this, getWindowAndroid(), mSession, url, referrerUrl,
+                Tab.INVALID_TAB_ID, mIntentDataProvider.shouldEnableUrlBarHiding());
         getTabModelSelector().setTab(mTab);
 
         ToolbarControlContainer controlContainer = (ToolbarControlContainer) findViewById(
@@ -177,7 +184,7 @@ public class CustomTabActivity extends ChromeActivity {
         initializeCompositorContent(layoutDriver, findViewById(R.id.url_bar),
                 (ViewGroup) findViewById(android.R.id.content), controlContainer);
         mFindToolbarManager = new FindToolbarManager(this, getTabModelSelector(),
-                getToolbarManager().getContextualMenuBar().getCustomSelectionActionModeCallback());
+                getToolbarManager().getActionModeController().getActionModeCallback());
         getToolbarManager().initializeWithNative(getTabModelSelector(), getFullscreenManager(),
                 mFindToolbarManager, null, layoutDriver, null, null, null,
                 new OnClickListener() {
@@ -188,8 +195,6 @@ public class CustomTabActivity extends ChromeActivity {
                 });
 
         mTab.setFullscreenManager(getFullscreenManager());
-        loadUrlInCurrentTab(new LoadUrlParams(url),
-                IntentHandler.getTimestampFromIntent(getIntent()));
         mCustomTabContentHandler = new CustomTabContentHandler() {
             @Override
             public void loadUrlAndTrackFromTimestamp(LoadUrlParams params, long timestamp) {
@@ -206,6 +211,8 @@ public class CustomTabActivity extends ChromeActivity {
                 return mIntentHandler.shouldIgnoreIntent(CustomTabActivity.this, intent);
             }
         };
+        loadUrlInCurrentTab(new LoadUrlParams(url),
+                IntentHandler.getTimestampFromIntent(getIntent()));
         super.finishNativeInitialization();
     }
 
@@ -223,6 +230,14 @@ public class CustomTabActivity extends ChromeActivity {
         }
     }
 
+
+    @Override
+    public void onPauseWithNative() {
+        super.onPauseWithNative();
+        CustomTabsConnection.getInstance(getApplication()).notifyNavigationEvent(
+                mSession, CustomTabsCallback.TAB_HIDDEN);
+    }
+
     @Override
     public void onStopWithNative() {
         super.onStopWithNative();
@@ -237,19 +252,17 @@ public class CustomTabActivity extends ChromeActivity {
     private void loadUrlInCurrentTab(LoadUrlParams params, long timeStamp) {
         Intent intent = getIntent();
         IntentHandler.addReferrerAndHeaders(params, intent, this);
+        if (params.getReferrer() == null) {
+            params.setReferrer(CustomTabsConnection.getInstance(getApplication())
+                    .getReferrerForSession(mSession));
+        }
         mTab.loadUrlAndTrackFromTimestamp(params, timeStamp);
     }
 
     @Override
-    public boolean createContextualSearchTab(ContentViewCore searchContentViewCore) {
-        if (mTab == null) return false;
-        getCurrentContentViewCore().clearSelection();
-        NavigationEntry entry =
-                searchContentViewCore.getWebContents().getNavigationController().getPendingEntry();
-        String url = entry != null
-                ? entry.getUrl() : searchContentViewCore.getWebContents().getUrl();
-        mTab.loadUrl(new LoadUrlParams(url));
-        return false;
+    public void createContextualSearchTab(String searchUrl) {
+        if (mTab == null) return;
+        mTab.loadUrl(new LoadUrlParams(searchUrl));
     }
 
     @Override

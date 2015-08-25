@@ -8,13 +8,15 @@ import android.test.suitebuilder.annotation.MediumTest;
 
 import org.chromium.base.ThreadUtils;
 import org.chromium.chrome.browser.ChromeActivity;
-import org.chromium.chrome.browser.offline_pages.OfflinePageBridge.OfflinePageCallback;
+import org.chromium.chrome.browser.offline_pages.OfflinePageBridge.DeletePageCallback;
 import org.chromium.chrome.browser.offline_pages.OfflinePageBridge.OfflinePageModelObserver;
+import org.chromium.chrome.browser.offline_pages.OfflinePageBridge.SavePageCallback;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.test.ChromeActivityTestCaseBase;
 import org.chromium.chrome.test.util.TestHttpServerClient;
 import org.chromium.components.bookmarks.BookmarkId;
 import org.chromium.components.bookmarks.BookmarkType;
+import org.chromium.components.offline_pages.DeletePageResult;
 import org.chromium.components.offline_pages.SavePageResult;
 
 import java.util.ArrayList;
@@ -102,6 +104,18 @@ public class OfflinePageBridgeTest extends ChromeActivityTestCaseBase<ChromeActi
                 mOfflinePageBridge.getPageByBookmarkId(new BookmarkId(-42, BookmarkType.NORMAL)));
     }
 
+    @MediumTest
+    public void testDeleteOfflinePage() throws Exception {
+        deletePage(BOOKMARK_ID, DeletePageResult.NOT_FOUND);
+        loadUrl(TEST_PAGE);
+        savePage(SavePageResult.SUCCESS, TEST_PAGE);
+        assertNotNull("Offline page should be available, but it is not.",
+                mOfflinePageBridge.getPageByBookmarkId(BOOKMARK_ID));
+        deletePage(BOOKMARK_ID, DeletePageResult.SUCCESS);
+        assertNull("Offline page should be gone, but it is available.",
+                mOfflinePageBridge.getPageByBookmarkId(BOOKMARK_ID));
+    }
+
     private void savePage(final int expectedResult, final String expectedUrl)
             throws InterruptedException {
         final Semaphore semaphore = new Semaphore(0);
@@ -115,7 +129,7 @@ public class OfflinePageBridgeTest extends ChromeActivityTestCaseBase<ChromeActi
                         getActivity().getActivityTab().getWebContents());
 
                 mOfflinePageBridge.savePage(getActivity().getActivityTab().getWebContents(),
-                        BOOKMARK_ID, new OfflinePageCallback() {
+                        BOOKMARK_ID, new SavePageCallback() {
                             @Override
                             public void onSavePageDone(int savePageResult, String url) {
                                 assertEquals(
@@ -125,6 +139,25 @@ public class OfflinePageBridgeTest extends ChromeActivityTestCaseBase<ChromeActi
                                 semaphore.release();
                             }
                         });
+            }
+        });
+        assertTrue(semaphore.tryAcquire(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+    }
+
+    private void deletePage(BookmarkId bookmarkId, final int expectedResult)
+            throws InterruptedException {
+        final Semaphore semaphore = new Semaphore(0);
+        ThreadUtils.runOnUiThreadBlocking(new Runnable() {
+            @Override
+            public void run() {
+                mOfflinePageBridge.deletePage(BOOKMARK_ID, new DeletePageCallback() {
+                    @Override
+                    public void onDeletePageDone(int deletePageResult) {
+                        assertEquals(
+                                "Delete result incorrect.", expectedResult, deletePageResult);
+                        semaphore.release();
+                    }
+                });
             }
         });
         assertTrue(semaphore.tryAcquire(TIMEOUT_MS, TimeUnit.MILLISECONDS));

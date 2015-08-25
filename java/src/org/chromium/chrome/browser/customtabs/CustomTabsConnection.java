@@ -17,6 +17,7 @@ import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Process;
@@ -39,18 +40,24 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeApplication;
 import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.WarmupManager;
+import org.chromium.chrome.browser.WebContentsFactory;
 import org.chromium.chrome.browser.device.DeviceClassManager;
 import org.chromium.chrome.browser.init.ChromeBrowserInitializer;
 import org.chromium.chrome.browser.prerender.ExternalPrerenderHandler;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.content.browser.ChildProcessLauncher;
+import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.content_public.common.Referrer;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -63,6 +70,8 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class CustomTabsConnection extends ICustomTabsService.Stub {
     private static final String TAG = "cr.ChromeConnection";
+    private static final String NO_PRERENDERING_KEY =
+            "android.support.customtabs.maylaunchurl.NO_PRERENDERING";
 
     // Values for the "CustomTabs.PredictionStatus" UMA histogram. Append-only.
     private static final int NO_PREDICTION = 0;
@@ -129,21 +138,34 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
     private final AtomicBoolean mWarmupHasBeenCalled = new AtomicBoolean();
     private ExternalPrerenderHandler mExternalPrerenderHandler;
     private PrerenderedUrlParams mPrerender;
+    private WebContents mSpareWebContents;
 
     /** Per-session values. */
     private static class SessionParams {
         public final int mUid;
+        public final Referrer mReferrer;
         public final ICustomTabsCallback mCallback;
+        public final IBinder.DeathRecipient mDeathRecipient;
         private ServiceConnection mServiceConnection;
         private String mPredictedUrl;
         private long mLastMayLaunchUrlTimestamp;
 
-        public SessionParams(int uid, ICustomTabsCallback callback) {
+        public SessionParams(Context context, int uid, ICustomTabsCallback callback,
+                IBinder.DeathRecipient deathRecipient) {
             mUid = uid;
             mCallback = callback;
+            mDeathRecipient = deathRecipient;
             mServiceConnection = null;
             mPredictedUrl = null;
             mLastMayLaunchUrlTimestamp = 0;
+            mReferrer = constructReferrer(context);
+        }
+
+        private Referrer constructReferrer(Context context) {
+            PackageManager packageManager = context.getPackageManager();
+            String[] packageList = packageManager.getPackagesForUid(mUid);
+            if (packageList.length != 1 || TextUtils.isEmpty(packageList[0])) return null;
+            return IntentHandler.constructValidReferrerForAuthority(packageList[0]);
         }
 
         public ServiceConnection getServiceConnection() {
@@ -200,19 +222,27 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
     public boolean newSession(ICustomTabsCallback callback) {
         if (callback == null) return false;
         final int uid = Binder.getCallingUid();
-        SessionParams sessionParams = new SessionParams(uid, callback);
         final IBinder session = callback.asBinder();
+        IBinder.DeathRecipient deathRecipient =
+                new IBinder.DeathRecipient() {
+                    @Override
+                    public void binderDied() {
+                        ThreadUtils.postOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                synchronized (mLock) {
+                                    cleanupAlreadyLocked(session);
+                                }
+                            }
+                        });
+                    }
+                };
+        SessionParams sessionParams =
+                new SessionParams(mApplication, uid, callback, deathRecipient);
         synchronized (mLock) {
             if (mSessionParams.containsKey(session)) return false;
             try {
-                callback.asBinder().linkToDeath(new IBinder.DeathRecipient() {
-                    @Override
-                    public void binderDied() {
-                        synchronized (mLock) {
-                            cleanupAlreadyLocked(session);
-                        }
-                    }
-                }, 0);
+                callback.asBinder().linkToDeath(deathRecipient, 0);
             } catch (RemoteException e) {
                 // The return code doesn't matter, because this executes when
                 // the caller has died.
@@ -229,7 +259,7 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
     @Override
     public boolean warmup(long flags) {
         // Here and in mayLaunchUrl(), don't do expensive work for background applications.
-        if (!isUidForegroundOrSelf(Binder.getCallingUid())) return false;
+        if (!isCallerForegroundOrSelf()) return false;
         if (!mWarmupHasBeenCalled.compareAndSet(false, true)) return true;
         // The call is non-blocking and this must execute on the UI thread, post a task.
         ThreadUtils.postOnUiThread(new Runnable() {
@@ -238,7 +268,6 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
             public void run() {
                 ChromeApplication app = (ChromeApplication) mApplication;
                 try {
-                    // TODO(lizeb): Warm up more of the browser.
                     app.startBrowserProcessesAndLoadLibrariesSync(true);
                 } catch (ProcessInitException e) {
                     Log.e(TAG, "ProcessInitException while starting the browser process.");
@@ -255,9 +284,30 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
                     }
                 }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
                 ChromeBrowserInitializer.initNetworkChangeNotifier(context);
+                WarmupManager.getInstance().initializeViewHierarchy(app.getApplicationContext(),
+                        R.style.MainTheme, R.layout.main, R.id.control_container_stub,
+                        R.layout.custom_tabs_control_container);
             }
         });
         return true;
+    }
+
+    /**
+     * Creates a spare {@link WebContents}, if none exists.
+     *
+     * Navigating to "about:blank" forces a lot of initialization to take place
+     * here. This improves PLT. This navigation is never registered in the history, as
+     * "about:blank" is filtered by CanAddURLToHistory.
+     *
+     * TODO(lizeb): Replace this with a cleaner method. See crbug.com/521729.
+     */
+    private void createSpareWebContents() {
+        ThreadUtils.assertOnUiThread();
+        if (mSpareWebContents != null) return;
+        mSpareWebContents = WebContentsFactory.createWebContents(false, false);
+        if (mSpareWebContents != null) {
+            mSpareWebContents.getNavigationController().loadUrl(new LoadUrlParams("about:blank"));
+        }
     }
 
     @Override
@@ -267,11 +317,13 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
         // allowed, as we allow "www.example.com".
         String scheme = url.normalizeScheme().getScheme();
         if (scheme != null && !scheme.equals("http") && !scheme.equals("https")) return false;
-        int uid = Binder.getCallingUid();
-        if (!isUidForegroundOrSelf(uid)) return false;
+        if (!isCallerForegroundOrSelf()) return false;
 
         final IBinder session = callback.asBinder();
         final String urlString = url.toString();
+        final boolean noPrerendering =
+                extras != null ? extras.getBoolean(NO_PRERENDERING_KEY, false) : false;
+        int uid = Binder.getCallingUid();
         synchronized (mLock) {
             SessionParams sessionParams = mSessionParams.get(session);
             if (sessionParams == null || sessionParams.mUid != uid) return false;
@@ -288,8 +340,12 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
                     warmupManager.maybePreconnectUrlAndSubResources(
                             Profile.getLastUsedProfile(), urlString);
                 }
-                // Calling with a null or empty url cancels a current prerender.
-                prerenderUrl(session, urlString, extras);
+                if (!noPrerendering && mayPrerender()) {
+                    // Calling with a null or empty url cancels a current prerender.
+                    prerenderUrl(session, urlString, extras);
+                } else {
+                    createSpareWebContents();
+                }
             }
         });
         return true;
@@ -298,6 +354,22 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
     @Override
     public Bundle extraCommand(String commandName, Bundle args) {
         return null;
+    }
+
+    /**
+     * @return a spare WebContents, or null.
+     *
+     * This WebContents has already navigated to "about:blank". You have to call
+     * {@link LoadUrlParams.setShouldReplaceCurrentEntry(true)} for the next
+     * navigation to ensure that a back navigation doesn't lead to about:blank.
+     *
+     * TODO(lizeb): Update this when crbug.com/521729 is fixed.
+     */
+    WebContents takeSpareWebContents() {
+        ThreadUtils.assertOnUiThread();
+        WebContents result = mSpareWebContents;
+        mSpareWebContents = null;
+        return result;
     }
 
     /**
@@ -377,6 +449,11 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
         mExternalPrerenderHandler.cancelCurrentPrerender();
         webContents.destroy();
         return null;
+    }
+
+    public Referrer getReferrerForSession(IBinder session) {
+        if (!mSessionParams.containsKey(session)) return null;
+        return mSessionParams.get(session).mReferrer;
     }
 
     private ICustomTabsCallback getCallbackForSession(IBinder session) {
@@ -479,26 +556,71 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
     }
 
     /**
-     * @return true if the |uid| is associated with a process having a
-     * foreground importance, or self.
+     * @return the CPU cgroup of a given process, identified by its PID, or null.
      */
-    private boolean isUidForegroundOrSelf(int uid) {
-        if (uid == Process.myUid()) return true;
-        ActivityManager am =
-                (ActivityManager) mApplication.getSystemService(Context.ACTIVITY_SERVICE);
-        List<ActivityManager.RunningAppProcessInfo> running = am.getRunningAppProcesses();
-        for (ActivityManager.RunningAppProcessInfo rpi : running) {
-            boolean isForeground =
-                    rpi.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
-            if (rpi.uid == uid && isForeground) return true;
+    @VisibleForTesting
+    static String getSchedulerGroup(int pid) {
+        // Android uses two cgroups for the processes: the root cgroup, and the
+        // "/bg_non_interactive" one for background processes. The list of
+        // cgroups a process is part of can be queried by reading
+        // /proc/<pid>/cgroup, which is world-readable.
+        String cgroupFilename = "/proc/" + pid + "/cgroup";
+        try {
+            FileReader fileReader = new FileReader(cgroupFilename);
+            BufferedReader reader = new BufferedReader(fileReader);
+            try {
+                String line = null;
+                while ((line = reader.readLine()) != null) {
+                    // line format: 2:cpu:/bg_non_interactive
+                    String fields[] = line.trim().split(":");
+                    if (fields.length == 3 && fields[1].equals("cpu")) return fields[2];
+                }
+            } finally {
+                reader.close();
+            }
+        } catch (IOException e) {
+            return null;
         }
-        return false;
+        return null;
+    }
+
+    private static boolean isBackgroundProcess(int pid) {
+        String schedulerGroup = getSchedulerGroup(pid);
+        // "/bg_non_interactive" is from L MR1, "/apps/bg_non_interactive" before.
+        return "/bg_non_interactive".equals(schedulerGroup)
+                || "/apps/bg_non_interactive".equals(schedulerGroup);
+    }
+
+    /**
+     * @return true when inside a Binder transaction and the caller is in the
+     * foreground or self. Don't use outside a Binder transaction.
+     */
+    private boolean isCallerForegroundOrSelf() {
+        int uid = Binder.getCallingUid();
+        if (uid == Process.myUid()) return true;
+        // Starting with L MR1, AM.getRunningAppProcesses doesn't return all the
+        // processes. We use a workaround in this case.
+        boolean useWorkaround = true;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP_MR1) {
+            ActivityManager am =
+                    (ActivityManager) mApplication.getSystemService(Context.ACTIVITY_SERVICE);
+            List<ActivityManager.RunningAppProcessInfo> running = am.getRunningAppProcesses();
+            for (ActivityManager.RunningAppProcessInfo rpi : running) {
+                boolean matchingUid = rpi.uid == uid;
+                boolean isForeground = rpi.importance
+                        == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
+                useWorkaround &= !matchingUid;
+                if (matchingUid && isForeground) return true;
+            }
+        }
+        return useWorkaround ? !isBackgroundProcess(Binder.getCallingPid()) : false;
     }
 
     @VisibleForTesting
     void cleanupAll() {
+        ThreadUtils.assertOnUiThread();
         synchronized (mLock) {
-            Set<IBinder> sessions = mSessionParams.keySet();
+            List<IBinder> sessions = new ArrayList<>(mSessionParams.keySet());
             for (IBinder session : sessions) cleanupAlreadyLocked(session);
         }
     }
@@ -507,7 +629,12 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
      * Called when a remote client has died.
      */
     private void cleanupAlreadyLocked(IBinder session) {
+        ThreadUtils.assertOnUiThread();
+        SessionParams params = mSessionParams.get(session);
+        if (params == null) return;
         mSessionParams.remove(session);
+        IBinder binder = params.mCallback.asBinder();
+        binder.unlinkToDeath(params.mDeathRecipient, 0);
         if (mPrerender != null && session.equals(mPrerender.mSession)) {
             prerenderUrl(session, null, null); // Cancels the pre-render.
         }
@@ -547,6 +674,9 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
         Point contentSize = estimateContentSize();
         Context context = mApplication.getApplicationContext();
         String referrer = IntentHandler.getReferrerUrlIncludingExtraHeaders(extrasIntent, context);
+        if (referrer == null && getReferrerForSession(session) != null) {
+            referrer = getReferrerForSession(session).getUrl();
+        }
         if (referrer == null) referrer = "";
         WebContents webContents = mExternalPrerenderHandler.addPrerender(
                 Profile.getLastUsedProfile(), url, referrer, contentSize.x, contentSize.y);

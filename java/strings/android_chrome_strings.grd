@@ -281,8 +281,11 @@ CHAR-LIMIT guidelines:
       <message name="IDS_PASSWORDS_AUTO_SIGNIN_TITLE" desc="Title for checkbox to enable automatically signing the user in to websites">
         Auto Sign-in
       </message>
+      <message name="IDS_PASSWORDS_AUTO_SIGNIN_MESSAGE" desc="Message shown when the user is automatically signed in to a website">
+        Signed in as <ph name="USERNAME">%1$s<ex>don.john.lemon@gmail.com</ex></ph>
+      </message>
       <message name="IDS_PASSWORDS_AUTO_SIGNIN_DESCRIPTION" desc="Text under 'Auto sign-in' checkbox">
-       Automatically sign in to websites using stored credentials. When the feature is off, you'll be asked for verification every time before signing in to a website.
+        Automatically sign in to websites using stored credentials. When the feature is off, you'll be asked for verification every time before signing in to a website.
       </message>
       <message name="IDS_SECTION_SAVED_PASSWORDS" desc="Header for the list of passwords that have been saved in Chrome. [CHAR-LIMIT=32]">
         Passwords
@@ -748,17 +751,14 @@ To obtain new licenses, connect to the internet and play your downloaded content
       </message>
 
       <!-- Data Saver Promo -->
-      <message name="IDS_DATA_REDUCTION_TITLE_1" desc="First part of the headline for the promo inviting users to enable Data Saver" >
+      <message name="IDS_DATA_REDUCTION_PROMO_TITLE" desc="The title for the promo inviting users to enable Data Saver" >
         Browse more for less
       </message>
-      <message name="IDS_DATA_REDUCTION_TITLE_2" desc="Second part of the headline for the promo inviting users to enable Data Saver" >
-        Spend less on data by using Google to <ph name="BEGIN_LINK">&lt;link&gt;</ph>optimize the pages you visit<ph name="END_LINK">&lt;/link&gt;</ph>.
-      </message>
-      <message name="IDS_DATA_REDUCTION_TITLE_3" desc="Third part of the headline for the promo inviting users to enable Data Saver" >
-        Pages accessed with HTTPS or Incognito will not be optimized or seen by Google.
+      <message name="IDS_DATA_REDUCTION_PROMO_SUMMARY" desc="Description for the promo inviting users to enable Data Saver" >
+        Spend less data by using Google to optimize the pages you visit. Pages accessed with HTTPS or Incognito will not be optimized or seen by Google.
       </message>
       <message name="IDS_DATA_REDUCTION_ENABLE_BUTTON" desc="Button the user presses if they want to enable Data Saver" >
-        Turn on Data Saver
+        Enable Data Saver
       </message>
       <message name="IDS_DATA_REDUCTION_ENABLED_TOAST" desc="Toast message displayed after the user enables Data Saver from the promo" >
         Data Saver is on. Manage it in Settings.
@@ -881,32 +881,20 @@ To obtain new licenses, connect to the internet and play your downloaded content
         https://www.google.com/intl/[GRITLANGCODE]/chrome/browser/privacy/eula_text.html
       </message>
 
-      <message desc="Popup button for user to confirm a beforeunload dialog box triggered by a page navigation, i.e. they want to leave the current page [CHAR-LIMIT=20]" name="IDS_LEAVE_THIS_PAGE">
-        Leave this Page
+      <!-- JavaScript dialogs -->
+      <message name="IDS_LEAVE" desc="Dialog button to leave the current page and navigate to a new page. [CHAR-LIMIT=20]">
+        Leave
       </message>
-      <message desc="Popup button for user to cancel a beforeunload dialog box triggerd by a page navigation, i.e. they want to stay on the current page [CHAR-LIMIT=20]" name="IDS_STAY_ON_THIS_PAGE">
-        Stay on this Page
+      <message name="IDS_RELOAD" desc="Dialog button to reload the current page. [CHAR-LIMIT=20]">
+        Reload
       </message>
-      <message desc="Popup button for user to confirm a beforeunload dialog box triggered by a page reload action, i.e. they want to reload the current page [CHAR-LIMIT=20]" name="IDS_RELOAD_THIS_PAGE">
-        Reload this Page
-      </message>
-      <message desc="Popup button for user to cancel a beforeunload dialog box triggered by a page reload action, i.e. they do not want to reload the current page [CHAR-LIMIT=20]" name="IDS_DONT_RELOAD_THIS_PAGE">
-        Don't reload
-      </message>
-      <message desc="Standard popup button for allowing user confirmation of some webpage event. [CHAR-LIMIT=12]" name="IDS_JS_MODAL_DIALOG_CONFIRM">
-        OK
-      </message>
-      <message desc="Standard popup button for allowing user to cancel some webpage event. [CHAR-LIMIT=12]" name="IDS_JS_MODAL_DIALOG_CANCEL">
-        Cancel
-      </message>
-      <message desc="Checkbox allowing users to forgoe an additional prompts from a web page. [CHAR-LIMIT=None]" name="IDS_SUPPRESS_JS_MODAL_DIALOGS">
+      <message name="IDS_SUPPRESS_JS_MODAL_DIALOGS" desc="Checkbox allowing users to forgo additional prompts from a web page.">
         Prevent this page from creating additional dialogs
       </message>
-      <message desc="Content description for the input javascript modal dialog prompt. [CHAR-LIMIT=32]" name="IDS_ACCESSIBILITY_JS_MODAL_DIALOG_PROMPT">
-        Prompt
-      </message>
-      <message desc="Dialog box title for viewing security certificates. [CHAR-LIMIT=32]" name="IDS_CERTTITLE">
-        Certificate Viewer
+
+      <!-- Certificate viewer -->
+      <message name="IDS_CERTTITLE" desc="Dialog box title for viewing security certificates. [CHAR-LIMIT=32]">
+        Certificate viewer
       </message>
 
       <!-- Sign-in strings -->
@@ -1022,40 +1010,40 @@ To obtain new licenses, connect to the internet and play your downloaded content
       </message>
 
       <!-- Sync error strings -->
-      <message desc="Sync error string for generic error. [CHAR-LIMIT=80]" name="IDS_SYNC_ERROR_GENERIC">
+      <message name="IDS_SYNC_ERROR_GENERIC" desc="Sync error string for generic error. [CHAR-LIMIT=80]">
         Sync error
       </message>
-      <message desc="Sync error string for when the needs to update the sign-in details [CHAR-LIMIT=80]" name="IDS_SYNC_ERROR_GA">
+      <message name="IDS_SYNC_ERROR_GA" desc="Sync error string for when the needs to update the sign-in details [CHAR-LIMIT=80]">
         Please update your sign-in details.
       </message>
-      <message desc="Sync error string for network connection. [CHAR-LIMIT=80]" name="IDS_SYNC_ERROR_CONNECTION">
+      <message name="IDS_SYNC_ERROR_CONNECTION" desc="Sync error string for network connection. [CHAR-LIMIT=80]">
         Could not connect to the sync server.
       </message>
-      <message desc="Sync error string for domain not supported. [CHAR-LIMIT=80]" name="IDS_SYNC_ERROR_DOMAIN">
+      <message name="IDS_SYNC_ERROR_DOMAIN" desc="Sync error string for domain not supported. [CHAR-LIMIT=80]">
         Sync is not available for your domain.
       </message>
-      <message desc="Sync error string for service unavailable. [CHAR-LIMIT=80]" name="IDS_SYNC_ERROR_SERVICE_UNAVAILABLE">
+      <message name="IDS_SYNC_ERROR_SERVICE_UNAVAILABLE" desc="Sync error string for service unavailable. [CHAR-LIMIT=80]">
         The service is not available; try again later.
       </message>
-      <message desc="Title to show on a dialog during sign-in, indicating that the account used has policy management enabled." name="IDS_POLICY_DIALOG_TITLE">
+      <message name="IDS_POLICY_DIALOG_TITLE" desc="Title to show on a dialog during sign-in, indicating that the account used has policy management enabled.">
         Confirm sign-in
       </message>
-      <message desc="Message to show on a dialog during sign-in, indicating that the account used has policy management enabled." name="IDS_POLICY_DIALOG_MESSAGE">
+      <message name="IDS_POLICY_DIALOG_MESSAGE" desc="Message to show on a dialog during sign-in, indicating that the account used has policy management enabled.">
         This account is managed by <ph name="DOMAIN_NAME">%1$s<ex>google.com</ex></ph>.
 
 You are signing in with a managed account and giving its administrator control over your Chrome profile. Your Chrome data will become permanently tied to this account. Disconnecting from this account will delete the local Chrome data.
       </message>
-      <message desc="Label on the button to accept the policy dialog during sign-in. [CHAR-LIMIT=20]" name="IDS_POLICY_DIALOG_PROCEED">
+      <message name="IDS_POLICY_DIALOG_PROCEED" desc="Label on the button to accept the policy dialog during sign-in. [CHAR-LIMIT=20]">
         Accept and sign in
       </message>
-      <message desc="Label on the button to reject the policy dialog during sign-in. [CHAR-LIMIT=20]" name="IDS_POLICY_DIALOG_CANCEL">
+      <message name="IDS_POLICY_DIALOG_CANCEL" desc="Label on the button to reject the policy dialog during sign-in. [CHAR-LIMIT=20]">
         Cancel
       </message>
-      <message desc="Title for the progress dialog shown while profile data is being wiped after signing out of an enterprise account" name="IDS_WIPING_PROFILE_DATA_TITLE">
+      <message name="IDS_WIPING_PROFILE_DATA_TITLE" desc="Title for the progress dialog shown while profile data is being wiped after signing out of an enterprise account">
         Clearing account data
       </message>
-      <message desc="Message for the progress dialog shown while profile data is being wiped after signing out of an enterprise account" name="IDS_WIPING_PROFILE_DATA_MESSAGE">
-        Please wait...
+      <message name="IDS_WIPING_PROFILE_DATA_MESSAGE" desc="Message for the progress dialog shown while profile data is being wiped after signing out of an enterprise account">
+        Please wait…
       </message>
 
       <!-- Tab switcher -->
@@ -1082,12 +1070,11 @@ You are signing in with a managed account and giving its administrator control o
       </message>
 
       <!-- InfoBar -->
-      <message desc="Accessibility label for the dismiss infobar Button" name="IDS_INFOBAR_CLOSE">
+      <message name="IDS_INFOBAR_CLOSE" desc="Accessibility label for the dismiss infobar Button">
         Close
       </message>
-
-      <message desc="Accessibility label to inform users about the InfoBar location" name="IDS_INFOBAR_SCREEN_POSITION">
-        %1$s. Options available near bottom of the screen
+      <message name="IDS_INFOBAR_SCREEN_POSITION" desc="Accessibility label to inform users about the InfoBar location">
+        Options available near bottom of the screen
       </message>
 
       <!-- Account chooser infobar strings. -->
@@ -1117,7 +1104,7 @@ You are signing in with a managed account and giving its administrator control o
         Translated to <ph name="TARGET_LANGUAGE">%1$s<ex>FRENCH</ex></ph>.
       </message>
       <message name="IDS_TRANSLATE_INFOBAR_TRANSLATING">
-        Translating page to <ph name="SOURCE_LANGUAGE">%1$s<ex>English</ex></ph>...
+        Translating page to <ph name="SOURCE_LANGUAGE">%1$s<ex>English</ex></ph>…
       </message>
       <message name="IDS_TRANSLATE_INFOBAR_ERROR">
         Oops. This page could not be translated.
@@ -1273,7 +1260,7 @@ You are signing in with a managed account and giving its administrator control o
 
       <!-- App banner strings -->
       <message name="IDS_APP_BANNER_INSTALLING" desc="Button text indicating that an application is being installed. [CHAR-LIMIT=15]">
-        Installing...
+        Installing…
       </message>
       <message name="IDS_APP_BANNER_OPEN" desc="Text that indicates that clicking on the button will launch an application. [CHAR-LIMIT=15]">
         Open
@@ -1387,11 +1374,8 @@ You are signing in with a managed account and giving its administrator control o
       <message name="IDS_PAGE_INFO_CONNECTION_SHA1" desc="Message to display in the page info bubble when the page is not considered private (because the connection used SHA-1 for certificate signatures, which are not considered secure anymore).">
         This site uses a weak security configuration (SHA-1 signatures), so your connection may not be private.
       </message>
-      <message name="IDS_PAGE_INFO_CONNECTION_BROKEN_LEADING_TEXT" desc="Message to display highlighted red in the page info bubble when the connection is insecure because the HTTPS certificate is invalid.">
-        Your connection to this site is not private.
-      </message>
-      <message name="IDS_PAGE_INFO_CONNECTION_BROKEN_FOLLOWING_TEXT" desc="Message to display after a 'Your connection to this site is not private' message' in the page info bubble when the connection is insecure because the HTTPS certificate is invalid.">
-        Attackers might be trying to steal your information (for example, photos, passwords, messages and credit cards) from <ph name="DOMAIN_NAME">%1$s<ex>google.com</ex></ph>.
+      <message name="IDS_PAGE_INFO_CONNECTION_BROKEN" desc="Message to display in the page info bubble when the connection is insecure because the HTTPS certificate is invalid.">
+        Your connection to this site is not private. Attackers might be trying to steal your information (for example, photos, passwords, messages and credit cards) from <ph name="DOMAIN_NAME">%1$s<ex>google.com</ex></ph>.
       </message>
       <message name="IDS_PAGE_INFO_CONNECTION_INTERNAL_PAGE" desc="Message to display in the page info bubble when the page is an internal Chrome page (e.g. the bookmarks page, or about:blank).">
         You are viewing a secure Google Chrome page.
@@ -1420,16 +1404,10 @@ Hit the back button to exit.
       </message>
 
       <!-- Download UI -->
-      <message name="IDS_DOWNLOAD_NO_SDCARD_DLG_TITLE_product_nosdcard" desc="Dialog title [CHAR LIMIT=25]">
-        USB storage unavailable
-      </message>
-      <message name="IDS_DOWNLOAD_NO_SDCARD_DLG_TITLE_product_default" desc="Dialog title [CHAR LIMIT=25]">
+      <message name="IDS_DOWNLOAD_NO_SDCARD_DLG_TITLE" desc="Dialog title [CHAR LIMIT=25]">
         No SD card
       </message>
-      <message name="IDS_DOWNLOAD_SDCARD_BUSY_DLG_TITLE_product_nosdcard" desc="Title for a dialog informing the user that the SD card used for external storage is busy so they cannot download anything [CHAR LIMIT=30]">
-        USB storage unavailable
-      </message>
-      <message name="IDS_DOWNLOAD_SDCARD_BUSY_DLG_TITLE_product_default" desc="Title for a dialog informing the user that the SD card used for external storage is busy so they cannot download anything [CHAR-LIMIT=30]">
+      <message name="IDS_DOWNLOAD_SDCARD_BUSY_DLG_TITLE" desc="Title for a dialog informing the user that the SD card used for external storage is busy so they cannot download anything [CHAR-LIMIT=30]">
         SD card unavailable
       </message>
       <message name="IDS_DOWNLOAD_NOTIFICATION_FAILED" desc="Download notification to be displayed when a download fails.">
@@ -1438,10 +1416,7 @@ Hit the back button to exit.
       <message name="IDS_CANNOT_ADD_DOWNLOADED_ITEM_TO_MANAGER" desc="Toast for a download which has completed but cannot be added to the download manager">
         Failed to add downloaded item to the download manager.
       </message>
-      <message name="IDS_CANNOT_CREATE_DOWNLOAD_DIRECTORY_TITLE_product_nosdcard" desc="Message for a dialog informing the user that download directory cannot be created on external storage [CHAR LIMIT=75]">
-        Cannot create download directory on USB storage.
-      </message>
-      <message name="IDS_CANNOT_CREATE_DOWNLOAD_DIRECTORY_TITLE_product_default" desc="Message for a dialog informing the user that download directory cannot be created on external storage [CHAR LIMIT=75]">
+      <message name="IDS_CANNOT_CREATE_DOWNLOAD_DIRECTORY_TITLE" desc="Message for a dialog informing the user that download directory cannot be created on external storage [CHAR LIMIT=75]">
         Cannot create download directory on SD card.
       </message>
       <message name="IDS_CANNOT_DOWNLOAD_HTTP_OR_HTTPS" desc="Toast for a download which cannot begin because the URL is not http or https">
@@ -1653,14 +1628,6 @@ Hit the back button to exit.
         Stop
       </message>
 
-      <!-- Messages for local media playback -->
-      <message name="IDS_MEDIA_PLAYBACK_NOTIFICATION_PLAYING_FOR_MEDIA" desc="Notification text when playing media locally. [CHAR LIMIT=40]">
-        Playing “<ph name="MEDIA_TITLE">%1$s<ex>Psy - Gangnam Style - YouTube</ex></ph>”
-      </message>
-      <message name="IDS_MEDIA_PLAYBACK_NOTIFICATION_PAUSED_FOR_MEDIA" desc="Notification text when paused media locally. [CHAR LIMIT=40]">
-        Paused “<ph name="MEDIA_TITLE">%1$s<ex>Psy - Gangnam Style - YouTube</ex></ph>”
-      </message>
-
       <!-- New Tab Page strings -->
       <message name="IDS_NTP_BOOKMARKS" desc="Text for bookmarks button [CHAR-LIMIT=20]">
         Bookmarks
@@ -1740,11 +1707,14 @@ Just open Chrome on your computer, go to the menu, and select “Sign in to Chro
       <message name="IDS_MENU_NEW_TAB" desc="Menu item for opening a new tab. [CHAR-LIMIT=27]">
         New tab
       </message>
-      <message name="IDS_MENU_NEW_INCOGNITO_TAB" desc="Menu item for opening a new incognito tab that facilitates pseudononymous browsing. [CHAR-LIMIT=27]">
+      <message name="IDS_MENU_NEW_INCOGNITO_TAB" desc="Menu item for opening a new incognito tab that facilitates pseudononymous browsing. [CHAR-LIMIT=27]" meaning="Android menu">
         New incognito tab
       </message>
       <message name="IDS_MENU_BOOKMARKS" desc="Menu item for opening the bookmarks page that contains all the user's bookmarks. [CHAR-LIMIT=27]">
         Bookmarks
+      </message>
+      <message name="IDS_MENU_BOOKMARKS_OFFLINE_PAGES" desc="Menu item for opening the saved pages page that contains all the user's saved pages (bookmarks and offline). [CHAR-LIMIT=27]">
+        Saved pages
       </message>
       <message name="IDS_MENU_RECENT_TABS" desc="Menu item for opening the 'Recent tabs' page that shows recently closed tabs and pages the user has opened on his/her other devices. [CHAR-LIMIT=27]">
         Recent tabs
@@ -1813,6 +1783,12 @@ Just open Chrome on your computer, go to the menu, and select “Sign in to Chro
       <message name="IDS_ENHANCED_BOOKMARK_PAGE_SAVED" desc="Message shown after user adds a new bookmark. [CHAR-LIMIT=32]">
         Bookmarked
       </message>
+      <message name="IDS_ENHANCED_BOOKMARK_PAGE_SAVED_OFFLINE_PAGES" desc="Message shown after user adds a new offline page. [CHAR-LIMIT=32]">
+        Page saved offline
+      </message>
+      <message name="IDS_ENHANCED_BOOKMARK_PAGE_SAVED_OFFLINE_PAGES_STORAGE_NEAR_FULL" desc="Message shown after user adds a new offline page and the storage is almost full. [CHAR-LIMIT=32]">
+        Page saved offline. Storage almost full.
+      </message>
       <message name="IDS_ENHANCED_BOOKMARK_DRAWER_ALL_ITEMS" desc="Menu item for showing all bookmark items in the enhanced bookmarks UI [CHAR-LIMIT=24]">
         All bookmarks
       </message>
@@ -1825,8 +1801,11 @@ Just open Chrome on your computer, go to the menu, and select “Sign in to Chro
       <message name="IDS_ENHANCED_BOOKMARK_TITLE_BAR_ALL_ITEMS" desc="Title bar text for showing all bookmark items in the enhanced bookmarks UI [CHAR-LIMIT=32]">
         Bookmarks
       </message>
-      <message name="IDS_ENHANCED_BOOKMARK_TITLE_BAR_ALL_ITEMS_OFFLINE_PAGES" desc="Title bar text for showing all offline pages bookmarks UI [CHAR-LIMIT=32]">
+      <message name="IDS_ENHANCED_BOOKMARK_TITLE_BAR_ALL_ITEMS_OFFLINE_PAGES" desc="Title bar text for showing all items in the enhanced bookmarks UI when offline pages functionality is enabled [CHAR-LIMIT=32]">
         All saved pages
+      </message>
+      <message name="IDS_ENHANCED_BOOKMARK_TITLE_BAR_FILTER_OFFLINE_PAGES" desc="Title bar text for showing all save pages with offline copy in the enhanced bookmarks UI. [CHAR-LIMIT=24]">
+        Saved offline
       </message>
       <message name="IDS_ENHANCED_BOOKMARK_PARENT_FOLDER" desc="Header text for title of parent folder of the bookmark [CHAR-LIMIT=32]">
         Parent folder
@@ -1860,6 +1839,15 @@ Just open Chrome on your computer, go to the menu, and select “Sign in to Chro
       </message>
       <message name="IDS_ENHANCED_BOOKMARK_ACTION_BAR_CLOSE" desc="Button text for closing the current enhanced bookmark dialog on the enhanced bookmark action bar [CHAR-LIMIT=32]">
         Close dialog
+      </message>
+      <message name="IDS_ENHANCED_BOOKMARK_ACTION_BAR_SEARCH" desc="Button text for bookmark search action on the enhanced bookmark action bar [CHAR-LIMIT=32]">
+        Search bookmarks
+      </message>
+      <message name="IDS_ENHANCED_BOOKMARK_NO_RESULT" desc="Text explaining that no bookmarks are found to match a search query">
+        No bookmarks found
+      </message>
+      <message name="IDS_ENHANCED_BOOKMARK_VIEWING_OFFLINE_PAGE" desc="Text explaining that the user is viewing an offline copy of a web page.">
+        Viewing an offline copy of this page
       </message>
       <message name="IDS_ACCESSIBILITY_ENHANCED_BOOKMARK_DRAWER_TOGGLE_BTN_OPEN" desc="Content description for the button to show the navigation drawer.">
         Open navigation drawer
@@ -1914,6 +1902,18 @@ Just open Chrome on your computer, go to the menu, and select “Sign in to Chro
       </message>
       <message name="IDS_BOOKMARK_FOLDER" desc="Label specifying what folder a bookmark is in. [CHAR-LIMIT=32]">
         Folder
+      </message>
+      <message name="IDS_BOOKMARK_OFFLINE_PAGE_NONE" desc="Label specifying that given saved page does not have an offline copy, but user has the page open.">
+        Not saved offline
+      </message>
+      <message name="IDS_BOOKMARK_OFFLINE_PAGE_SIZE" desc="Label specifying that given saved page has an offline copy of a specific size.">
+        <ph name="PAGE_SIZE_STRING">%1$s<ex>1.32 MB</ex></ph> page saved offline
+      </message>
+      <message name="IDS_BOOKMARK_OFFLINE_PAGE_VISIT" desc="Label specifying that given saved page does not have an offline copy, and user does not have that page open.">
+        Visit page to save offline
+      </message>
+      <message name="IDS_BOOKMARK_BTN_OFFLINE_PAGE_VISIT" desc="Label for a button to visit an offline page. [CHAR-LIMIT=20]">
+        Visit
       </message>
       <message name="IDS_BOOKMARK_MISSING_TITLE" desc="Error message appearing when a user tries to create/edit a bookmark or a folder without a title. [CHAR-LIMIT=32]">
         Title required

@@ -21,8 +21,9 @@ import org.chromium.chrome.browser.ChromeBrowserProviderClient;
 import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.UrlConstants;
 import org.chromium.chrome.browser.document.ChromeLauncherActivity;
+import org.chromium.chrome.browser.enhancedbookmarks.EnhancedBookmarksModel.AddBookmarkCallback;
 import org.chromium.chrome.browser.favicon.FaviconHelper;
-import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.offline_pages.OfflinePageBridge;
 import org.chromium.chrome.browser.snackbar.Snackbar;
 import org.chromium.chrome.browser.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.snackbar.SnackbarManager.SnackbarController;
@@ -31,6 +32,7 @@ import org.chromium.chrome.browser.util.FeatureUtilities;
 import org.chromium.chrome.browser.util.MathUtils;
 import org.chromium.components.bookmarks.BookmarkId;
 import org.chromium.components.bookmarks.BookmarkType;
+import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.DeviceFormFactor;
 
 /**
@@ -51,54 +53,76 @@ public class EnhancedBookmarkUtils {
     };
 
     /**
-     * @return True if enhanced bookmark feature is enabled for given profile. False otherwise.
+     * @return True if enhanced bookmark feature is enabled.
      */
-    public static boolean isEnhancedBookmarkEnabled(Profile profile) {
-        return BookmarksBridge.isEnhancedBookmarksEnabled(profile);
+    public static boolean isEnhancedBookmarkEnabled() {
+        return BookmarksBridge.isEnhancedBookmarksEnabled();
     }
 
     /**
      * If the tab has already been bookmarked, start {@link EnhancedBookmarkEditActivity} for the
      * bookmark. If not, add the bookmark to bookmarkmodel, and show a snackbar notifying the user.
      */
-    public static void addOrEditBookmark(long idToAdd, EnhancedBookmarksModel bookmarkModel,
+    public static void addOrEditBookmark(long idToAdd, final EnhancedBookmarksModel bookmarkModel,
             Tab tab, final SnackbarManager snackbarManager, final Activity activity) {
         if (idToAdd != ChromeBrowserProviderClient.INVALID_BOOKMARK_ID) {
-            startEditActivity(activity, new BookmarkId(idToAdd, BookmarkType.NORMAL));
+            startEditActivity(activity, new BookmarkId(idToAdd, BookmarkType.NORMAL),
+                    tab.getWebContents());
             return;
         }
 
-        final BookmarkId enhancedId = bookmarkModel
-                .addBookmark(bookmarkModel.getDefaultFolder(), 0, tab.getTitle(), tab.getUrl());
-
-        Pair<EnhancedBookmarksModel, BookmarkId> pair = Pair.create(bookmarkModel, enhancedId);
-
-        SnackbarController snackbarController = new SnackbarController() {
+        AddBookmarkCallback callback = new AddBookmarkCallback() {
             @Override
-            public void onDismissForEachType(boolean isTimeout) {}
+            public void onBookmarkAdded(final BookmarkId enhancedId) {
+                Pair<EnhancedBookmarksModel, BookmarkId> pair =
+                        Pair.create(bookmarkModel, enhancedId);
 
-            @Override
-            public void onDismissNoAction(Object actionData) {
-                // This method will be called only if the snackbar is dismissed by timeout.
-                @SuppressWarnings("unchecked")
-                Pair<EnhancedBookmarksModel, BookmarkId> pair = (Pair<
-                        EnhancedBookmarksModel, BookmarkId>) actionData;
-                pair.first.destroy();
-            }
+                SnackbarController snackbarController = new SnackbarController() {
+                    @Override
+                    public void onDismissForEachType(boolean isTimeout) {}
 
-            @Override
-            public void onAction(Object actionData) {
-                @SuppressWarnings("unchecked")
-                Pair<EnhancedBookmarksModel, BookmarkId> pair = (Pair<
-                        EnhancedBookmarksModel, BookmarkId>) actionData;
-                // Show edit activity with the name of parent folder highlighted.
-                startEditActivity(activity, enhancedId);
-                pair.first.destroy();
+                    @Override
+                    public void onDismissNoAction(Object actionData) {
+                        // This method will be called only if the snackbar is dismissed by timeout.
+                        @SuppressWarnings("unchecked")
+                        Pair<EnhancedBookmarksModel, BookmarkId> pair = (Pair<
+                                EnhancedBookmarksModel, BookmarkId>) actionData;
+                        pair.first.destroy();
+                    }
+
+                    @Override
+                    public void onAction(Object actionData) {
+                        @SuppressWarnings("unchecked")
+                        Pair<EnhancedBookmarksModel, BookmarkId> pair = (Pair<
+                                EnhancedBookmarksModel, BookmarkId>) actionData;
+                        // Show edit activity with the name of parent folder highlighted.
+                        startEditActivity(activity, enhancedId, null);
+                        pair.first.destroy();
+                    }
+                };
+
+                int messageId;
+                int buttonId;
+                OfflinePageBridge offlinePageBridge = bookmarkModel.getOfflinePageBridge();
+                if (offlinePageBridge == null) {
+                    messageId = R.string.enhanced_bookmark_page_saved;
+                    buttonId = R.string.enhanced_bookmark_item_edit;
+                } else {
+                    boolean almostFull = offlinePageBridge.isStorageAlmostFull();
+                    messageId = almostFull
+                            ? R.string.enhanced_bookmark_page_saved_offline_pages_storage_near_full
+                            : R.string.enhanced_bookmark_page_saved_offline_pages;
+                    // TODO(fgorski): show "FREE UP SPACE" button.
+                    buttonId = R.string.enhanced_bookmark_item_edit;
+                }
+                snackbarManager.showSnackbar(Snackbar.make(
+                        activity.getString(messageId), snackbarController)
+                        .setAction(activity.getString(buttonId), pair));
             }
         };
-        snackbarManager.showSnackbar(Snackbar.make(
-                activity.getString(R.string.enhanced_bookmark_page_saved), snackbarController)
-                .setAction(activity.getString(R.string.enhanced_bookmark_item_edit), pair));
+
+        bookmarkModel.addBookmarkAsync(bookmarkModel.getDefaultFolder(), 0, tab.getTitle(),
+                                       tab.getUrl(), tab.getWebContents(), callback);
     }
 
     /**
@@ -106,7 +130,7 @@ public class EnhancedBookmarkUtils {
      * @return True if enhanced bookmark is on, false otherwise.
      */
     public static boolean showEnhancedBookmarkIfEnabled(Activity activity) {
-        if (!isEnhancedBookmarkEnabled(Profile.getLastUsedProfile().getOriginalProfile())) {
+        if (!isEnhancedBookmarkEnabled()) {
             return false;
         }
         if (DeviceFormFactor.isTablet(activity)) {
@@ -120,10 +144,19 @@ public class EnhancedBookmarkUtils {
     /**
      * Starts an {@link EnhancedBookmarkEditActivity} for the given {@link BookmarkId}.
      */
-    public static void startEditActivity(Context context, BookmarkId bookmarkId) {
+    public static void startEditActivity(
+            Context context, BookmarkId bookmarkId, WebContents webContents) {
         Intent intent = new Intent(context, EnhancedBookmarkEditActivity.class);
         intent.putExtra(EnhancedBookmarkEditActivity.INTENT_BOOKMARK_ID, bookmarkId.toString());
-        context.startActivity(intent);
+        if (webContents != null) {
+            intent.putExtra(EnhancedBookmarkEditActivity.INTENT_WEB_CONTENTS, webContents);
+        }
+        if (context instanceof EnhancedBookmarkActivity) {
+            ((EnhancedBookmarkActivity) context).startActivityForResult(
+                    intent, EnhancedBookmarkActivity.EDIT_BOOKMARK_REQUEST_CODE);
+        } else {
+            context.startActivity(intent);
+        }
     }
 
     /**

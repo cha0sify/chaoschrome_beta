@@ -4,24 +4,19 @@
 
 package org.chromium.chrome.browser.enhancedbookmarks;
 
-import android.app.ActivityManager;
-import android.content.Context;
-import android.graphics.Bitmap;
-import android.util.LruCache;
-import android.util.Pair;
-
-import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ObserverList;
 import org.chromium.base.VisibleForTesting;
 import org.chromium.chrome.browser.BookmarksBridge;
-import org.chromium.chrome.browser.favicon.LargeIconBridge;
-import org.chromium.chrome.browser.favicon.LargeIconBridge.LargeIconCallback;
 import org.chromium.chrome.browser.offline_pages.OfflinePageBridge;
+import org.chromium.chrome.browser.offline_pages.OfflinePageBridge.OfflinePageModelObserver;
+import org.chromium.chrome.browser.offline_pages.OfflinePageBridge.SavePageCallback;
 import org.chromium.chrome.browser.offline_pages.OfflinePageItem;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.components.bookmarks.BookmarkId;
 import org.chromium.components.bookmarks.BookmarkType;
 import org.chromium.components.dom_distiller.core.DomDistillerUrlUtils;
+import org.chromium.components.offline_pages.SavePageResult;
+import org.chromium.content_public.browser.WebContents;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +28,17 @@ import java.util.List;
  */
 public class EnhancedBookmarksModel extends BookmarksBridge {
     private static final int FAVICON_MAX_CACHE_SIZE = 10 * 1024 * 1024; // 10MB
+
+    /**
+     * Callback for use with addBookmark.
+     */
+    public interface AddBookmarkCallback {
+        /**
+         * Called when the bookmark has been added.
+         * @param bookmarkId ID of the bookmark that has been added.
+         */
+        void onBookmarkAdded(BookmarkId bookmarkId);
+    }
 
     /**
      * Observer that listens to delete event. This interface is used by undo controllers to know
@@ -49,10 +55,10 @@ public class EnhancedBookmarksModel extends BookmarksBridge {
         void onDeleteBookmarks(String[] titles, boolean isUndoable);
     }
 
-    private LargeIconBridge mLargeIconBridge;
     private ObserverList<EnhancedBookmarkDeleteObserver> mDeleteObservers = new ObserverList<>();
-    private LruCache<String, Pair<Bitmap, Integer>> mFaviconCache;
     private OfflinePageBridge mOfflinePageBridge;
+    private boolean mIsOfflinePageModelLoaded;
+    private OfflinePageModelObserver mOfflinePageModelObserver;
 
     /**
      * Initialize enhanced bookmark model for last used non-incognito profile.
@@ -64,26 +70,23 @@ public class EnhancedBookmarksModel extends BookmarksBridge {
     @VisibleForTesting
     public EnhancedBookmarksModel(Profile profile) {
         super(profile);
-        mLargeIconBridge = new LargeIconBridge();
-
-        ActivityManager activityManager = ((ActivityManager) ApplicationStatus
-                .getApplicationContext().getSystemService(Context.ACTIVITY_SERVICE));
-        int maxSize = Math.min(activityManager.getMemoryClass() / 4 * 1024 * 1024,
-                FAVICON_MAX_CACHE_SIZE);
-        mFaviconCache = new LruCache<String, Pair<Bitmap, Integer>>(maxSize) {
-            @Override
-            protected int sizeOf(String key, Pair<Bitmap, Integer> icon) {
-                int size = Integer.SIZE;
-                if (icon.first != null) {
-                    size += icon.first.getByteCount();
-                }
-                return size;
-            }
-        };
 
         if (OfflinePageBridge.isEnabled()) {
-            // TODO(jianli): Make sure to wait until the bridge is loaded.
             mOfflinePageBridge = new OfflinePageBridge(profile);
+            if (mOfflinePageBridge.isOfflinePageModelLoaded()) {
+                mIsOfflinePageModelLoaded = true;
+            } else {
+                mOfflinePageModelObserver = new OfflinePageModelObserver() {
+                    @Override
+                    public void offlinePageModelLoaded() {
+                        mIsOfflinePageModelLoaded = true;
+                        if (isBookmarkModelLoaded()) {
+                            notifyBookmarkModelLoaded();
+                        }
+                    }
+                };
+                mOfflinePageBridge.addObserver(mOfflinePageModelObserver);
+            }
         }
     }
 
@@ -92,9 +95,18 @@ public class EnhancedBookmarksModel extends BookmarksBridge {
      */
     @Override
     public void destroy() {
+        if (mOfflinePageBridge != null) {
+            mOfflinePageBridge.destroy();
+            mOfflinePageBridge = null;
+        }
+
         super.destroy();
-        mLargeIconBridge.destroy();
-        mFaviconCache = null;
+    }
+
+    @Override
+    public boolean isBookmarkModelLoaded() {
+        return super.isBookmarkModelLoaded()
+                && (mOfflinePageBridge == null || mIsOfflinePageModelLoaded);
     }
 
     /**
@@ -156,10 +168,37 @@ public class EnhancedBookmarksModel extends BookmarksBridge {
         }
     }
 
-    @Override
-    public BookmarkId addBookmark(BookmarkId parent, int index, String title, String url) {
+    /**
+     * Add a new bookmark asynchronously.
+     *
+     * @param parent Folder where to add.
+     * @param index The position where the bookmark will be placed in parent folder
+     * @param title Title of the new bookmark.
+     * @param url Url of the new bookmark
+     * @param webContents A {@link WebContents} object.
+     * @param callback The callback to be invoked when the bookmark is added.
+     */
+    public void addBookmarkAsync(BookmarkId parent, int index, String title, String url,
+                                 WebContents webContents, final AddBookmarkCallback callback) {
         url = DomDistillerUrlUtils.getOriginalUrlFromDistillerUrl(url);
-        return super.addBookmark(parent, index, title, url);
+        final BookmarkId enhancedId = addBookmark(parent, index, title, url);
+
+        // If there is no need to save offline page, return now.
+        if (mOfflinePageBridge == null) {
+            callback.onBookmarkAdded(enhancedId);
+            return;
+        }
+
+        mOfflinePageBridge.savePage(webContents, enhancedId,
+                new SavePageCallback() {
+                    @Override
+                    public void onSavePageDone(int savePageResult, String url) {
+                        // TODO(jianli): Error handling.
+                        if (savePageResult == SavePageResult.SUCCESS) {
+                            callback.onBookmarkAdded(enhancedId);
+                        }
+                    }
+                });
     }
 
     /**
@@ -170,32 +209,19 @@ public class EnhancedBookmarksModel extends BookmarksBridge {
     }
 
     /**
-     * Retrieves a favicon and fallback color for the given |url|. An LRU cache is used to store the
-     * favicons. If the favicon is not already present in the cache, it is retrieved using
-     * LargeIconBridge#getLargeIconForUrl().
+     * Returns the url used to launch a bookmark.
      *
-     * @see LargeIconBridge#getLargeIconForUrl(Profile, String, int, LargeIconCallback)
+     * @param bookmarkId ID of the bookmark to launch.
      */
-    public void getLargeIcon(final String url, int minSize, final LargeIconCallback callback) {
-        assert callback != null;
-        LargeIconCallback callbackWrapper = callback;
-
-        Pair<Bitmap, Integer> cached = mFaviconCache.get(url);
-        if (cached != null) {
-            callback.onLargeIconAvailable(cached.first, cached.second);
-            return;
+    public String getBookmarkLaunchUrl(BookmarkId bookmarkId) {
+        String url = getBookmarkById(bookmarkId).getUrl();
+        if (mOfflinePageBridge == null) {
+            return url;
         }
 
-        callbackWrapper = new LargeIconCallback() {
-            @Override
-            public void onLargeIconAvailable(Bitmap icon, int fallbackColor) {
-                mFaviconCache.put(url, new Pair<Bitmap, Integer>(icon, fallbackColor));
-                callback.onLargeIconAvailable(icon, fallbackColor);
-            }
-        };
-
-        mLargeIconBridge.getLargeIconForUrl(Profile.getLastUsedProfile(), url, minSize,
-                callbackWrapper);
+        // Return the offline url for the offline page.
+        OfflinePageItem page = mOfflinePageBridge.getPageByBookmarkId(bookmarkId);
+        return page == null ? url : page.getOfflineUrl();
     }
 
     /**
@@ -220,5 +246,12 @@ public class EnhancedBookmarksModel extends BookmarksBridge {
             bookmarkIds.add(offlinePage.getBookmarkId());
         }
         return bookmarkIds;
+    }
+
+    /**
+     * @return Offline page bridge.
+     */
+    public OfflinePageBridge getOfflinePageBridge() {
+        return mOfflinePageBridge;
     }
 }

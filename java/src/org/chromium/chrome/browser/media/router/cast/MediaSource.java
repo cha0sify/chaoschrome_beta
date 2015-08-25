@@ -8,6 +8,8 @@ import android.support.v7.media.MediaRouteSelector;
 
 import com.google.android.gms.cast.CastMediaControlIntent;
 
+import org.chromium.base.VisibleForTesting;
+
 import java.util.Locale;
 
 import javax.annotation.Nullable;
@@ -20,6 +22,7 @@ public class MediaSource {
     private static final String CAST_SOURCE_URN_PARAMETER_SEPARATOR = "/";
     private static final String CAST_SOURCE_URN_APPLICATION_ID_PREFIX = "__castappid__=";
 
+    private final String mSourceUrn;
     private String mApplicationId;
 
     /**
@@ -31,7 +34,7 @@ public class MediaSource {
     public static MediaSource from(String sourceUrn) {
         String applicationId = getCastApplicationId(sourceUrn);
         if (applicationId == null) return null;
-        return new MediaSource(applicationId);
+        return new MediaSource(sourceUrn, applicationId);
     }
 
     /**
@@ -45,7 +48,16 @@ public class MediaSource {
                 .build();
     }
 
-    private MediaSource(String applicationId) {
+    /**
+     * @return the Cast application id corresponding to the source.
+     */
+    public String getApplicationId() {
+        return mApplicationId;
+    }
+
+    @VisibleForTesting
+    public MediaSource(String sourceUrn, String applicationId) {
+        mSourceUrn = sourceUrn;
         mApplicationId = applicationId;
     }
 
@@ -72,5 +84,12 @@ public class MediaSource {
             }
         }
         return null;
+    }
+
+    /**
+     * @return the URN identifying the media source
+     */
+    public String getUrn() {
+        return mSourceUrn;
     }
 }

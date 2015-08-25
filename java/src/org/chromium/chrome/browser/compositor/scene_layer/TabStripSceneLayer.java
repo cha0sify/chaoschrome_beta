@@ -91,7 +91,7 @@ public class TabStripSceneLayer extends SceneOverlayLayer {
         final float width = layoutHelper.getWidth() * mDpToPx;
         final float height = layoutHelper.getHeight() * mDpToPx;
         nativeUpdateTabStripLayer(mNativePtr, width, height, yOffset * mDpToPx,
-                layoutHelper.getStripBrightness(),
+                layoutHelper.getBackgroundTabBrightness(), layoutHelper.getBrightness(),
                 shouldReaddBackground(layoutHelper.getOrientation()));
 
         CompositorButton newTabButton = layoutHelper.getNewTabButton();
@@ -122,8 +122,8 @@ public class TabStripSceneLayer extends SceneOverlayLayer {
                     layoutHelper.getWidth() * mDpToPx, st.getDrawX() * mDpToPx,
                     st.getDrawY() * mDpToPx, st.getWidth() * mDpToPx, st.getHeight() * mDpToPx,
                     st.getContentOffsetX() * mDpToPx, st.getCloseButton().getOpacity(),
-                    st.isLoading(), layoutHelper.getBorderOpacity(), layerTitleCache,
-                    resourceManager);
+                    st.isLoading(), st.getLoadingSpinnerRotation(), layoutHelper.getBorderOpacity(),
+                    layerTitleCache, resourceManager);
         }
     }
 
@@ -137,7 +137,8 @@ public class TabStripSceneLayer extends SceneOverlayLayer {
     private native void nativeBeginBuildingFrame(long nativeTabStripSceneLayer, boolean visible);
     private native void nativeFinishBuildingFrame(long nativeTabStripSceneLayer);
     private native void nativeUpdateTabStripLayer(long nativeTabStripSceneLayer, float width,
-            float height, float yOffset, float stripBrightness, boolean shouldReaddBackground);
+            float height, float yOffset, float backgroundTabBrightness, float brightness,
+            boolean shouldReaddBackground);
     private native void nativeUpdateNewTabButton(long nativeTabStripSceneLayer, int resourceId,
             float x, float y, float width, float height, boolean visible,
             ResourceManager resourceManager);
@@ -147,7 +148,7 @@ public class TabStripSceneLayer extends SceneOverlayLayer {
     private native void nativePutStripTabLayer(long nativeTabStripSceneLayer, int id,
             int closeResourceId, int handleResourceId, boolean foreground, boolean closePressed,
             float toolbarWidth, float x, float y, float width, float height, float contentOffsetX,
-            float closeButtonAlpha, boolean isLoading, float borderOpacity,
+            float closeButtonAlpha, boolean isLoading, float spinnerRotation, float borderOpacity,
             LayerTitleCache layerTitleCache, ResourceManager resourceManager);
     private native void nativeSetContentTree(long nativeTabStripSceneLayer, SceneLayer contentTree);
 }
