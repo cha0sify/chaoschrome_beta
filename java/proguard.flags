@@ -113,6 +113,10 @@
   *;
 }
 
+-keep class com.qualcomm.qti.** {
+  *;
+}
+
 # flingViewport is used by Android WebView and a Chrome test.
 -keepclassmembers class org.chromium.content.browser.ContentViewCore {
   public void flingViewport(long, int, int);

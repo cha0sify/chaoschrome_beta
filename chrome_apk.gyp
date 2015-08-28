@@ -4,7 +4,8 @@
 {
   'includes': [
     '../../chrome/chrome_android_paks.gypi', # Included for the list of pak resources.
-    '../../build/util/version.gypi'
+    '../../build/util/version.gypi',
+    '../../components/web_refiner/web_refiner_vars.gypi',
    ],
   'variables': {
     'chromium_code': 1,
@@ -128,6 +129,7 @@
         'native_lib_target': 'libchrome_public',
         'java_in_dir': 'java',
         'resource_dir': '../../chrome/android/java/res_chromium',
+        'extra_native_libs': ['<@(web_refiner_native_libs)'],
         'conditions': [
           # Only attempt loading the library from the APK for 64 bit devices
           # until the number of 32 bit devices which don't support this
@@ -142,6 +144,7 @@
         'chrome_android_paks_copy',
         'chrome_public_template_resources',
         '../chrome.gyp:chrome_java',
+        '<@(web_refiner_dependencies)',
       ],
       'includes': [ 'chrome_apk.gypi' ],
     },
