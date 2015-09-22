@@ -5,5 +5,7 @@
 
 <resources xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- The application name displayed to the user. -->
-    <string name="app_name" translatable="false">Chromium</string>
+    <!-- SWE-feature-swe_browser_apk. -->
+    <string name="app_name" translatable="false">Browser</string>
+    <!-- SWE-feature-swe_browser_apk. -->
 </resources>

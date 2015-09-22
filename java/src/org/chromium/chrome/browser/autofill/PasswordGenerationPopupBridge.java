@@ -13,7 +13,9 @@ import android.widget.PopupWindow;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.ui.DropdownPopupWindow;
-import org.chromium.ui.R;
+//SWE-feature-swe_browser_apk
+import org.chromium.chrome.R;
+//SWE-feature-swe_browser_apk
 import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
 

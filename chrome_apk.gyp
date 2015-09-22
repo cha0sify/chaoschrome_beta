@@ -9,10 +9,13 @@
    ],
   'variables': {
     'chromium_code': 1,
-    'package_name': 'chrome_public_apk',
-    'manifest_package': 'org.chromium.chrome',
-    'chrome_public_apk_manifest': '<(SHARED_INTERMEDIATE_DIR)/chrome_public_apk_manifest/AndroidManifest.xml',
-    'chrome_public_test_apk_manifest': '<(SHARED_INTERMEDIATE_DIR)/chrome_public_test_apk_manifest/AndroidManifest.xml',
+    #SWE-feature-swe_browser_apk
+    'package_name': 'swe_browser_apk',
+    #TODO:This value needs to be updated from swe channel info
+    'manifest_package': 'org.codeaurora.swe.browser.dev',
+    'chrome_public_apk_manifest': '<(SHARED_INTERMEDIATE_DIR)/swe_browser_apk_manifest/AndroidManifest.xml',
+    'chrome_public_test_apk_manifest': '<(SHARED_INTERMEDIATE_DIR)/swe_browser_test_apk_manifest/AndroidManifest.xml',
+    #SWE-feature-swe_browser_apk
     # This list is shared with GN.
     # Defines a list of source files should be present in the open-source
     # chrome-apk but not in the published static_library which is included in the
@@ -62,7 +65,9 @@
     },
     {
       # GN: //chrome/android:chrome_public
-      'target_name': 'libchrome_public',
+      #SWE-feature-swe_browser_apk
+      'target_name': 'libswe',
+      #SWE-feature-swe_browser_apk
       'type': 'shared_library',
       'dependencies': [
         '../../chrome/chrome.gyp:chrome_android_core',
@@ -121,12 +126,16 @@
     },
     {
       # GN: //chrome/android:chrome_public_apk
-      'target_name': 'chrome_public_apk',
+      #SWE-feature-swe_browser_apk
+      'target_name': 'swe_browser_apk',
+      #SWE-feature-swe_browser_apk
       'type': 'none',
       'variables': {
         'android_manifest_path': '<(chrome_public_apk_manifest)',
-        'apk_name': 'ChromePublic',
-        'native_lib_target': 'libchrome_public',
+        #SWE-feature-swe_browser_apk
+        'apk_name': 'SWE_Browser',
+        'native_lib_target': 'libswe',
+        #SWE-feature-swe_browser_apk
         'java_in_dir': 'java',
         'resource_dir': '../../chrome/android/java/res_chromium',
         'extra_native_libs': ['<@(web_refiner_native_libs)'],
@@ -152,10 +161,14 @@
       # GN: N/A
       # chrome_public_apk creates a .jar as a side effect. Any java targets
       # that need that .jar in their classpath should depend on this target,
-      'target_name': 'chrome_public_apk_java',
+      #SWE-feature-swe_browser_apk
+      'target_name': 'swe_browser_apk_java',
+      #SWE-feature-swe_browser_apk
       'type': 'none',
       'dependencies': [
-        'chrome_public_apk',
+        #SWE-feature-swe_browser_apk
+        'swe_browser_apk',
+        #SWE-feature-swe_browser_apk
       ],
       'includes': [ '../../build/apk_fake_jar.gypi' ],
     },
@@ -189,7 +202,9 @@
     },
     {
       # GN: //chrome/android:chrome_public_test_apk_manifest
-      'target_name': 'chrome_public_test_apk_manifest',
+      #SWE-feature-swe_browser_apk
+      'target_name': 'swe_browser_test_apk_manifest',
+      #SWE-feature-swe_browser_apk
       'type': 'none',
       'variables': {
         'jinja_inputs': ['javatests/AndroidManifest.xml'],
@@ -202,20 +217,26 @@
     },
     {
       # GN: //chrome/android:chrome_public_test_apk
-      'target_name': 'chrome_public_test_apk',
+      #SWE-feature-swe_browser_apk
+      'target_name': 'swe_browser_test_apk',
+      #SWE-feature-swe_browser_apk
       'type': 'none',
       'dependencies': [
         'chrome_shared_test_java',
-        'chrome_public_apk_java',
+        #SWE-feature-swe_browser_apk
+        'swe_browser_apk_java',
+        #SWE-feature-swe_browser_apk
         '../../testing/android/on_device_instrumentation.gyp:broker_java',
         '../../testing/android/on_device_instrumentation.gyp:require_driver_apk',
       ],
       'variables': {
         'android_manifest_path': '<(chrome_public_test_apk_manifest)',
-        'package_name': 'chrome_public_test',
+        'package_name': 'swe_browser_test',
         'java_in_dir': 'javatests',
         'java_in_dir_suffix': '/src_dummy',
-        'apk_name': 'ChromePublicTest',
+        #SWE-feature-swe_browser_apk
+        'apk_name': 'SWE_BrowserTest',
+        #SWE-feature-swe_browser_apk
         'is_test_apk': 1,
         'test_type': 'instrumentation',
         'isolate_file': '../chrome_public_test_apk.isolate',
