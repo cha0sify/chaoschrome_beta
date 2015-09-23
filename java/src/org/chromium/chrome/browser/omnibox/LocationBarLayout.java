@@ -54,6 +54,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.CollectionUtil;
@@ -906,6 +907,18 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
                 && !TextUtils.isEmpty(mUrlBar.getText())) {
             mUrlBar.setUrl(mToolbarDataProvider.getTab().getUrl(), null);
         }
+
+        if (mSecurityIconType == ConnectionSecurityLevel.SECURE ||
+                mSecurityIconType == ConnectionSecurityLevel.EV_SECURE) {
+            if (!gainFocus) {
+                String title = mToolbarDataProvider.getTab().getTitle();
+                if (!TextUtils.isEmpty(title))
+                    mUrlBar.setText(title, TextView.BufferType.EDITABLE);
+            } else {
+                mUrlBar.setUrl(mToolbarDataProvider.getTab().getUrl(), null);
+            }
+        }
+
     }
 
     @Override
@@ -1206,7 +1219,7 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
         if (securityLevel == ConnectionSecurityLevel.NONE) {
             updateSecurityButton(false);
         } else {
-            updateSecurityButton(true);
+            //updateSecurityButton(true);
             // Since we emphasize the schema of the URL based on the security type, we need to
             // refresh the emphasis.
             mUrlBar.deEmphasizeUrl();
@@ -1983,6 +1996,12 @@ public class LocationBarLayout extends FrameLayout implements OnClickListener,
         if (setUrlBarText(displayText, path, url)) {
             mUrlBar.deEmphasizeUrl();
             emphasizeUrl();
+        }
+        if (securityLevel == ConnectionSecurityLevel.SECURE ||
+                securityLevel == ConnectionSecurityLevel.EV_SECURE) {
+            String title = mToolbarDataProvider.getTab().getTitle();
+            if (!TextUtils.isEmpty(title))
+                mUrlBar.setText(title, TextView.BufferType.EDITABLE);
         }
         if (showingQuery) {
             updateNavigationButton();

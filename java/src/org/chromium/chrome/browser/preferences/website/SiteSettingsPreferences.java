@@ -8,12 +8,12 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceClickListener;
-import android.preference.PreferenceFragment;
 
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ContentSettingsType;
 import org.chromium.chrome.browser.preferences.LocationSettings;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
+import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +24,7 @@ import java.util.List;
  * permissions that have been granted to websites, as well as enable or disable permissions
  * browser-wide.
  */
-public class SiteSettingsPreferences extends PreferenceFragment
+public class SiteSettingsPreferences extends BrowserPreferenceFragment
         implements OnPreferenceClickListener {
     // The keys for each category shown on the Site Settings page.
     static final String ALL_SITES_KEY = "all_sites";

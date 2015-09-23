@@ -242,6 +242,10 @@ public class ToolbarPhone extends ToolbarLayout
 
         mBrowsingModeViews.add(mPhoneLocationBar);
 
+        if (mFaviconView.getView() != null) {
+            mBrowsingModeViews.add(mFaviconView.getView());
+        }
+
         mToolbarBackground = new ColorDrawable(getToolbarColorForVisualState(VisualState.NORMAL));
         mTabSwitcherAnimationBgOverlay =
                 new ColorDrawable(getToolbarColorForVisualState(VisualState.NORMAL));
@@ -526,8 +530,10 @@ public class ToolbarPhone extends ToolbarLayout
             return Math.max(
                     mToolbarSidePadding, mToolbarButtonsContainer.getMeasuredWidth());
         } else {
-            return mHomeButton.getVisibility() != GONE
-                    ? mHomeButton.getMeasuredWidth() : mToolbarSidePadding;
+            int leftBound = mFaviconView.getMeasuredWidth() != 0 ?
+                    mFaviconView.getMeasuredWidth() : mToolbarSidePadding;
+            leftBound += mHomeButton.getVisibility() != GONE ? mHomeButton.getMeasuredWidth() : 0;
+            return leftBound;
         }
     }
 
@@ -1021,16 +1027,6 @@ public class ToolbarPhone extends ToolbarLayout
                         (int) (mUrlExpansionPercent * (255 - unfocusedAlpha) + unfocusedAlpha);
             }
             mLocationBarBackground.setAlpha(backgroundAlpha);
-
-            if (mPhoneLocationBar.getAlpha() > 0 || mForceDrawLocationBarBackground) {
-                mLocationBarBackground.setBounds(
-                        mUrlViewportBounds.left + mLocationBarBackgroundOffset.left,
-                        mUrlViewportBounds.top + mLocationBarBackgroundOffset.top,
-                        mUrlViewportBounds.right + mLocationBarBackgroundOffset.right,
-                        mUrlViewportBounds.bottom + mLocationBarBackgroundOffset.bottom);
-                mLocationBarBackground.draw(canvas);
-            }
-
             locationBarClipLeft = mUrlViewportBounds.left + mUrlBackgroundPadding.left
                     + mLocationBarBackgroundOffset.left;
             locationBarClipRight = mUrlViewportBounds.right - mUrlBackgroundPadding.right
@@ -1324,6 +1320,7 @@ public class ToolbarPhone extends ToolbarLayout
         } else {
             updateViewsForTabSwitcherMode(mInTabSwitcherMode);
         }
+        super.onTabSwitcherTransitionFinished();
     }
 
     private void updateOverlayDrawables() {

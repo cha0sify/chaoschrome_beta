@@ -8,7 +8,6 @@ import android.content.Context;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
-import android.preference.PreferenceFragment;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -18,13 +17,14 @@ import org.chromium.chrome.browser.help.HelpAndFeedback;
 import org.chromium.chrome.browser.preferences.ChromeBaseCheckBoxPreference;
 import org.chromium.chrome.browser.preferences.ManagedPreferenceDelegate;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
+import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.ui.widget.Toast;
 
 /**
  * Fragment to keep track of the translate preferences.
  */
-public class LanguagePreferences extends PreferenceFragment {
+public class LanguagePreferences extends BrowserPreferenceFragment {
 
     private static final String PREF_TRANSLATE_CHECKBOX = "translate_checkbox";
     public static final String PREF_AUTO_DETECT_CHECKBOX = "auto_detect_encoding_checkbox";

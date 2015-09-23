@@ -11,7 +11,6 @@ import android.content.res.Resources;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
-import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.text.format.DateUtils;
 
@@ -22,6 +21,7 @@ import org.chromium.chrome.browser.infobar.DataReductionProxyInfoBar;
 import org.chromium.chrome.browser.net.spdyproxy.DataReductionProxySettings;
 import org.chromium.chrome.browser.preferences.ChromeSwitchPreference;
 import org.chromium.chrome.browser.preferences.ManagedPreferenceDelegate;
+import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.third_party.android.datausagechart.NetworkStats;
 import org.chromium.third_party.android.datausagechart.NetworkStatsHistory;
@@ -29,7 +29,7 @@ import org.chromium.third_party.android.datausagechart.NetworkStatsHistory;
 /**
  * Settings fragment that allows the user to configure Data Saver.
  */
-public class DataReductionPreferences extends PreferenceFragment {
+public class DataReductionPreferences extends BrowserPreferenceFragment {
 
     public static final String PREF_DATA_REDUCTION_SWITCH = "data_reduction_switch";
     private static final String PREF_DATA_REDUCTION_STATS = "data_reduction_stats";

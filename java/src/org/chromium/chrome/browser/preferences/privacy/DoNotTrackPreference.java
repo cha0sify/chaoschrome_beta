@@ -7,16 +7,16 @@ package org.chromium.chrome.browser.preferences.privacy;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
-import android.preference.PreferenceFragment;
 
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.preferences.ChromeSwitchPreference;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
+import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
 
 /**
  * Fragment to manage 'Do Not Track' preference and to explain to the user what it does.
  */
-public class DoNotTrackPreference extends PreferenceFragment {
+public class DoNotTrackPreference extends BrowserPreferenceFragment {
 
     private static final String PREF_DO_NOT_TRACK_SWITCH = "do_not_track_switch";
 

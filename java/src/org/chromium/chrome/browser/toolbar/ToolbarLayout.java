@@ -18,6 +18,7 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 
+import org.chromium.base.VisibleForTesting;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.appmenu.AppMenuButtonHelper;
 import org.chromium.chrome.browser.compositor.Invalidator;
@@ -60,6 +61,8 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
     protected final int mToolbarHeightWithoutShadow;
 
     private boolean mFindInPageToolbarShowing;
+
+    protected ToolbarFavicon mFaviconView;
 
     /**
      * Basic constructor for {@link ToolbarLayout}.
@@ -125,6 +128,13 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
                 return false;
             }
         };
+
+        mFaviconView = new ToolbarFavicon(this);
+    }
+
+    @VisibleForTesting
+    public ToolbarFavicon getFaviconView() {
+        return mFaviconView;
     }
 
     /**
@@ -369,6 +379,14 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
         if (ntp != null) getLocationBar().onTabLoadingNTP(ntp);
 
         getLocationBar().updateMicButtonState();
+
+        mFaviconView.refreshTab(getToolbarDataProvider().getTab());
+        if (this instanceof ToolbarTablet) {
+            // Do this only for Tablet UI. Phone UI has
+            // tab switcher animation and the Favicon is
+            // set after tab switcher animation is finished
+            mFaviconView.refreshFavicon();
+        }
     }
 
     /**
@@ -431,7 +449,9 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
      * Gives inheriting classes the chance to update their state when the TabSwitcher transition has
      * finished.
      */
-    protected void onTabSwitcherTransitionFinished() { }
+    protected void onTabSwitcherTransitionFinished() {
+        mFaviconView.refreshFavicon();
+    }
 
     /**
      * Gives inheriting classes the chance to update themselves based on the

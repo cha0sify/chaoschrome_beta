@@ -9,7 +9,6 @@ import android.preference.CheckBoxPreference;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.Preference.OnPreferenceClickListener;
-import android.preference.PreferenceFragment;
 import android.preference.PreferenceScreen;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -25,13 +24,14 @@ import org.chromium.chrome.browser.preferences.ManagedPreferenceDelegate;
 import org.chromium.chrome.browser.preferences.NetworkPredictionOptions;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.Preferences;
+import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.safebrowsing.SafeBrowsingFieldTrial;
 
 /**
  * Fragment to keep track of the all the privacy related preferences.
  */
-public class PrivacyPreferences extends PreferenceFragment
+public class PrivacyPreferences extends BrowserPreferenceFragment
         implements OnPreferenceChangeListener {
 
     /**
@@ -67,7 +67,7 @@ public class PrivacyPreferences extends PreferenceFragment
                 PrivacyPreferencesManager.getInstance(getActivity());
         privacyPrefManager.migrateNetworkPredictionPreferences();
         addPreferencesFromResource(R.xml.privacy_preferences);
-        getActivity().setTitle(R.string.prefs_privacy);
+        getActivity().setTitle(R.string.prefs_privacy_security);
         setHasOptionsMenu(true);
 
         mManagedPreferenceDelegate = createManagedPreferenceDelegate();

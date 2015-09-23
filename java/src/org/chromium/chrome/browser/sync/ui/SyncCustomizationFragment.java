@@ -16,7 +16,6 @@ import android.preference.CheckBoxPreference;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.Preference.OnPreferenceClickListener;
-import android.preference.PreferenceFragment;
 import android.preference.SwitchPreference;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -30,6 +29,7 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.childaccounts.ChildAccountService;
 import org.chromium.chrome.browser.invalidation.InvalidationController;
 import org.chromium.chrome.browser.preferences.ChromeSwitchPreference;
+import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
 import org.chromium.chrome.browser.sync.ProfileSyncService;
 import org.chromium.chrome.browser.sync.SyncController;
 import org.chromium.sync.AndroidSyncSettings;
@@ -42,7 +42,7 @@ import java.util.Set;
 /**
  * Settings fragment to customize Sync options (data types, encryption).
  */
-public class SyncCustomizationFragment extends PreferenceFragment
+public class SyncCustomizationFragment extends BrowserPreferenceFragment
         implements PassphraseDialogFragment.Listener, PassphraseCreationDialogFragment.Listener,
                    PassphraseTypeDialogFragment.Listener, OnPreferenceClickListener,
                    OnPreferenceChangeListener, ProfileSyncService.SyncStateChangedListener {

@@ -12,11 +12,13 @@
         android:key="os_permissions_warning_divider"
         android:layout="@layout/divider_preference" />
     <PreferenceCategory
+        android:layout="@layout/browser_preference_category_first"
         android:key="site_heading"
         android:title="@string/website_settings_site_category" />
     <org.chromium.chrome.browser.preferences.TextMessagePreference
         android:key="site_title" />
     <PreferenceCategory
+        android:layout="@layout/browser_preference_category"
         android:key="site_usage"
         android:title="@string/website_settings_usage_category" />
     <org.chromium.chrome.browser.preferences.website.ClearWebsiteStorage
@@ -27,6 +29,7 @@
         android:negativeButtonText="@string/cancel"
         android:widgetLayout="@layout/clear_storage" />
     <PreferenceCategory
+        android:layout="@layout/browser_preference_category"
         android:key="site_permissions"
         android:title="@string/website_settings_permissions_category" />
     <org.chromium.chrome.browser.preferences.ChromeBaseListPreference

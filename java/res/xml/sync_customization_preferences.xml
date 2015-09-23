@@ -11,6 +11,7 @@
         android:summaryOff="@string/text_off" />
 
     <PreferenceCategory
+        android:layout="@layout/browser_preference_category_first"
         android:key="sync_data_types"
         android:title="@string/sync_data_types">
         <org.chromium.chrome.browser.preferences.ChromeSwitchPreference

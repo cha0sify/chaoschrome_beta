@@ -5,11 +5,14 @@
 
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
+<!--
     <org.chromium.chrome.browser.preferences.SignInPreference
         android:key="sign_in"
         android:title="@string/sign_in_to_chrome" />
+-->
 
     <PreferenceCategory
+        android:layout="@layout/browser_preference_category_first"
         android:title="@string/prefs_section_basics"/>
     <org.chromium.chrome.browser.preferences.SearchEnginePreference
         android:key="search_engine"
@@ -32,6 +35,7 @@
         android:title="@string/options_homepage_title" />
 
     <PreferenceCategory
+        android:layout="@layout/browser_preference_category"
         android:title="@string/prefs_section_advanced"/>
     <Preference
         android:fragment="org.chromium.chrome.browser.preferences.privacy.PrivacyPreferences"

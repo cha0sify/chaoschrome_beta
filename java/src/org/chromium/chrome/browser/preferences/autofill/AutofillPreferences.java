@@ -10,7 +10,6 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
-import android.preference.PreferenceFragment;
 import android.preference.PreferenceGroup;
 
 import org.chromium.base.ApiCompatibilityUtils;
@@ -20,11 +19,12 @@ import org.chromium.chrome.browser.autofill.PersonalDataManager.AutofillProfile;
 import org.chromium.chrome.browser.autofill.PersonalDataManager.CreditCard;
 import org.chromium.chrome.browser.preferences.ChromeBaseCheckBoxPreference;
 import org.chromium.chrome.browser.preferences.ChromeSwitchPreference;
+import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
 
 /**
  * Autofill settings fragment, which allows the user to edit autofill and credit card profiles.
  */
-public class AutofillPreferences extends PreferenceFragment
+public class AutofillPreferences extends BrowserPreferenceFragment
         implements OnPreferenceChangeListener, PersonalDataManager.PersonalDataManagerObserver {
 
     public static final String AUTOFILL_GUID = "guid";

@@ -22,6 +22,8 @@ import org.chromium.chrome.browser.favicon.FaviconHelper.FaviconImageCallback;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.widget.RoundedIconGenerator;
 
+import java.io.ByteArrayOutputStream;
+
 /**
  * A preference that displays a website's favicon and URL and, optionally, the amount of local
  * storage used by the site.
@@ -45,6 +47,7 @@ class WebsitePreference extends Preference implements FaviconImageCallback {
     private static final int FAVICON_PADDING_DP = 4;
     private static final int FAVICON_TEXT_SIZE_DP = 10;
     private static final int FAVICON_BACKGROUND_COLOR = 0xff969696;
+    private Bitmap mFavicon;
 
     WebsitePreference(Context context, Website site, SiteSettingsCategory category) {
         super(context);
@@ -64,6 +67,11 @@ class WebsitePreference extends Preference implements FaviconImageCallback {
 
     public void putSiteIntoExtras(String key) {
         getExtras().putSerializable(key, mSite);
+        if (mFavicon != null) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            mFavicon.compress(Bitmap.CompressFormat.PNG, 100, baos);
+            getExtras().putByteArray(SingleWebsitePreferences.EXTRA_FAVICON, baos.toByteArray());
+        }
     }
 
     /**
@@ -87,6 +95,7 @@ class WebsitePreference extends Preference implements FaviconImageCallback {
         }
 
         setIcon(new BitmapDrawable(getContext().getResources(), image));
+        mFavicon = image;
     }
 
     /**

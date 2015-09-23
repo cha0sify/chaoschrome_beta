@@ -10,7 +10,6 @@ import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.PreferenceCategory;
-import android.preference.PreferenceFragment;
 import android.preference.PreferenceScreen;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
@@ -29,6 +28,7 @@ import org.chromium.chrome.browser.preferences.ChromeSwitchPreference;
 import org.chromium.chrome.browser.preferences.ManagedPreferenceDelegate;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.Preferences;
+import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
 import org.chromium.content.common.ContentSwitches;
 import org.chromium.ui.text.SpanApplier;
 
@@ -36,7 +36,7 @@ import org.chromium.ui.text.SpanApplier;
  * The "Save passwords" screen in Settings, which allows the user to enable or disable password
  * saving, to view saved passwords (just the username and URL), and to delete saved passwords.
  */
-public class SavePasswordsPreferences extends PreferenceFragment
+public class SavePasswordsPreferences extends BrowserPreferenceFragment
         implements OnPreferenceChangeListener, PasswordListObserver,
         Preference.OnPreferenceClickListener {
 

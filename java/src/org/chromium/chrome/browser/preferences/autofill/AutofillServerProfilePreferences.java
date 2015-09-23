@@ -7,18 +7,18 @@ package org.chromium.chrome.browser.preferences.autofill;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceClickListener;
-import android.preference.PreferenceFragment;
 
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.EmbedContentViewActivity;
 import org.chromium.chrome.browser.autofill.PersonalDataManager;
 import org.chromium.chrome.browser.autofill.PersonalDataManager.AutofillProfile;
+import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
 
 /**
  * Fragment for settings page that allows user to view and edit a single server-provided address.
  */
 public class AutofillServerProfilePreferences
-        extends PreferenceFragment implements OnPreferenceClickListener {
+        extends BrowserPreferenceFragment implements OnPreferenceClickListener {
     private String mGUID;
 
     private static final String PREF_SERVER_PROFILE_DESCRIPTION = "server_profile_description";

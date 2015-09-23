@@ -318,6 +318,9 @@ CHAR-LIMIT guidelines:
       <message name="IDS_PREFS_PRIVACY" desc="Title for the Privacy preferences. [CHAR-LIMIT=32]">
         Privacy
       </message>
+      <message name="IDS_PREFS_PRIVACY_SECURITY" desc="Title for the Privacy and Security preferences. [CHAR-LIMIT=32]">
+        Privacy &amp; security
+      </message>
       <message name="IDS_NAVIGATION_ERROR_TITLE" desc="Title for checkbox to enable or disable navigation error suggestions.">
         Navigation error suggestions
       </message>

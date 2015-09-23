@@ -7,7 +7,6 @@ package org.chromium.chrome.browser.preferences;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
-import android.preference.PreferenceFragment;
 
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.partnercustomizations.HomepageManager;
@@ -16,7 +15,7 @@ import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomiza
 /**
  * Fragment that allows the user to configure homepage related preferences.
  */
-public class HomepagePreferences extends PreferenceFragment {
+public class HomepagePreferences extends BrowserPreferenceFragment {
     private static final String PREF_HOMEPAGE_SWITCH = "homepage_switch";
     private static final String PREF_HOMEPAGE_EDIT = "homepage_edit";
 

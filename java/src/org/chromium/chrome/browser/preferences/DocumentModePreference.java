@@ -14,7 +14,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
-import android.preference.PreferenceFragment;
 import android.preference.SwitchPreference;
 import android.support.v7.app.AlertDialog;
 
@@ -30,7 +29,7 @@ import java.util.List;
 /**
  * A preference to control whether user's tabs are appearing in the tab switcher.
  */
-public class DocumentModePreference extends PreferenceFragment {
+public class DocumentModePreference extends BrowserPreferenceFragment {
 
     private static final String PREF_DOCUMENT_MODE_SWITCH = "document_mode_switch";
     private SwitchPreference mDocumentModeSwitch;

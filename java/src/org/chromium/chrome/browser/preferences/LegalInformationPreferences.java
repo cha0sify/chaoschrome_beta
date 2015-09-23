@@ -5,14 +5,13 @@
 package org.chromium.chrome.browser.preferences;
 
 import android.os.Bundle;
-import android.preference.PreferenceFragment;
 
 import org.chromium.chrome.R;
 
 /**
  * Fragment to display legal information about Chrome.
  */
-public class LegalInformationPreferences extends PreferenceFragment {
+public class LegalInformationPreferences extends BrowserPreferenceFragment {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {

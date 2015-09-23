@@ -38,6 +38,7 @@
             style="@style/ToolbarButton"
             android:src="@drawable/btn_toolbar_reload"
             android:contentDescription="@string/accessibility_btn_refresh" />
+        <include layout="@layout/toolbar_favicon"/>
         <org.chromium.chrome.browser.omnibox.LocationBarTablet
             android:id="@+id/location_bar"
             android:layout_width="0dp"

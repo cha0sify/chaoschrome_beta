@@ -7,18 +7,18 @@ package org.chromium.chrome.browser.preferences.privacy;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
-import android.preference.PreferenceFragment;
 
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.contextualsearch.ContextualSearchUma;
 import org.chromium.chrome.browser.preferences.ChromeSwitchPreference;
 import org.chromium.chrome.browser.preferences.ManagedPreferenceDelegate;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
+import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
 
 /**
  * Fragment to manage the Contextual Search preference and to explain to the user what it does.
  */
-public class ContextualSearchPreferenceFragment extends PreferenceFragment {
+public class ContextualSearchPreferenceFragment extends BrowserPreferenceFragment {
 
     private static final String PREF_CONTEXTUAL_SEARCH_SWITCH = "contextual_search_switch";
 

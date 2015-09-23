@@ -9,6 +9,7 @@
     android:orderingFromXml="false">
 
     <PreferenceCategory
+        android:layout="@layout/browser_preference_category_first"
         android:title="@string/account_management_title"
         android:order="0" />
     <org.chromium.chrome.browser.preferences.ChromeSwitchPreference
@@ -29,6 +30,7 @@
         android:order="1000" />
 
     <PreferenceCategory
+        android:layout="@layout/browser_preference_category"
         android:key="not_you"
         android:order="1001" />
     <org.chromium.chrome.browser.preferences.ChromeBasePreference
@@ -38,6 +40,7 @@
         android:order="1002" />
 
     <PreferenceCategory
+        android:layout="@layout/browser_preference_category"
         android:key="parental_settings"
         android:title="@string/account_management_parental_settings"
         android:order="1003" />

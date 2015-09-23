@@ -7,7 +7,6 @@ package org.chromium.chrome.browser.preferences;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
-import android.preference.PreferenceFragment;
 
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.accessibility.FontSizePrefs;
@@ -17,7 +16,7 @@ import java.text.NumberFormat;
 /**
  * Fragment to keep track of all the accessibility related preferences.
  */
-public class AccessibilityPreferences extends PreferenceFragment
+public class AccessibilityPreferences extends BrowserPreferenceFragment
         implements OnPreferenceChangeListener {
 
     /**

@@ -10,7 +10,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceClickListener;
-import android.preference.PreferenceFragment;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -37,7 +36,7 @@ import org.chromium.sync.signin.ChromeSigninController;
 /**
  * The main settings screen, shown when the user first opens Settings.
  */
-public class MainPreferences extends PreferenceFragment implements SignInStateObserver {
+public class MainPreferences extends BrowserPreferenceFragment implements SignInStateObserver {
 
     public static final String PREF_SIGN_IN = "sign_in";
     public static final String PREF_SEARCH_ENGINE = "search_engine";
@@ -116,16 +115,18 @@ public class MainPreferences extends PreferenceFragment implements SignInStateOb
         addPreferencesFromResource(R.xml.main_preferences);
 
         registerSignInPref();
-        mSignInPreference.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-            @Override
-            public boolean onPreferenceClick(Preference preference) {
-                if (!ChromeSigninController.get(getActivity()).isSignedIn()) {
-                    displayAccountPicker();
-                    return true;
+        if (mSignInPreference != null) {
+            mSignInPreference.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(Preference preference) {
+                    if (!ChromeSigninController.get(getActivity()).isSignedIn()) {
+                        displayAccountPicker();
+                        return true;
+                    }
+                    return false;
                 }
-                return false;
-            }
-        });
+            });
+        }
 
         Preference documentMode = findPreference(PREF_DOCUMENT_MODE);
         if (FeatureUtilities.isDocumentModeEligible(getActivity())) {
@@ -176,7 +177,9 @@ public class MainPreferences extends PreferenceFragment implements SignInStateOb
     private void registerSignInPref() {
         unregisterSignInPref();
         mSignInPreference = (SignInPreference) findPreference(PREF_SIGN_IN);
-        mSignInPreference.registerForUpdates();
+        if (mSignInPreference != null) {
+            mSignInPreference.registerForUpdates();
+        }
     }
 
     private void unregisterSignInPref() {

@@ -9,7 +9,6 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.Preference;
-import android.preference.PreferenceFragment;
 import android.text.format.DateUtils;
 import android.view.ContextThemeWrapper;
 
@@ -22,7 +21,7 @@ import java.util.Calendar;
 /**
  * Settings fragment that displays information about Chrome.
  */
-public class AboutChromePreferences extends PreferenceFragment {
+public class AboutChromePreferences extends BrowserPreferenceFragment {
 
     private static final String PREF_APPLICATION_VERSION = "application_version";
     private static final String PREF_OS_VERSION = "os_version";
