@@ -15,7 +15,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.text.TextUtils;
 import android.util.Pair;
-import android.view.ActionMode;
 import android.view.ContextMenu;
 import android.view.KeyEvent;
 import android.view.View;
@@ -29,7 +28,6 @@ import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.ChromeApplication;
 import org.chromium.chrome.browser.ChromeWebContentsDelegateAndroid;
 import org.chromium.chrome.browser.FrozenNativePage;
-import org.chromium.chrome.browser.IntentHandler.TabOpenType;
 import org.chromium.chrome.browser.NativePage;
 import org.chromium.chrome.browser.TabState;
 import org.chromium.chrome.browser.contextmenu.ChromeContextMenuPopulator;
@@ -72,7 +70,7 @@ import org.chromium.content.browser.ActivityContentVideoViewClient;
 import org.chromium.content.browser.ContentVideoViewClient;
 import org.chromium.content.browser.ContentViewClient;
 import org.chromium.content.browser.ContentViewCore;
-import org.chromium.content.browser.WebActionMode;
+import org.chromium.content.browser.WebActionModeCallback;
 import org.chromium.content.browser.WebActionModeCallback.ActionHandler;
 import org.chromium.content.browser.crypto.CipherFactory;
 import org.chromium.content_public.browser.GestureStateListener;
@@ -370,8 +368,8 @@ public class ChromeTab extends Tab {
 
             // TODO(dfalcantara): Re-remove this once crbug.com/508366 is fixed.
             TabCreator tabCreator = mActivity.getTabCreator(isIncognito());
-            assert tabCreator != null;
-            if (tabCreator.createsTabsAsynchronously()) {
+
+            if (tabCreator != null && tabCreator.createsTabsAsynchronously()) {
                 DocumentWebContentsDelegate.getInstance().attachDelegate(newWebContents);
             }
         }
@@ -421,9 +419,14 @@ public class ChromeTab extends Tab {
             TabModel model = getTabModel();
             int index = model.indexOf(ChromeTab.this);
             if (index == TabModel.INVALID_TAB_INDEX) return;
-
             TabModelUtils.setIndex(model, index);
+            bringActivityToForeground();
+        }
 
+        /**
+         * Brings chrome's Activity to foreground, if it is not so.
+         */
+        protected void bringActivityToForeground() {
             // This intent is sent in order to get the activity back to the foreground if it was
             // not already. The previous call will activate the right tab in the context of the
             // TabModel but will only show the tab to the user if Chrome was already in the
@@ -434,12 +437,7 @@ public class ChromeTab extends Tab {
             // Note that calling only the intent in order to activate the tab is slightly slower
             // because it will change the tab when the intent is handled, which happens after
             // Chrome gets back to the foreground.
-            Intent newIntent = new Intent();
-            newIntent.setAction(Intent.ACTION_MAIN);
-            newIntent.setPackage(mActivity.getPackageName());
-            newIntent.putExtra(TabOpenType.BRING_TAB_TO_FRONT.name(),
-                               ChromeTab.this.getId());
-
+            Intent newIntent = Tab.createBringTabToFrontIntent(ChromeTab.this.getId());
             newIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
             getApplicationContext().startActivity(newIntent);
@@ -761,18 +759,9 @@ public class ChromeTab extends Tab {
             }
 
             @Override
-            public WebActionMode startActionMode(
-                    View view, ActionHandler actionHandler, boolean floating) {
-                if (floating) return null;
-                ChromeWebActionModeCallback callback =
-                        new ChromeWebActionModeCallback(view.getContext(), actionHandler);
-                ActionMode actionMode = view.startActionMode(callback);
-                return actionMode != null ? new WebActionMode(actionMode) : null;
-            }
-
-            @Override
-            public boolean supportsFloatingActionMode() {
-                return false;
+            public WebActionModeCallback getWebActionModeCallback(
+                    Context context, ActionHandler actionHandler) {
+                return new ChromeWebActionModeCallback(context, actionHandler);
             }
 
             @Override

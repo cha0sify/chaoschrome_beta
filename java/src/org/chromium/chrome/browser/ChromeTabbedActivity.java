@@ -9,7 +9,6 @@ import android.app.ActivityManager;
 import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -143,8 +142,6 @@ public class ChromeTabbedActivity extends ChromeActivity implements OverviewMode
     private UndoBarPopupController mUndoBarPopupController;
 
     private LayoutManagerChrome mLayoutManager;
-
-    private View mMenuAnchor;
 
     private ViewGroup mContentContainer;
 
@@ -428,6 +425,9 @@ public class ChromeTabbedActivity extends ChromeActivity implements OverviewMode
             mFindToolbarManager = new FindToolbarManager(this, getTabModelSelector(),
                     getToolbarManager()
                             .getActionModeController().getActionModeCallback());
+            if (getContextualSearchManager() != null) {
+                getContextualSearchManager().setFindToolbarManager(mFindToolbarManager);
+            }
 
             OnClickListener tabSwitcherClickHandler = new OnClickListener() {
                 @Override
@@ -457,8 +457,6 @@ public class ChromeTabbedActivity extends ChromeActivity implements OverviewMode
             getToolbarManager().initializeWithNative(mTabModelSelectorImpl, getFullscreenManager(),
                     mFindToolbarManager, mLayoutManager, mLayoutManager,
                     tabSwitcherClickHandler, newTabClickHandler, bookmarkClickHandler, null);
-
-            mMenuAnchor = findViewById(R.id.menu_anchor_stub);
 
             removeWindowBackground();
 
@@ -1146,13 +1144,23 @@ public class ChromeTabbedActivity extends ChromeActivity implements OverviewMode
     @Override
     public void onDestroyInternal() {
         if (mLayoutManager != null) mLayoutManager.removeOverviewModeObserver(this);
-        if (mTabModelSelectorTabObserver != null) mTabModelSelectorTabObserver.destroy();
+
+        if (mTabModelSelectorTabObserver != null) {
+            mTabModelSelectorTabObserver.destroy();
+            mTabModelSelectorTabObserver = null;
+        }
+
         if (mTabModelObserver != null) {
             for (TabModel model : mTabModelSelectorImpl.getModels()) {
                 model.removeObserver(mTabModelObserver);
             }
         }
-        if (mUndoBarPopupController != null) mUndoBarPopupController.destroy();
+
+        if (mUndoBarPopupController != null) {
+            mUndoBarPopupController.destroy();
+            mUndoBarPopupController = null;
+        }
+
         super.onDestroyInternal();
     }
 
@@ -1175,7 +1183,9 @@ public class ChromeTabbedActivity extends ChromeActivity implements OverviewMode
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (!mUIInitialized) return false;
+        if (!mUIInitialized) {
+            return super.onKeyDown(keyCode, event);
+        }
         boolean isCurrentTabVisible = !mLayoutManager.overviewVisible()
                 && (!isTablet() || getCurrentTabModel().getCount() != 0);
         return KeyboardShortcuts.onKeyDown(event, this, isCurrentTabVisible, true)
@@ -1232,18 +1242,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements OverviewMode
 
     private boolean showMenu() {
         if (!mUIInitialized || isFullscreenVideoPlaying()) return false;
-
-        // The following will deduct the status bar height from the screen height and this
-        // is used as the height for the menu anchor. This fixes the bug where clicking
-        // inside a search box on google.com causes the menu to appear on top as keyboard
-        // reduces the view height.
-        int displayHeight = getResources().getDisplayMetrics().heightPixels;
-
-        Rect rect = new Rect();
-        this.getWindow().getDecorView().getWindowVisibleDisplayFrame(rect);
-        int statusBarHeight = rect.top;
-        mMenuAnchor.setY((displayHeight - statusBarHeight));
-        getAppMenuHandler().showAppMenu(mMenuAnchor, true, false);
+        getAppMenuHandler().showAppMenu(null, false);
         return true;
     }
 

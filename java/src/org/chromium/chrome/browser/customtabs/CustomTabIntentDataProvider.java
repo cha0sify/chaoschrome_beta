@@ -14,6 +14,7 @@ import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.customtabs.CustomTabsIntent;
@@ -72,17 +73,20 @@ public class CustomTabIntentDataProvider {
     public static final String EXTRA_TINT_ACTION_BUTTON =
             "android.support.customtabs.extra.TINT_ACTION_BUTTON";
 
-    private static final String BUNDLE_PACKAGE_NAME = "android:packageName";
-    private static final String BUNDLE_ENTER_ANIMATION_RESOURCE = "android:animEnterRes";
-    private static final String BUNDLE_EXIT_ANIMATION_RESOURCE = "android:animExitRes";
+    private static final int MAX_CUSTOM_MENU_ITEMS = 5;
+    private static final String ANIMATION_BUNDLE_PREFIX =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? "android:activity." : "android:";
+    private static final String BUNDLE_PACKAGE_NAME = ANIMATION_BUNDLE_PREFIX + "packageName";
+    private static final String BUNDLE_ENTER_ANIMATION_RESOURCE =
+            ANIMATION_BUNDLE_PREFIX + "animEnterRes";
+    private static final String BUNDLE_EXIT_ANIMATION_RESOURCE =
+            ANIMATION_BUNDLE_PREFIX + "animExitRes";
     private final IBinder mSession;
     private final Intent mKeepAliveServiceIntent;
     private final int mTitleVisibilityState;
     private int mToolbarColor;
     private boolean mEnableUrlBarHiding;
-    private Drawable mCustomButtonIcon;
-    private String mCustomButtonDescription;
-    private PendingIntent mCustomButtonPendingIntent;
+    private ActionButtonParams mActionButtonParams;
     private Drawable mCloseButtonIcon;
     private List<Pair<String, PendingIntent>> mMenuEntries = new ArrayList<>();
     private Bundle mAnimationBundle;
@@ -103,26 +107,10 @@ public class CustomTabIntentDataProvider {
 
         Bundle actionButtonBundle =
                 IntentUtils.safeGetBundleExtra(intent, CustomTabsIntent.EXTRA_ACTION_BUTTON_BUNDLE);
-        if (actionButtonBundle != null) {
-            Bitmap bitmap = IntentUtils.safeGetParcelable(actionButtonBundle,
-                    CustomTabsIntent.KEY_ICON);
-            if (bitmap != null && !checkCustomButtonIconWithinBounds(context, bitmap)) {
-                bitmap.recycle();
-                bitmap = null;
-            } else if (bitmap != null) {
-                mCustomButtonPendingIntent = IntentUtils.safeGetParcelable(
-                        actionButtonBundle, CustomTabsIntent.KEY_PENDING_INTENT);
-                boolean shouldTint = IntentUtils.safeGetBooleanExtra(intent,
-                        EXTRA_TINT_ACTION_BUTTON, false);
-                if (shouldTint) {
-                    mCustomButtonIcon = TintedDrawable
-                            .constructTintedDrawable(context.getResources(), bitmap);
-                } else {
-                    mCustomButtonIcon = new BitmapDrawable(context.getResources(), bitmap);
-                }
-                mCustomButtonDescription = IntentUtils.safeGetString(actionButtonBundle,
-                        CustomTabsIntent.KEY_DESCRIPTION);
-            }
+        mActionButtonParams = ActionButtonParams.fromBundle(context, actionButtonBundle);
+        if (mActionButtonParams != null) {
+            mActionButtonParams.setTinted(
+                    IntentUtils.safeGetBooleanExtra(intent, EXTRA_TINT_ACTION_BUTTON, false));
         }
 
         Bitmap bitmap = IntentUtils.safeGetParcelableExtra(intent, EXTRA_CLOSE_BUTTON_ICON);
@@ -140,7 +128,8 @@ public class CustomTabIntentDataProvider {
         List<Bundle> menuItems =
                 IntentUtils.getParcelableArrayListExtra(intent, CustomTabsIntent.EXTRA_MENU_ITEMS);
         if (menuItems != null) {
-            for (Bundle bundle : menuItems) {
+            for (int i = 0; i < Math.min(MAX_CUSTOM_MENU_ITEMS, menuItems.size()); i++) {
+                Bundle bundle = menuItems.get(i);
                 String title =
                         IntentUtils.safeGetString(bundle, CustomTabsIntent.KEY_MENU_ITEM_TITLE);
                 PendingIntent pendingIntent =
@@ -223,31 +212,14 @@ public class CustomTabIntentDataProvider {
      *         action button.
      */
     public boolean shouldShowActionButton() {
-        return mCustomButtonIcon != null && mCustomButtonPendingIntent != null
-                && !TextUtils.isEmpty(mCustomButtonDescription);
+        return mActionButtonParams != null;
     }
 
     /**
-     * @return The icon used for the action button. Will be null if not set in the intent.
+     * Gets the {@link ActionButtonParams} representing the action button.
      */
-    public Drawable getActionButtonIcon() {
-        return mCustomButtonIcon;
-    }
-
-    /**
-     * @return The content description for the custom action button.
-     */
-    public String getActionButtonDescription() {
-        return mCustomButtonDescription;
-    }
-
-    /**
-     * @return The {@link PendingIntent} that will be sent when the user clicks the action button.
-     *         For testing only.
-     */
-    @VisibleForTesting
-    public PendingIntent getActionButtonPendingIntentForTest() {
-        return mCustomButtonPendingIntent;
+    ActionButtonParams getActionButtonParams() {
+        return mActionButtonParams;
     }
 
     /**
@@ -318,22 +290,14 @@ public class CustomTabIntentDataProvider {
      * @param url The url to attach as additional data to the {@link PendingIntent}.
      */
     public void sendButtonPendingIntentWithUrl(Context context, String url) {
-        assert mCustomButtonPendingIntent != null;
+        assert shouldShowActionButton();
         Intent addedIntent = new Intent();
         addedIntent.setData(Uri.parse(url));
         try {
-            mCustomButtonPendingIntent.send(context, 0, addedIntent, mOnFinished, null);
+            mActionButtonParams.getPendingIntent().send(context, 0, addedIntent, mOnFinished, null);
         } catch (CanceledException e) {
             Log.e(TAG, "CanceledException while sending pending intent in custom tab");
         }
-    }
-
-    private boolean checkCustomButtonIconWithinBounds(Context context, Bitmap bitmap) {
-        int height = context.getResources().getDimensionPixelSize(R.dimen.toolbar_icon_height);
-        if (bitmap.getHeight() < height) return false;
-        int scaledWidth = bitmap.getWidth() / bitmap.getHeight() * height;
-        if (scaledWidth > 2 * height) return false;
-        return true;
     }
 
     private boolean checkCloseButtonSize(Context context, Bitmap bitmap) {

@@ -13,13 +13,11 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
-import android.provider.Browser;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.util.SparseIntArray;
 
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.IntentHandler.TabOpenType;
 import org.chromium.chrome.browser.tab.Tab;
 
 import java.net.MalformedURLException;
@@ -170,38 +168,32 @@ public class MediaNotificationService extends Service {
             notificationIconId = R.drawable.audio_playing;
         }
 
-        Intent tabIntent = createMediaTabOpenIntent(notificationId);
-        PendingIntent contentIntent = PendingIntent.getActivity(
-                mContext, notificationId, tabIntent, 0);
-        String contentText = mContext.getResources().getString(notificationContentTextId) + ". "
-                + mContext.getResources().getString(
-                        R.string.media_notification_link_text, url);
-
         NotificationCompat.Builder builder = new NotificationCompat.Builder(mContext)
                 .setAutoCancel(false)
                 .setOngoing(true)
-                .setContentIntent(contentIntent)
                 .setContentTitle(mContext.getString(R.string.app_name))
-                .setContentText(contentText)
                 .setSmallIcon(notificationIconId)
                 .setLocalOnly(true);
+
+        StringBuilder contentText = new StringBuilder(
+                mContext.getResources().getString(notificationContentTextId)).append('.');
+        Intent tabIntent = Tab.createBringTabToFrontIntent(notificationId);
+        if (tabIntent != null) {
+            PendingIntent contentIntent = PendingIntent.getActivity(
+                    mContext, notificationId, tabIntent, 0);
+            builder.setContentIntent(contentIntent);
+            contentText.append(
+                    mContext.getResources().getString(R.string.media_notification_link_text, url));
+        } else {
+            contentText.append(" ").append(url);
+        }
+        builder.setContentText(contentText);
 
         Notification notification = new NotificationCompat.BigTextStyle(builder)
                 .bigText(contentText).build();
         mNotificationManager.notify(NOTIFICATION_NAMESPACE, notificationId, notification);
         mNotifications.put(notificationId, mediaType);
         updateSharedPreferencesEntry(notificationId, false);
-    }
-
-    /**
-     * Returns the Intent that opens the tab with the WebRTC call on click of the notification.
-     */
-    private Intent createMediaTabOpenIntent(int tabId) {
-        Intent intent = new Intent(Intent.ACTION_MAIN);
-        intent.putExtra(Browser.EXTRA_APPLICATION_ID, mContext.getPackageName());
-        intent.putExtra(TabOpenType.BRING_TAB_TO_FRONT.name(), tabId);
-        intent.setPackage(mContext.getPackageName());
-        return intent;
     }
 
     /**

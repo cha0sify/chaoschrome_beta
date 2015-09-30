@@ -65,8 +65,10 @@ public class EnhancedBookmarkManager implements EnhancedBookmarkDelegate {
     private LargeIconBridge mLargeIconBridge;
 
     private final BookmarkModelObserver mBookmarkModelObserver = new BookmarkModelObserver() {
+
         @Override
-        public void bookmarkNodeRemoved(BookmarkItem parent, int oldIndex, BookmarkItem node) {
+        public void bookmarkNodeRemoved(BookmarkItem parent, int oldIndex, BookmarkItem node,
+                boolean isDoingExtensiveChanges) {
             // If the folder is removed in folder mode, show the parent folder or falls back to all
             // bookmarks mode.
             if (getCurrentState() == UIState.STATE_FOLDER
@@ -419,7 +421,7 @@ public class EnhancedBookmarkManager implements EnhancedBookmarkDelegate {
             RecordHistogram.recordEnumeratedHistogram("Stars.LaunchLocation", launchLocation,
                     LaunchLocation.COUNT);
             EnhancedBookmarkUtils.openBookmark(mActivity, url);
-            finishActivityOnPhone();
+            EnhancedBookmarkUtils.finishActivityOnPhone(mActivity);
         }
     }
 
@@ -433,14 +435,6 @@ public class EnhancedBookmarkManager implements EnhancedBookmarkDelegate {
     public void closeSearchUI() {
         if (mSearchView.getVisibility() != View.VISIBLE) return;
         mViewSwitcher.showPrevious();
-    }
-
-    @Override
-    public void finishActivityOnPhone() {
-        Activity activity = mActivity;
-        if (activity instanceof EnhancedBookmarkActivity) {
-            activity.finish();
-        }
     }
 
     @Override

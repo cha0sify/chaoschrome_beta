@@ -519,6 +519,10 @@ public class DocumentActivity extends ChromeActivity {
                 getToolbarManager().getActionModeController()
                         .getActionModeCallback());
 
+        if (getContextualSearchManager() != null) {
+            getContextualSearchManager().setFindToolbarManager(mFindToolbarManager);
+        }
+
         getToolbarManager().initializeWithNative(getTabModelSelector(), getFullscreenManager(),
                 mFindToolbarManager, null, layoutDriver, null, null, null, null);
 
@@ -738,8 +742,7 @@ public class DocumentActivity extends ChromeActivity {
             }
         } else if (id == R.id.show_menu) {
             if (getToolbarManager().isInitialized()) {
-                getAppMenuHandler().showAppMenu(getToolbarManager().getMenuAnchor(), true,
-                        false);
+                getAppMenuHandler().showAppMenu(null, false);
             }
         } else if (id == R.id.focus_url_bar) {
             if (getToolbarManager().isInitialized()) getToolbarManager().setUrlBarFocus(true);
@@ -758,7 +761,9 @@ public class DocumentActivity extends ChromeActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (!getToolbarManager().isInitialized()) return false;
+        if (!getToolbarManager().isInitialized()) {
+            return super.onKeyDown(keyCode, event);
+        }
         return KeyboardShortcuts.onKeyDown(event, this, true, false)
                 || super.onKeyDown(keyCode, event);
     }

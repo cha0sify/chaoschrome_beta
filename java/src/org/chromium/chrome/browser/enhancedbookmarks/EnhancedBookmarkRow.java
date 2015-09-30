@@ -57,8 +57,11 @@ abstract class EnhancedBookmarkRow extends FrameLayout implements EnhancedBookma
     BookmarkItem setBookmarkId(BookmarkId bookmarkId) {
         mBookmarkId = bookmarkId;
         BookmarkItem bookmarkItem = mDelegate.getModel().getBookmarkById(bookmarkId);
-        mMoreIcon.setVisibility(bookmarkItem.isEditable() && isSelectable() ? VISIBLE : GONE);
-        setChecked(mDelegate.isBookmarkSelected(bookmarkId));
+        clearPopup();
+        if (isSelectable()) {
+            mMoreIcon.setVisibility(bookmarkItem.isEditable() ? VISIBLE : GONE);
+            setChecked(mDelegate.isBookmarkSelected(bookmarkId));
+        }
         return bookmarkItem;
     }
 
@@ -75,13 +78,20 @@ abstract class EnhancedBookmarkRow extends FrameLayout implements EnhancedBookma
         updateSelectionState();
     }
 
+    private void clearPopup() {
+        if (mPopupMenu != null) {
+            if (mPopupMenu.isShowing()) mPopupMenu.dismiss();
+            mPopupMenu = null;
+        }
+    }
+
     private void cleanup() {
-        if (mPopupMenu != null) mPopupMenu.dismiss();
+        clearPopup();
         if (mDelegate != null) mDelegate.removeUIObserver(this);
     }
 
     private void updateSelectionState() {
-        mMoreIcon.setClickable(!mDelegate.isSelectionEnabled());
+        if (isSelectable()) mMoreIcon.setClickable(!mDelegate.isSelectionEnabled());
     }
 
     /**
@@ -115,7 +125,9 @@ abstract class EnhancedBookmarkRow extends FrameLayout implements EnhancedBookma
                 @Override
                 public boolean isEnabled(int position) {
                     if (position == MOVE_POSITION) {
-                        return mDelegate.getModel().getBookmarkById(mBookmarkId).isMovable();
+                        BookmarkItem bookmark = mDelegate.getModel().getBookmarkById(mBookmarkId);
+                        if (bookmark == null) return false;
+                        return bookmark.isMovable();
                     }
                     return true;
                 }
@@ -169,10 +181,12 @@ abstract class EnhancedBookmarkRow extends FrameLayout implements EnhancedBookma
 
         mIconImageView = (ImageView) findViewById(R.id.bookmark_image);
         mTitleView = (TextView) findViewById(R.id.title);
-        mMoreIcon = (TintedImageButton) findViewById(R.id.more);
-        mHighlightView = (EnhancedBookmarkItemHighlightView) findViewById(R.id.highlight);
 
         if (isSelectable()) {
+            mHighlightView = (EnhancedBookmarkItemHighlightView) findViewById(R.id.highlight);
+
+            mMoreIcon = (TintedImageButton) findViewById(R.id.more);
+            mMoreIcon.setVisibility(VISIBLE);
             mMoreIcon.setColorFilterMode(PorterDuff.Mode.MULTIPLY);
             mMoreIcon.setOnClickListener(new OnClickListener() {
                 @Override

@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.Point;
 import android.net.ConnectivityManager;
 import android.net.Uri;
@@ -23,6 +24,7 @@ import android.os.IBinder;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.SystemClock;
+import android.support.customtabs.CustomTabsIntent;
 import android.support.customtabs.ICustomTabsCallback;
 import android.support.customtabs.ICustomTabsService;
 import android.text.TextUtils;
@@ -45,6 +47,7 @@ import org.chromium.chrome.browser.device.DeviceClassManager;
 import org.chromium.chrome.browser.init.ChromeBrowserInitializer;
 import org.chromium.chrome.browser.prerender.ExternalPrerenderHandler;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.util.IntentUtils;
 import org.chromium.content.browser.ChildProcessLauncher;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
@@ -58,6 +61,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -319,6 +324,9 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
         if (scheme != null && !scheme.equals("http") && !scheme.equals("https")) return false;
         if (!isCallerForegroundOrSelf()) return false;
 
+        // Things below need the browser process to be initialized.
+        if (!warmup(0)) return false;
+
         final IBinder session = callback.asBinder();
         final String urlString = url.toString();
         final boolean noPrerendering =
@@ -370,6 +378,31 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
         WebContents result = mSpareWebContents;
         mSpareWebContents = null;
         return result;
+    }
+
+    @Override
+    public boolean updateVisuals(final ICustomTabsCallback callback, Bundle bundle) {
+        final Bundle actionButtonBundle = IntentUtils.safeGetBundle(bundle,
+                CustomTabsIntent.EXTRA_ACTION_BUTTON_BUNDLE);
+        if (actionButtonBundle == null) return false;
+
+        final Bitmap bitmap = ActionButtonParams.tryParseBitmapFromBundle(mApplication,
+                actionButtonBundle);
+        final String description = ActionButtonParams
+                .tryParseDescriptionFromBundle(actionButtonBundle);
+        if (bitmap == null || description == null) return false;
+
+        try {
+            return ThreadUtils.runOnUiThreadBlocking(new Callable<Boolean>() {
+                @Override
+                public Boolean call() throws Exception {
+                    return CustomTabActivity.updateActionButton(callback.asBinder(), bitmap,
+                            description);
+                }
+            });
+        } catch (ExecutionException e) {
+            return false;
+        }
     }
 
     /**
@@ -701,15 +734,16 @@ public class CustomTabsConnection extends ICustomTabsService.Stub {
         wm.getDefaultDisplay().getSize(screenSize);
         Resources resources = mApplication.getResources();
         int statusBarId = resources.getIdentifier("status_bar_height", "dimen", "android");
-        int navigationBarId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
         try {
             screenSize.y -=
                     resources.getDimensionPixelSize(R.dimen.custom_tabs_control_container_height);
             screenSize.y -= resources.getDimensionPixelSize(statusBarId);
-            screenSize.y -= resources.getDimensionPixelSize(navigationBarId);
         } catch (Resources.NotFoundException e) {
             // Nothing, this is just a best effort estimate.
         }
+        float density = resources.getDisplayMetrics().density;
+        screenSize.x /= density;
+        screenSize.y /= density;
         return screenSize;
     }
 

@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.toolbar;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
@@ -59,8 +60,10 @@ public class CustomTabToolbar extends ToolbarLayout implements LocationBar,
     private ImageView mSecurityButton;
     private ImageButton mCustomActionButton;
     private int mSecurityIconType;
-    private boolean mUseDarkColors;
     private ImageButton mCloseButton;
+
+    // Whether dark tint should be applied to icons and text.
+    private boolean mUseDarkColors;
 
     private CustomTabToolbarAnimationDelegate mAnimDelegate;
     private boolean mBackgroundColorSet;
@@ -113,8 +116,9 @@ public class CustomTabToolbar extends ToolbarLayout implements LocationBar,
             public void onClick(View v) {
                 Tab currentTab = getToolbarDataProvider().getTab();
                 if (currentTab == null || currentTab.getWebContents() == null) return;
-
-                WebsiteSettingsPopup.show(getContext(), currentTab.getProfile(),
+                Activity activity = currentTab.getWindowAndroid().getActivity().get();
+                if (activity == null) return;
+                WebsiteSettingsPopup.show(activity, currentTab.getProfile(),
                         currentTab.getWebContents());
             }
         });
@@ -131,7 +135,7 @@ public class CustomTabToolbar extends ToolbarLayout implements LocationBar,
     }
 
     @Override
-    public void addCustomActionButton(Drawable drawable, String description,
+    public void setCustomActionButton(Drawable drawable, String description,
             OnClickListener listener) {
         Resources resources = getResources();
 
@@ -152,6 +156,7 @@ public class CustomTabToolbar extends ToolbarLayout implements LocationBar,
         mCustomActionButton.setContentDescription(description);
         mCustomActionButton.setOnClickListener(listener);
         mCustomActionButton.setVisibility(VISIBLE);
+        updateButtonsTint();
     }
 
     /**
@@ -216,8 +221,11 @@ public class CustomTabToolbar extends ToolbarLayout implements LocationBar,
 
         String url = getCurrentTab().getUrl().trim();
 
-        if (NativePageFactory.isNativePageUrl(url, getCurrentTab().isIncognito())) {
-            // Don't show anything for Chrome URLs.
+        // Don't show anything for Chrome URLs and "about:blank".
+        // If we have taken a pre-initialized WebContents, then the starting URL
+        // is "about:blank". We should not display it.
+        if (NativePageFactory.isNativePageUrl(url, getCurrentTab().isIncognito())
+                || "about:blank".equals(url)) {
             mUrlBar.setUrl("", null);
             return;
         }
@@ -265,15 +273,7 @@ public class CustomTabToolbar extends ToolbarLayout implements LocationBar,
     public void updateVisualsForState() {
         Resources resources = getResources();
         updateSecurityIcon(getSecurityLevel());
-        ColorStateList colorStateList = resources.getColorStateList(mUseDarkColors
-                ? R.color.dark_mode_tint : R.color.light_mode_tint);
-        mMenuButton.setTint(colorStateList);
-        if (mCloseButton.getDrawable() instanceof TintedDrawable) {
-            ((TintedDrawable) mCloseButton.getDrawable()).setTint(colorStateList);
-        }
-        if (mCustomActionButton.getDrawable() instanceof TintedDrawable) {
-            ((TintedDrawable) mCustomActionButton.getDrawable()).setTint(colorStateList);
-        }
+        updateButtonsTint();
         mUrlBar.setUseDarkTextColors(mUseDarkColors);
 
         int titleTextColor = mUseDarkColors ? resources.getColor(R.color.url_emphasis_default_text)
@@ -281,10 +281,30 @@ public class CustomTabToolbar extends ToolbarLayout implements LocationBar,
         mTitleBar.setTextColor(titleTextColor);
 
         if (getProgressBar() != null) {
-            int progressBarBackgroundColorResource = mUseDarkColors
-                    ? R.color.progress_bar_background : R.color.progress_bar_background_white;
-            getProgressBar().setBackgroundColor(
-                    getResources().getColor(progressBarBackgroundColorResource));
+            if (mBackgroundColorSet && !mUseDarkColors) {
+                getProgressBar().setBackgroundColor(BrandColorUtils
+                        .getLightProgressbarBackground(getToolbarDataProvider().getPrimaryColor()));
+                getProgressBar().setForegroundColor(resources.getColor(
+                        R.color.progress_bar_foreground_white));
+            } else {
+                int progressBarBackgroundColorResource = mUseDarkColors
+                        ? R.color.progress_bar_background : R.color.progress_bar_background_white;
+                getProgressBar().setBackgroundColor(resources.getColor(
+                        progressBarBackgroundColorResource));
+            }
+        }
+    }
+
+    private void updateButtonsTint() {
+        Resources resources = getResources();
+        ColorStateList colorStateList = resources.getColorStateList(
+                mUseDarkColors ? R.color.dark_mode_tint : R.color.light_mode_tint);
+        mMenuButton.setTint(colorStateList);
+        if (mCloseButton.getDrawable() instanceof TintedDrawable) {
+            ((TintedDrawable) mCloseButton.getDrawable()).setTint(colorStateList);
+        }
+        if (mCustomActionButton.getDrawable() instanceof TintedDrawable) {
+            ((TintedDrawable) mCustomActionButton.getDrawable()).setTint(colorStateList);
         }
     }
 
@@ -306,11 +326,6 @@ public class CustomTabToolbar extends ToolbarLayout implements LocationBar,
                 return false;
             }
         });
-    }
-
-    @Override
-    public View getMenuAnchor() {
-        return mMenuButton;
     }
 
     @Override
@@ -359,11 +374,11 @@ public class CustomTabToolbar extends ToolbarLayout implements LocationBar,
     @Override
     protected void onPrimaryColorChanged() {
         if (mBackgroundColorSet) return;
+        mBackgroundColorSet = true;
         int primaryColor = getToolbarDataProvider().getPrimaryColor();
         getBackground().setColor(primaryColor);
         mUseDarkColors = !BrandColorUtils.shouldUseLightDrawablesForToolbar(primaryColor);
         updateVisualsForState();
-        mBackgroundColorSet = true;
     }
 
     @Override

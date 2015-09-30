@@ -11,12 +11,10 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.IBinder;
-import android.provider.Browser;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.media.MediaMetadataCompat;
@@ -28,8 +26,8 @@ import android.widget.RemoteViews;
 
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.IntentHandler.TabOpenType;
 import org.chromium.chrome.browser.metrics.MediaSessionUMA;
+import org.chromium.chrome.browser.tab.Tab;
 
 /**
  * A class for notifications that provide information and optional media controls for a given media.
@@ -55,8 +53,6 @@ public class NotificationMediaPlaybackControls {
                 "NotificationMediaPlaybackControls.ListenerService.PAUSE";
         private static final String ACTION_STOP =
                 "NotificationMediaPlaybackControls.ListenerService.STOP";
-        private static final String ACTION_MEDIA_BUTTON =
-                "NotificationMediaPlaybackControls.ListenerService.MEDIA_BUTTON";
 
         private PendingIntent getPendingIntent(String action) {
             Intent intent = new Intent(this, ListenerService.class);
@@ -104,7 +100,7 @@ public class NotificationMediaPlaybackControls {
 
             // Before Android L, instead of using the MediaSession callback, the system will fire
             // ACTION_MEDIA_BUTTON intents which stores the information about the key event.
-            if (ACTION_MEDIA_BUTTON.equals(action)) {
+            if (Intent.ACTION_MEDIA_BUTTON.equals(action)) {
                 assert Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP;
 
                 KeyEvent event = (KeyEvent) intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
@@ -114,17 +110,25 @@ public class NotificationMediaPlaybackControls {
                 switch (event.getKeyCode()) {
                     case KeyEvent.KEYCODE_MEDIA_PLAY:
                         if (!sInstance.mMediaNotificationInfo.isPaused) break;
+                        MediaSessionUMA.recordPlay(
+                                MediaSessionUMA.MEDIA_SESSION_ACTION_SOURCE_MEDIA_SESSION);
                         sInstance.onPlaybackStateChanged(PLAYBACK_STATE_PLAYING);
                         break;
                     case KeyEvent.KEYCODE_MEDIA_PAUSE:
                         if (sInstance.mMediaNotificationInfo.isPaused) break;
+                        MediaSessionUMA.recordPause(
+                                MediaSessionUMA.MEDIA_SESSION_ACTION_SOURCE_MEDIA_SESSION);
                         sInstance.onPlaybackStateChanged(PLAYBACK_STATE_PAUSED);
                         break;
                     case KeyEvent.KEYCODE_HEADSETHOOK:
                     case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                         if (sInstance.mMediaNotificationInfo.isPaused) {
+                            MediaSessionUMA.recordPlay(
+                                    MediaSessionUMA.MEDIA_SESSION_ACTION_SOURCE_MEDIA_SESSION);
                             sInstance.onPlaybackStateChanged(PLAYBACK_STATE_PLAYING);
                         } else {
+                            MediaSessionUMA.recordPause(
+                                    MediaSessionUMA.MEDIA_SESSION_ACTION_SOURCE_MEDIA_SESSION);
                             sInstance.onPlaybackStateChanged(PLAYBACK_STATE_PAUSED);
                         }
                         break;
@@ -135,6 +139,8 @@ public class NotificationMediaPlaybackControls {
             }
 
             if (ACTION_STOP.equals(action)) {
+                MediaSessionUMA.recordStop(
+                        MediaSessionUMA.MEDIA_SESSION_ACTION_SOURCE_MEDIA_NOTIFICATION);
                 sInstance.mMediaNotificationInfo.listener.onStop();
                 stopSelf();
                 return START_NOT_STICKY;
@@ -225,7 +231,9 @@ public class NotificationMediaPlaybackControls {
 
     private NotificationCompat.Builder mNotificationBuilder;
 
-    private Bitmap mNotificationIconBitmap;
+    private Bitmap mNotificationIcon;
+
+    private final Bitmap mMediaSessionIcon;
 
     private MediaNotificationInfo mMediaNotificationInfo;
 
@@ -236,12 +244,16 @@ public class NotificationMediaPlaybackControls {
                 @Override
                 public void onPlay() {
                     if (!sInstance.mMediaNotificationInfo.isPaused) return;
+                    MediaSessionUMA.recordPlay(
+                            MediaSessionUMA.MEDIA_SESSION_ACTION_SOURCE_MEDIA_SESSION);
                     sInstance.onPlaybackStateChanged(PLAYBACK_STATE_PLAYING);
                 }
 
                 @Override
                 public void onPause() {
                     if (sInstance.mMediaNotificationInfo.isPaused) return;
+                    MediaSessionUMA.recordPause(
+                            MediaSessionUMA.MEDIA_SESSION_ACTION_SOURCE_MEDIA_SESSION);
                     sInstance.onPlaybackStateChanged(PLAYBACK_STATE_PAUSED);
                 }
     };
@@ -250,6 +262,12 @@ public class NotificationMediaPlaybackControls {
         mContext = context;
         mPlayDescription = context.getResources().getString(R.string.accessibility_play);
         mPauseDescription = context.getResources().getString(R.string.accessibility_pause);
+
+        // The MediaSession icon is a plain color.
+        int size = context.getResources().getDimensionPixelSize(R.dimen.media_session_icon_size);
+        mMediaSessionIcon = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        mMediaSessionIcon.eraseColor(
+                context.getResources().getColor(R.color.media_session_icon_color));
     }
 
     private void showNotification(MediaNotificationInfo mediaNotificationInfo) {
@@ -328,23 +346,6 @@ public class NotificationMediaPlaybackControls {
         return title.startsWith("\u25B6") ? title.substring(1).trim() : title;
     }
 
-    private String getStatus() {
-        if (mMediaNotificationInfo.origin != null) {
-            return mContext.getString(R.string.media_notification_link_text,
-                                      mMediaNotificationInfo.origin);
-        }
-        return mContext.getString(R.string.media_notification_text_no_link);
-    }
-
-    private PendingIntent createContentIntent() {
-        int tabId = mMediaNotificationInfo.tabId;
-        Intent intent = new Intent(Intent.ACTION_MAIN);
-        intent.putExtra(Browser.EXTRA_APPLICATION_ID, mContext.getPackageName());
-        intent.putExtra(TabOpenType.BRING_TAB_TO_FRONT.name(), tabId);
-        intent.setPackage(mContext.getPackageName());
-        return PendingIntent.getActivity(mContext, tabId, intent, 0);
-    }
-
     private MediaMetadataCompat createMetadata() {
         MediaMetadataCompat.Builder metadataBuilder = new MediaMetadataCompat.Builder();
 
@@ -353,18 +354,14 @@ public class NotificationMediaPlaybackControls {
                     mMediaNotificationInfo.title);
             metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE,
                     mMediaNotificationInfo.origin);
-            // TODO(mlamouri): this is temporary until we figure out which icon we want to show.
             metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON,
-                    BitmapFactory.decodeResource(mContext.getResources(), R.mipmap.app_icon));
+                    mMediaSessionIcon);
         } else {
             metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_TITLE,
                     mMediaNotificationInfo.title);
             metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST,
                     mMediaNotificationInfo.origin);
-            // TODO(mlamouri): we don't show any kind of placeholder art for pre-L because it
-            // would be shown on the lockscreen. Having a big application icon in there is not
-            // what the user would expect. We will be able to show something when the page will
-            // be able to provide art via the MediaSession API.
+            metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, mMediaSessionIcon);
         }
 
         return metadataBuilder.build();
@@ -381,10 +378,10 @@ public class NotificationMediaPlaybackControls {
 
         // Android doesn't badge the icons for RemoteViews automatically when
         // running the app under the Work profile.
-        if (mNotificationIconBitmap == null) {
+        if (mNotificationIcon == null) {
             Drawable notificationIconDrawable = ApiCompatibilityUtils.getUserBadgedIcon(
                     mContext, R.drawable.audio_playing);
-            mNotificationIconBitmap = drawableToBitmap(notificationIconDrawable);
+            mNotificationIcon = drawableToBitmap(notificationIconDrawable);
         }
 
         if (mNotificationBuilder == null) {
@@ -395,14 +392,19 @@ public class NotificationMediaPlaybackControls {
                 .setDeleteIntent(mService.getPendingIntent(ListenerService.ACTION_STOP));
         }
         mNotificationBuilder.setOngoing(!mMediaNotificationInfo.isPaused);
-        mNotificationBuilder.setContentIntent(createContentIntent());
+
+        int tabId = mMediaNotificationInfo.tabId;
+        Intent tabIntent = Tab.createBringTabToFrontIntent(tabId);
+        if (tabIntent != null) {
+            mNotificationBuilder
+                    .setContentIntent(PendingIntent.getActivity(mContext, tabId, tabIntent, 0));
+        }
 
         RemoteViews contentView = createContentView();
-
         contentView.setTextViewText(R.id.title, mMediaNotificationInfo.title);
-        contentView.setTextViewText(R.id.status, getStatus());
-        if (mNotificationIconBitmap != null) {
-            contentView.setImageViewBitmap(R.id.icon, mNotificationIconBitmap);
+        contentView.setTextViewText(R.id.status, mMediaNotificationInfo.origin);
+        if (mNotificationIcon != null) {
+            contentView.setImageViewBitmap(R.id.icon, mNotificationIcon);
         } else {
             contentView.setImageViewResource(R.id.icon, R.drawable.audio_playing);
         }
@@ -426,21 +428,28 @@ public class NotificationMediaPlaybackControls {
 
         if (mMediaSession == null) {
             mMediaSession = new MediaSessionCompat(mContext, mContext.getString(R.string.app_name),
-                    new ComponentName(mService.getPackageName(), ListenerService.class.getName()),
-                    mService.getPendingIntent(ListenerService.ACTION_MEDIA_BUTTON));
+                    new ComponentName(mContext.getPackageName(),
+                            MediaButtonReceiver.class.getName()),
+                    null);
             mMediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
                     | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
             mMediaSession.setCallback(mMediaSessionCallback);
-            mMediaSession.setActive(true);
+
+            // TODO(mlamouri): the following code is to work around a bug that hopefully
+            // MediaSessionCompat will handle directly. see b/24051980.
+            try {
+                mMediaSession.setActive(true);
+            } catch (NullPointerException e) {
+                // Some versions of KitKat do not support AudioManager.registerMediaButtonIntent
+                // with a PendingIntent. They will throw a NullPointerException, in which case
+                // they should be able to activate a MediaSessionCompat with only transport
+                // controls.
+                mMediaSession.setActive(false);
+                mMediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
+                mMediaSession.setActive(true);
+            }
         }
 
-        MediaMetadataCompat.Builder metadataBuilder = new MediaMetadataCompat.Builder();
-        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE,
-                mMediaNotificationInfo.title);
-        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE,
-                mMediaNotificationInfo.origin);
-        metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON,
-                BitmapFactory.decodeResource(mContext.getResources(), R.mipmap.app_icon));
         mMediaSession.setMetadata(createMetadata());
 
         PlaybackStateCompat.Builder playbackStateBuilder = new PlaybackStateCompat.Builder()

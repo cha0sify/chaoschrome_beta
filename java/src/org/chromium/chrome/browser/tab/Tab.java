@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.provider.Browser;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.ContextMenu;
@@ -32,6 +33,7 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.AccessibilityUtil;
 import org.chromium.chrome.browser.ChromeWebContentsDelegateAndroid;
 import org.chromium.chrome.browser.FrozenNativePage;
+import org.chromium.chrome.browser.IntentHandler.TabOpenType;
 import org.chromium.chrome.browser.NativePage;
 import org.chromium.chrome.browser.RepostFormWarningDialog;
 import org.chromium.chrome.browser.SwipeRefreshHandler;
@@ -47,6 +49,7 @@ import org.chromium.chrome.browser.contextmenu.ContextMenuParams;
 import org.chromium.chrome.browser.contextmenu.ContextMenuPopulator;
 import org.chromium.chrome.browser.contextmenu.ContextMenuPopulatorWrapper;
 import org.chromium.chrome.browser.contextmenu.EmptyChromeContextMenuItemDelegate;
+import org.chromium.chrome.browser.customtabs.CustomTabActivity;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.help.HelpAndFeedback;
 import org.chromium.chrome.browser.infobar.InfoBarContainer;
@@ -82,6 +85,7 @@ import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.gfx.DeviceDisplayInfo;
 
+import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -2008,10 +2012,11 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     }
 
     /**
-     * Restores the WebContents from its saved state.
+     * Restores the WebContents from its saved state.  This should only be called if the tab is
+     * frozen with a saved TabState, and NOT if it was frozen for a lazy load.
      * @return Whether or not the restoration was successful.
      */
-    public boolean unfreezeContents() {
+    protected boolean unfreezeContents() {
         try {
             TraceEvent.begin("Tab.unfreezeContents");
             assert mFrozenContentsState != null;
@@ -2362,7 +2367,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     /**
      * @return Parameters that should be used for a lazily loaded Tab.  May be null.
      */
-    protected LoadUrlParams getPendingLoadParams() {
+    private LoadUrlParams getPendingLoadParams() {
         return mPendingLoadParams;
     }
 
@@ -2819,6 +2824,30 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
                     tabModelSelector.getModel(incognito)));
         }
         return tab;
+    }
+
+    /**
+     * @return Intent that tells Chrome to bring an Activity for a particular Tab back to the
+     *         foreground, or null if this isn't possible.
+     */
+    public static Intent createBringTabToFrontIntent(int tabId) {
+        // Iterate through all {@link CustomTab}s and check whether the given tabId belongs to a
+        // {@link CustomTab}. If so, return null as the client app's task cannot be foregrounded.
+        List<WeakReference<Activity>> list = ApplicationStatus.getRunningActivities();
+        for (WeakReference<Activity> ref : list) {
+            Activity activity = ref.get();
+            if (activity instanceof CustomTabActivity
+                    && tabId == ((CustomTabActivity) activity).getActivityTab().getId()) {
+                return null;
+            }
+        }
+
+        String packageName = ApplicationStatus.getApplicationContext().getPackageName();
+        Intent intent = new Intent(Intent.ACTION_MAIN);
+        intent.putExtra(Browser.EXTRA_APPLICATION_ID, packageName);
+        intent.putExtra(TabOpenType.BRING_TAB_TO_FRONT.name(), tabId);
+        intent.setPackage(packageName);
+        return intent;
     }
 
     private native void nativeInit();

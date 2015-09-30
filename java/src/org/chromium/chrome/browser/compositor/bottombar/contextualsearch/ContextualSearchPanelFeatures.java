@@ -4,7 +4,6 @@
 
 package org.chromium.chrome.browser.compositor.bottombar.contextualsearch;
 
-import org.chromium.chrome.browser.contextualsearch.ContextualSearchFieldTrial;
 import org.chromium.chrome.browser.customtabs.CustomTab;
 
 /**
@@ -18,27 +17,6 @@ public class ContextualSearchPanelFeatures {
      */
     public ContextualSearchPanelFeatures(boolean isCustomTab) {
         mIsCustomTab = isCustomTab;
-    }
-
-    /**
-     * @return {@code true} Whether the arrow icon is available.
-     */
-    public static boolean isArrowIconAvailable() {
-        return ContextualSearchFieldTrial.isArrowIconEnabled();
-    }
-
-    /**
-     * @return {@code true} Whether the side search provider icon is available.
-     */
-    public static boolean isSideSearchProviderIconAvailable() {
-        return ContextualSearchFieldTrial.isSideSearchProviderIconEnabled();
-    }
-
-    /**
-     * @return {@code true} Whether the side search icon is available.
-     */
-    public boolean isSearchIconAvailable() {
-        return !isSideSearchProviderIconAvailable() && !mIsCustomTab;
     }
 
     /**
