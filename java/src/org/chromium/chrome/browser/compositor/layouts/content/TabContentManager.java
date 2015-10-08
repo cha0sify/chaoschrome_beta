@@ -239,6 +239,25 @@ public class TabContentManager {
         }
     }
 
+    public void cacheTabThumbnailWithID(final Tab tab, final int id) {
+        if (mNativeTabContentManager != 0 && mSnapshotsEnabled) {
+            if (tab.getNativePage() != null) {
+                Bitmap nativePageBitmap = readbackNativePage(tab, mThumbnailScale);
+                if (nativePageBitmap == null) return;
+                nativeCacheBitmapWithID(mNativeTabContentManager, id, nativePageBitmap,
+                        mThumbnailScale);
+                nativePageBitmap.recycle();
+            } else {
+                nativeCacheTabWithID(mNativeTabContentManager, tab, id, tab.getContentViewCore(),
+                        mThumbnailScale);
+            }
+        }
+    }
+
+    public void cacheThumbnailWithID(int id, Bitmap thumbnail) {
+        nativeCacheBitmapWithID(mNativeTabContentManager, id, thumbnail, mThumbnailScale);
+    }
+
     /**
      * Send a request to thumbnail store to read and decompress the thumbnail for the given tab id.
      * @param tabId The tab id for which the thumbnail should be requested.
@@ -311,6 +330,12 @@ public class TabContentManager {
         }
     }
 
+    public void removeThumbnailWithID(int id, int idmask) {
+        if (mNativeTabContentManager != 0) {
+            nativeRemoveTabThumbnailWithID(mNativeTabContentManager, id, idmask);
+        }
+    }
+
     /**
      * Clean up any on-disk thumbnail at and above a given tab id.
      * @param minForbiddenId The Id by which all tab thumbnails with ids greater and equal to it
@@ -367,12 +392,18 @@ public class TabContentManager {
     private native boolean nativeHasFullCachedThumbnail(long nativeTabContentManager, int tabId);
     private native void nativeCacheTab(long nativeTabContentManager, Object tab,
             Object contentViewCore, float thumbnailScale);
+    private native void nativeCacheTabWithID(long nativeTabContentManager, Object tab, int id,
+                                       Object contentViewCore, float thumbnailScale);
     private native void nativeCacheTabWithBitmap(long nativeTabContentManager, Object tab,
             Object bitmap, float thumbnailScale);
+    private native void nativeCacheBitmapWithID(long nativeTabContentManager, int id,
+                                                Object bitmap, float thumbnailScale);
     private native void nativeInvalidateIfChanged(long nativeTabContentManager, int tabId,
             String url);
     private native void nativeUpdateVisibleIds(long nativeTabContentManager, int[] priority);
     private native void nativeRemoveTabThumbnail(long nativeTabContentManager, int tabId);
+    private native void nativeRemoveTabThumbnailWithID(long nativeTabContentManager, int id,
+                                                       int mask);
     private native void nativeRemoveTabThumbnailFromDiskAtAndAboveId(long nativeTabContentManager,
             int minForbiddenId);
     private native void nativeSetUIResourceProvider(long nativeTabContentManager,

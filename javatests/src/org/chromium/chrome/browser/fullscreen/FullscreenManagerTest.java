@@ -375,7 +375,7 @@ public class FullscreenManagerTest extends ChromeTabbedActivityTestBase {
 
         waitForPageToBeScrollable(getActivity().getActivityTab());
 
-        float dragX = 50f;
+        float dragX = 150f;
         // Use a larger scroll range than the height of the top controls to ensure we overcome
         // the delay in a scroll start being sent.
         float dragStartY = topControlsHeight * 3;

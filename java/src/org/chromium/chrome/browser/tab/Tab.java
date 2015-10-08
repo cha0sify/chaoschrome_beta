@@ -327,6 +327,8 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     private final int mDefaultThemeColor;
     private int mThemeColor;
 
+    protected TabContentManager mTabContentManager;
+
     /**
      * A default {@link ChromeContextMenuItemDelegate} that supports some of the context menu
      * functionality.
@@ -1443,6 +1445,8 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
             TraceEvent.begin("Tab.initialize");
 
             internalInit();
+
+            mTabContentManager = tabContentManager;
 
             // Attach the TabContentManager if we have one.  This will bind this Tab's content layer
             // to this manager.

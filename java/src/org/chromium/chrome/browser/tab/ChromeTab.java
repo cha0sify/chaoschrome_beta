@@ -30,6 +30,7 @@ import org.chromium.chrome.browser.ChromeWebContentsDelegateAndroid;
 import org.chromium.chrome.browser.FrozenNativePage;
 import org.chromium.chrome.browser.NativePage;
 import org.chromium.chrome.browser.TabState;
+import org.chromium.chrome.browser.compositor.layouts.EdgeNavigationLayout;
 import org.chromium.chrome.browser.contextmenu.ChromeContextMenuPopulator;
 import org.chromium.chrome.browser.contextmenu.ContextMenuParams;
 import org.chromium.chrome.browser.contextmenu.ContextMenuPopulator;
@@ -1207,6 +1208,10 @@ public class ChromeTab extends Tab {
                         logBlockedNavigationToDevToolsConsole(url);
                         return true;
                     }
+
+                    EdgeNavigationLayout.captureBeforeNavigation(
+                            getWebContents().getNavigationController().getLastCommittedEntryIndex(),
+                            ChromeTab.this, mTabContentManager);
                     return false;
             }
         }

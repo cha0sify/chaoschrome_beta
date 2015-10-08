@@ -472,7 +472,7 @@ public class ContextualSearchManagerTest extends ChromeActivityTestCaseBase<Chro
      * Scrolls the base page.
      */
     private void scrollBasePage() {
-        swipe(0.f, 0.75f, 0.f, 0.7f, 100);
+        swipe(0.5f, 0.75f, 0.5f, 0.7f, 100);
     }
 
     /**

@@ -66,6 +66,8 @@ public class LayoutManagerDocument extends LayoutManager
     /** A {@link Layout} used for when the contextual search panel is up. */
     protected final ContextualSearchLayout mContextualSearchLayout;
 
+    protected EdgeNavigationLayout mEdgeNavigationLayout;
+
     // Event Filters
     private final EdgeSwipeEventFilter mStaticEdgeEventFilter;
     private final ContextualSearchEventFilter mContextualSearchEventFilter;
@@ -115,6 +117,8 @@ public class LayoutManagerDocument extends LayoutManager
         mGestureHandler = new GestureHandlerLayoutDelegate(this);
         mToolbarSwipeHandler = new ToolbarSwipeHandler(this);
 
+        mEdgeNavigationLayout = EdgeNavigationLayout.getNewLayout(context, this, renderHost);
+
         // Build Event Filters
         mStaticEdgeEventFilter =
                 new EdgeSwipeEventFilter(context, this, new StaticEdgeSwipeHandler());
@@ -126,7 +130,7 @@ public class LayoutManagerDocument extends LayoutManager
                 context, this, mReaderModePanelSelector, mReaderModeEdgeSwipeHandler, this);
         EventFilter staticCascadeEventFilter = new CascadeEventFilter(context, this,
                 new EventFilter[] {readerModeStaticEventFilter, contextualSearchStaticEventFilter,
-                        mStaticEdgeEventFilter});
+                        mEdgeNavigationLayout.getEventFilter(), mStaticEdgeEventFilter});
 
         // Build Layouts
         mStaticLayout = new StaticLayout(
@@ -155,6 +159,8 @@ public class LayoutManagerDocument extends LayoutManager
         // Initialize Layouts
         mStaticLayout.setTabModelSelector(selector, content);
         mContextualSearchLayout.setTabModelSelector(selector, content);
+        if (mEdgeNavigationLayout != null)
+            mEdgeNavigationLayout.setTabModelSelector(selector, content);
 
         // Initialize Contextual Search Panel
         mContextualSearchPanel.setManagementDelegate(contextualSearchDelegate);

@@ -74,6 +74,7 @@ public class MockResourcesForLayout extends MockResources {
         mStrings.put(R.string.tab_loading_default_title, "Loading...");
         mFloats.put(org.chromium.chrome.R.dimen.contextual_search_bar_height, 56.f);
         mFloats.put(org.chromium.chrome.R.dimen.control_container_height, 56.0f);
+        mFloats.put(org.chromium.chrome.R.dimen.toolbar_height_no_shadow, 56.0f);
     }
 
     @Override
