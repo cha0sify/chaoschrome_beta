@@ -93,7 +93,8 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
         }
 
         WebsitePermissionsFetcher fetcher = new WebsitePermissionsFetcher(new ResultsPopulator());
-        fetcher.fetchPreferencesForCategory(mCategory);
+        if (!mCategory.showStorageSites()) fetcher.fetchAllPreferences();
+        else fetcher.fetchPreferencesForCategory(mCategory);
     }
 
     private void displayEmptyScreenMessage() {
@@ -110,25 +111,29 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
             // In that case, bail out.
             if (getActivity() == null) return;
 
-            // First we scan origins to get settings from there.
+            //New logic that will combine all permissions for a site.
             List<WebsitePreference> websites = new ArrayList<>();
-            Set<Website> displayedSites = new HashSet<>();
-            for (Map.Entry<String, Set<Website>> element : sitesByOrigin.entrySet()) {
+            List<Set<Website>> allSites = new ArrayList<>();
+            List<String> mergedSites = new ArrayList<>();
+            Map<String, Set<Website>> combinedSites = sitesByOrigin;
+            combinedSites.putAll(sitesByHost);
+            allSites.addAll(sitesByOrigin.values());
+            allSites.addAll(sitesByHost.values());
+            for (Map.Entry<String, Set<Website>> element : combinedSites.entrySet()) {
                 for (Website site : element.getValue()) {
-                    if (mSearch.isEmpty() || site.getTitle().contains(mSearch)) {
-                        websites.add(new WebsitePreference(getActivity(), site, mCategory));
-                        displayedSites.add(site);
-                    }
-                }
-            }
-            // Next we add sites that are only accessible by host name.
-            for (Map.Entry<String, Set<Website>> element : sitesByHost.entrySet()) {
-                for (Website site : element.getValue()) {
-                    if (!displayedSites.contains(site)) {
-                        if (mSearch.isEmpty() || site.getTitle().contains(mSearch)) {
-                            websites.add(new WebsitePreference(getActivity(), site, mCategory));
-                            displayedSites.add(site);
+                    if (!mergedSites.contains(site.getAddress().toString())) {
+                        Website combinedSite =
+                                SingleWebsitePreferences.mergePermissionInfoForTopLevelOrigin(
+                                site.getAddress(),
+                                allSites);
+                        if (mCategory.showAllSites() || mCategory.showStorageSites())
+                            websites.add(new WebsitePreference(getActivity(), combinedSite,
+                                    mCategory));
+                        else if (siteIsRelevant(site)) { //If this site has the right permission
+                            websites.add(new WebsitePreference(getActivity(), combinedSite,
+                                    mCategory));
                         }
+                        mergedSites.add(site.getAddress().toString());
                     }
                 }
             }
@@ -197,6 +202,30 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
                 updateAllowedHeader(0, true);
             }
         }
+    }
+
+    private boolean siteIsRelevant(Website site) {
+        if (mCategory.showCookiesSites()) {
+            return site.getCookiePermission() != null;
+        } else if (mCategory.showCameraSites()) {
+            return site.getCameraPermission() != null;
+        } else if (mCategory.showFullscreenSites()) {
+            return site.getFullscreenPermission() != null;
+        } else if (mCategory.showGeolocationSites()) {
+            return site.getGeolocationPermission()!= null;
+        } else if (mCategory.showJavaScriptSites()) {
+            return site.getJavaScriptPermission() != null;
+        } else if (mCategory.showMicrophoneSites()) {
+            return site.getMicrophonePermission() != null;
+        } else if (mCategory.showPopupSites()) {
+            return site.getPopupPermission() != null;
+        } else if (mCategory.showNotificationsSites()) {
+            return site.getPushNotificationPermission() != null;
+        } else if (mCategory.showProtectedMediaSites()) {
+            return site.getProtectedMediaIdentifierPermission() != null;
+        }
+
+        return false;
     }
 
     /**
@@ -359,7 +388,7 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
 
         if (preference instanceof WebsitePreference) {
             WebsitePreference website = (WebsitePreference) preference;
-            website.setFragment(SingleWebsitePreferences.class.getName());
+            website.setFragment(BrowserSingleWebsitePreferences.class.getName());
             website.putSiteIntoExtras(SingleWebsitePreferences.EXTRA_SITE);
         }
 
@@ -474,13 +503,6 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
         addPreferencesFromResource(R.xml.website_preferences);
 
         configureGlobalToggles();
-
-        if ((mCategory.showJavaScriptSites()
-                && !PrefServiceBridge.getInstance().javaScriptEnabled())) {
-            getPreferenceScreen().addPreference(
-                    new AddExceptionPreference(getActivity(), ADD_EXCEPTION_KEY,
-                            getAddExceptionDialogMessage(), this));
-        }
     }
 
     private void configureGlobalToggles() {

@@ -17,6 +17,18 @@
         android:title="@string/website_settings_site_category" />
     <org.chromium.chrome.browser.preferences.TextMessagePreference
         android:key="site_title" />
+
+    <PreferenceCategory
+        android:layout="@layout/browser_preference_category"
+        android:key="site_security_info_title"
+        android:title="Security Information" >
+
+        <PreferenceScreen
+            android:key="site_security_info"
+            android:selectable="false"
+            android:layout="@layout/browser_website_security_info"/>
+    </PreferenceCategory>
+
     <PreferenceCategory
         android:layout="@layout/browser_preference_category"
         android:key="site_usage"

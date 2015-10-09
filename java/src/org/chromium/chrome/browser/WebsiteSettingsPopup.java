@@ -50,6 +50,7 @@ import org.chromium.chrome.browser.omnibox.OmniboxUrlEmphasizer;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.Preferences;
 import org.chromium.chrome.browser.preferences.PreferencesLauncher;
+import org.chromium.chrome.browser.preferences.website.BrowserSingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.SingleWebsitePreferences;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.ssl.ConnectionSecurity;
@@ -791,9 +792,9 @@ public class WebsiteSettingsPopup implements OnClickListener, OnItemSelectedList
                 @Override
                 public void run() {
                     Bundle fragmentArguments =
-                            SingleWebsitePreferences.createFragmentArgsForSite(mFullUrl);
+                            BrowserSingleWebsitePreferences.createFragmentArgsForSite(mFullUrl);
                     Intent preferencesIntent = PreferencesLauncher.createIntentForSettingsPage(
-                            mContext, SingleWebsitePreferences.class.getName());
+                            mContext, BrowserSingleWebsitePreferences.class.getName());
                     preferencesIntent.putExtra(
                             Preferences.EXTRA_SHOW_FRAGMENT_ARGUMENTS, fragmentArguments);
                     mContext.startActivity(preferencesIntent);

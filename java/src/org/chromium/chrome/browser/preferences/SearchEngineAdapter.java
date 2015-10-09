@@ -25,6 +25,7 @@ import android.widget.RadioButton;
 import android.widget.TextView;
 
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.preferences.website.BrowserSingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.ContentSetting;
 import org.chromium.chrome.browser.preferences.website.GeolocationInfo;
 import org.chromium.chrome.browser.preferences.website.SingleWebsitePreferences;
@@ -287,10 +288,10 @@ public class SearchEngineAdapter extends BaseAdapter implements LoadListener, On
                     LocationSettings.getInstance().getSystemLocationSettingsIntent());
         } else {
             Intent settingsIntent = PreferencesLauncher.createIntentForSettingsPage(
-                    mContext, SingleWebsitePreferences.class.getName());
+                    mContext, BrowserSingleWebsitePreferences.class.getName());
             String url = TemplateUrlService.getInstance().getSearchEngineUrlFromTemplateUrl(
                     toIndex(mSelectedSearchEnginePosition));
-            Bundle fragmentArgs = SingleWebsitePreferences.createFragmentArgsForSite(url);
+            Bundle fragmentArgs = BrowserSingleWebsitePreferences.createFragmentArgsForSite(url);
             fragmentArgs.putBoolean(SingleWebsitePreferences.EXTRA_LOCATION,
                     locationEnabled(mSelectedSearchEnginePosition, true));
             settingsIntent.putExtra(Preferences.EXTRA_SHOW_FRAGMENT_ARGUMENTS, fragmentArgs);

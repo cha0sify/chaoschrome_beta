@@ -70,7 +70,8 @@ class WebsitePreference extends Preference implements FaviconImageCallback {
         if (mFavicon != null) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             mFavicon.compress(Bitmap.CompressFormat.PNG, 100, baos);
-            getExtras().putByteArray(SingleWebsitePreferences.EXTRA_FAVICON, baos.toByteArray());
+            getExtras().putByteArray(
+                    BrowserSingleWebsitePreferences.EXTRA_FAVICON, baos.toByteArray());
         }
     }
 

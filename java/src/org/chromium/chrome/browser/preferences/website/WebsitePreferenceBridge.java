@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.preferences.website;
 
 import org.chromium.base.annotations.CalledByNative;
+import org.chromium.chrome.browser.UrlUtilities;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 
 import java.util.ArrayList;
@@ -84,8 +85,10 @@ public abstract class WebsitePreferenceBridge {
 
     @CalledByNative
     private static void insertCookieInfoIntoList(
+            //origin is passed back into WebsiteAddress to strip the port numbers. Native
+            //doesn't do this in case of cookies.
             ArrayList<CookieInfo> list, String origin, String embedder) {
-        list.add(new CookieInfo(origin, embedder, false));
+        list.add(new CookieInfo(UrlUtilities.trimPortsuffix(origin), embedder, false));
     }
 
     @CalledByNative

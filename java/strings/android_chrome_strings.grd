@@ -651,6 +651,17 @@ particular permission.">
         Access your microphone
       </message>
 
+      <!-- SSL certificate messages -->
+      <message name="IDS_SSL_WARNING" desc="Text shown when SSL certificate has some warnings">
+        Site's SSL certificate has warnings
+      </message>
+      <message name="IDS_SSL_ERROR" desc="Text shown when the SSL certificate has errors. Indicates a problem with the site's security">
+        Site has an invalid SSL certificate
+      </message>
+      <message name="IDS_SSL_SECURE" desc="Text shown when SSL certificate has no erros and site is secure">
+        Site's SSL certificate is valid. Communication is encrypted and identity is verified
+      </message>
+
       <!-- Protected content preferences -->
       <message name="IDS_PROTECTED_CONTENT" desc="Title for link to protected content settings [CHAR-LIMIT=32]">
         Protected content

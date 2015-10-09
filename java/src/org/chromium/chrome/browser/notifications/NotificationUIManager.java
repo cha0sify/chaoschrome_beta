@@ -26,6 +26,7 @@ import org.chromium.base.annotations.CalledByNative;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.preferences.Preferences;
 import org.chromium.chrome.browser.preferences.PreferencesLauncher;
+import org.chromium.chrome.browser.preferences.website.BrowserSingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.SingleCategoryPreferences;
 import org.chromium.chrome.browser.preferences.website.SingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.SiteSettingsCategory;
@@ -176,7 +177,7 @@ public class NotificationUIManager {
         boolean launchSingleWebsitePreferences = origin != null;
 
         String fragmentName = launchSingleWebsitePreferences
-                ? SingleWebsitePreferences.class.getName()
+                ? BrowserSingleWebsitePreferences.class.getName()
                 : SingleCategoryPreferences.class.getName();
         Intent preferencesIntent =
                 PreferencesLauncher.createIntentForSettingsPage(applicationContext, fragmentName);
@@ -184,7 +185,7 @@ public class NotificationUIManager {
         Bundle fragmentArguments;
         if (launchSingleWebsitePreferences) {
             // All preferences for a specific origin.
-            fragmentArguments = SingleWebsitePreferences.createFragmentArgsForSite(origin);
+            fragmentArguments = BrowserSingleWebsitePreferences.createFragmentArgsForSite(origin);
         } else {
             // Notification preferences for all origins.
             fragmentArguments = new Bundle();
@@ -372,10 +373,10 @@ public class NotificationUIManager {
 
         // Set up a pending intent for going to the settings screen for |origin|.
         Intent settingsIntent = PreferencesLauncher.createIntentForSettingsPage(
-                mAppContext, SingleWebsitePreferences.class.getName());
+                mAppContext, BrowserSingleWebsitePreferences.class.getName());
         settingsIntent.setData(intentData);
         settingsIntent.putExtra(Preferences.EXTRA_SHOW_FRAGMENT_ARGUMENTS,
-                SingleWebsitePreferences.createFragmentArgsForSite(origin));
+                BrowserSingleWebsitePreferences.createFragmentArgsForSite(origin));
 
         PendingIntent pendingSettingsIntent = PendingIntent.getActivity(mAppContext,
                 PENDING_INTENT_REQUEST_CODE, settingsIntent, PendingIntent.FLAG_UPDATE_CURRENT);

@@ -162,6 +162,9 @@ public class Website implements Serializable {
             mMidiInfo.setContentSetting(value);
         }
     }
+    public ContentSettingException getJavaScriptException() {
+        return mJavaScriptException;
+    }
 
     /**
      * Returns what permission governs JavaScript access.

@@ -70,7 +70,6 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
     public static final String EXTRA_SITE = "org.chromium.chrome.preferences.site";
     public static final String EXTRA_ORIGIN = "org.chromium.chrome.preferences.origin";
     public static final String EXTRA_LOCATION = "org.chromium.chrome.preferences.location";
-    public static final String EXTRA_FAVICON = "org.chromium.chrome.preferences.favicon";
 
     // Preference keys, see single_website_preferences.xml
     // Headings:
@@ -115,12 +114,10 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
     };
 
     // The website this page is displaying details about.
-    private Website mSite;
+    protected Website mSite;
 
     // The address of the site we want to display. Used only if EXTRA_ADDRESS is provided.
     private WebsiteAddress mSiteAddress;
-
-    private int mSiteColor = -1;
 
     private class SingleWebsitePermissionsPopulator
             implements WebsitePermissionsFetcher.WebsitePermissionsCallback {
@@ -158,36 +155,11 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         return fragmentArgs;
     }
 
-    /**
-     * Creates a Bundle with the correct arguments for opening this fragment for
-     * the website with the given url and icon.
-     *
-     * @param url The URL to open the fragment with. This is a complete url including scheme,
-     *            domain, port,  path, etc.
-     * @param icon The favicon for the URL
-     * @return The bundle to attach to the preferences intent.
-     */
-    public static Bundle createFragmentArgsForSite(String url, Bitmap icon) {
-        Bundle fragmentArgs = new Bundle();
-        // TODO(mvanouwerkerk): Define a pure getOrigin method in UrlUtilities that is the
-        // equivalent of the call below, because this is perfectly fine for non-display purposes.
-        String origin = UrlUtilities.getOriginForDisplay(URI.create(url), true /*  schowScheme */);
-        fragmentArgs.putString(SingleWebsitePreferences.EXTRA_ORIGIN, origin);
-
-        if (icon != null) {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            icon.compress(Bitmap.CompressFormat.PNG, 100, baos);
-            fragmentArgs.putByteArray(SingleWebsitePreferences.EXTRA_FAVICON, baos.toByteArray());
-        }
-        return fragmentArgs;
-    }
-
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         getActivity().setTitle(R.string.prefs_site_settings);
         ListView listView = (ListView) getView().findViewById(android.R.id.list);
         listView.setDivider(null);
-
         Object extraSite = getArguments().getSerializable(EXTRA_SITE);
         Object extraOrigin = getArguments().getSerializable(EXTRA_ORIGIN);
 
@@ -202,78 +174,8 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         } else {
             assert false : "Exactly one of EXTRA_SITE or EXTRA_SITE_ADDRESS must be provided.";
         }
-
         super.onActivityCreated(savedInstanceState);
     }
-
-    @Override
-    public void onChildViewAddedToHierarchy(View parent, View child) {
-        if (mSiteColor != -1) {
-            if (child.getId() == R.id.browser_pref_cat
-                 || child.getId() == R.id.browser_pref_cat_first) {
-                TextView view = (TextView) child.findViewById(android.R.id.title);
-                if (view != null) {
-                    view.setTextColor(mSiteColor);
-                }
-            }
-            Button btn = (Button) child.findViewById(R.id.button_preference);
-            if (btn != null) {
-                btn.setBackgroundColor(mSiteColor);
-            }
-            ImageView imageView = (ImageView) child.findViewById(R.id.clear_site_data);
-            if (imageView != null && imageView instanceof TintedImageView) {
-                ColorStateList colorList = ColorStateList.valueOf(mSiteColor);
-                ((TintedImageView) imageView).setTint(colorList);
-            }
-        }
-    }
-
-    private void appendActionBarDisplayOptions(ActionBar bar, int extraOptions) {
-        int options = bar.getDisplayOptions();
-        options |= extraOptions;
-        bar.setDisplayOptions(options);
-    }
-
-    private void setStatusBarColor(int color) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            final Activity activity = ApplicationStatus.getLastTrackedFocusedActivity();
-            activity.getWindow().addFlags(
-                    WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-
-            float[] hsv = new float[3];
-            Color.colorToHSV(color, hsv);
-            hsv[2] *= 0.7f;
-            mSiteColor = Color.HSVToColor(Color.alpha(color), hsv);
-            activity.getWindow().setStatusBarColor(mSiteColor);
-        }
-    }
-
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        if (getActivity() instanceof AppCompatActivity) {
-            AppCompatActivity activity = (AppCompatActivity) getActivity();
-            ActionBar bar = activity.getSupportActionBar();
-            Bundle args = getArguments();
-            if (bar != null && args != null) {
-                byte[] data = args.getByteArray(SingleWebsitePreferences.EXTRA_FAVICON);
-                if (data != null) {
-                    Bitmap bm = BitmapFactory.decodeByteArray(data, 0, data.length);
-                    if (bm != null) {
-                        Bitmap bitmap = Bitmap.createScaledBitmap(bm, 150, 150, true);
-                        int color = FaviconHelper.getDominantColorForBitmap(bitmap);
-                        appendActionBarDisplayOptions(bar,
-                                ActionBar.DISPLAY_SHOW_HOME | ActionBar.DISPLAY_SHOW_TITLE);
-                        bar.setHomeButtonEnabled(true);
-                        bar.setIcon(new BitmapDrawable(getResources(), bitmap));
-                        bar.setBackgroundDrawable(new ColorDrawable(color));
-                        setStatusBarColor(color);
-                    }
-                }
-            }
-        }
-   }
 
     /**
      * Given an address and a list of sets of websites, returns a new site with the same origin
@@ -286,7 +188,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
      * @param websiteSets The websites to search in.
      * @return The merged website.
      */
-    private static Website mergePermissionInfoForTopLevelOrigin(
+    public static Website mergePermissionInfoForTopLevelOrigin(
             WebsiteAddress address, List<Set<Website>> websiteSets) {
         String origin = address.getOrigin();
         String host = Uri.parse(origin).getHost();
@@ -347,7 +249,16 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
                         merged.addStorageInfo(storageInfo);
                     }
                 }
-
+                if (merged.getJavaScriptException() == null &&
+                        other.getJavaScriptException() != null) {
+                    if (other.getJavaScriptException().getPattern().equalsIgnoreCase(origin))
+                        merged.setJavaScriptException(other.getJavaScriptException());
+                }
+                if (merged.getPopupException() == null &&
+                        other.getPopupException() != null) {
+                    if (other.getPopupException().getPattern().equalsIgnoreCase(origin))
+                        merged.setPopupException(other.getPopupException());
+                }
                 // TODO(mvanouwerkerk): Make the various info types share a common interface that
                 // supports reading the origin or host.
                 // TODO(mvanouwerkerk): Merge in PopupExceptionInfo? It uses a pattern, and is never
@@ -370,7 +281,6 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
      */
     private void displaySitePermissions() {
         addPreferencesFromResource(R.xml.single_website_preferences);
-
         ListAdapter preferences = getPreferenceScreen().getRootAdapter();
         for (int i = 0; i < preferences.getCount(); ++i) {
             Preference preference = (Preference) preferences.getItem(i);
@@ -447,7 +357,10 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
             Preference heading = preferenceScreen.findPreference(PREF_PERMISSIONS);
             preferenceScreen.removePreference(heading);
         }
+        updateSecurityPreferenceVisibility();
     }
+
+    protected void updateSecurityPreferenceVisibility() { };
 
     private SiteSettingsCategory getWarningCategory() {
         // If more than one per-app permission is disabled in Android, we can pick any category to
@@ -509,12 +422,14 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
      */
     private void setUpListPreference(Preference preference, ContentSetting value) {
         if (value == null) {
-            getPreferenceScreen().removePreference(preference);
-            return;
+            value = getGlobalDefaultPermission(preference);
+            if (value == null) {
+                getPreferenceScreen().removePreference(preference);
+                return;
+            }
         }
 
         ListPreference listPreference = (ListPreference) preference;
-
         int contentType = getContentSettingsTypeFromPreferenceKey(preference.getKey());
         CharSequence[] keys = new String[2];
         CharSequence[] descriptions = new String[2];
@@ -526,7 +441,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
                 ContentSettingsResources.getSiteSummary(ContentSetting.BLOCK));
         listPreference.setEntryValues(keys);
         listPreference.setEntries(descriptions);
-        int index = (value == ContentSetting.ALLOW ? 0 : 1);
+        int index = (value == ContentSetting.ALLOW || value == ContentSetting.ASK ? 0 : 1);
         listPreference.setValueIndex(index);
         int explanationResourceId = ContentSettingsResources.getExplanation(contentType);
         if (explanationResourceId != 0) {
@@ -545,9 +460,17 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         } else {
             listPreference.setIcon(getDisabledInChromeIcon(contentType));
         }
-
         preference.setSummary("%s");
+        updateSummary(preference, contentType, value);
         listPreference.setOnPreferenceChangeListener(this);
+    }
+
+    protected void updateSummary(Preference preference, int contentType, ContentSetting value) {
+
+    }
+
+    protected ContentSetting getGlobalDefaultPermission(Preference preference) {
+        return null;
     }
 
     private void setUpLocationPreference(Preference preference) {
@@ -612,7 +535,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         return icon;
     }
 
-    private int getContentSettingsTypeFromPreferenceKey(String preferenceKey) {
+    protected int getContentSettingsTypeFromPreferenceKey(String preferenceKey) {
         switch (preferenceKey) {
             case PREF_CAMERA_CAPTURE_PERMISSION:
                 return ContentSettingsType.CONTENT_SETTINGS_TYPE_MEDIASTREAM_CAMERA;
@@ -670,6 +593,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         ContentSetting permission = ContentSetting.fromString((String) newValue);
+        preference.setSummary("%s");
         if (PREF_CAMERA_CAPTURE_PERMISSION.equals(preference.getKey())) {
             mSite.setCameraPermission(permission);
         } else if (PREF_COOKIES_PERMISSION.equals(preference.getKey())) {
@@ -691,7 +615,6 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         } else if (PREF_PUSH_NOTIFICATIONS_PERMISSION.equals(preference.getKey())) {
             mSite.setPushNotificationPermission(permission);
         }
-
         return true;
     }
 

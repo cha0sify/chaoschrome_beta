@@ -48,6 +48,7 @@ import org.chromium.chrome.browser.SiteTileView;
 import org.chromium.chrome.browser.favicon.FaviconHelper;
 import org.chromium.chrome.browser.preferences.Preferences;
 import org.chromium.chrome.browser.preferences.PreferencesLauncher;
+import org.chromium.chrome.browser.preferences.website.BrowserSingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.SingleWebsitePreferences;
 import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
 import org.chromium.chrome.browser.tab.ChromeTab;
@@ -213,9 +214,10 @@ public class ToolbarFavicon implements View.OnClickListener {
         String url = mTab.getUrl();
         Context context = ApplicationStatus.getApplicationContext();
         Bitmap favicon = mTab.getFavicon();
-        Bundle fragmentArguments = SingleWebsitePreferences.createFragmentArgsForSite(url, favicon);
+        Bundle fragmentArguments = BrowserSingleWebsitePreferences.createFragmentArgsForSite(url, favicon,
+                mTab.getSecurityLevel());
         Intent preferencesIntent = PreferencesLauncher.createIntentForSettingsPage(
-                context, SingleWebsitePreferences.class.getName());
+                context, BrowserSingleWebsitePreferences.class.getName());
         preferencesIntent.putExtra(
                 Preferences.EXTRA_SHOW_FRAGMENT_ARGUMENTS, fragmentArguments);
         context.startActivity(preferencesIntent);

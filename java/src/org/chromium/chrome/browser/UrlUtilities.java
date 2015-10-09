@@ -9,6 +9,7 @@ import android.text.TextUtils;
 import org.chromium.base.CollectionUtil;
 import org.chromium.base.Log;
 import org.chromium.base.VisibleForTesting;
+import org.w3c.dom.Text;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -25,7 +26,8 @@ import java.util.regex.Pattern;
  */
 public class UrlUtilities {
     private static final String TAG = "UrlUtilities";
-
+    private static final String sHttpPortSuffix = ":80";
+    private static final String sHttpsPortSuffix = ":443";
     /**
      * URI schemes that ContentView can handle.
      */
@@ -381,4 +383,17 @@ public class UrlUtilities {
     public static native boolean nativeIsGoogleSearchUrl(String url);
     public static native boolean nativeIsGoogleHomePageUrl(String url);
     private static native String nativeFixupUrl(String url, String desiredTld);
+
+    //Used only for cookies for now, since cookies do not remove the port information
+    //Automatically
+    public static String trimPortsuffix(String origin) {
+        if (TextUtils.isEmpty(origin)) return null;
+
+        if (origin.endsWith(sHttpPortSuffix)) {
+            return origin.replace(sHttpPortSuffix, "");
+        } else if (origin.endsWith(sHttpsPortSuffix)) {
+            return origin.replace(sHttpsPortSuffix, "");
+        }
+        return null;
+    }
 }

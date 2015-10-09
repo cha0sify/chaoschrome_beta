@@ -95,6 +95,8 @@ public class ContentSettingsResources {
                 return R.string.push_notifications_permission_title;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_POPUPS:
                 return R.string.popup_permission_title;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_PROTECTED_MEDIA_IDENTIFIER:
+                return R.string.protected_content;
             default:
                 return 0;
         }

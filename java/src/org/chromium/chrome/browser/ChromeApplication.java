@@ -71,6 +71,7 @@ import org.chromium.chrome.browser.preferences.PreferencesLauncher;
 import org.chromium.chrome.browser.preferences.autofill.AutofillPreferences;
 import org.chromium.chrome.browser.preferences.password.SavePasswordsPreferences;
 import org.chromium.chrome.browser.preferences.privacy.PrivacyPreferences;
+import org.chromium.chrome.browser.preferences.website.BrowserSingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.SingleWebsitePreferences;
 import org.chromium.chrome.browser.printing.PrintingControllerFactory;
 import org.chromium.chrome.browser.rlz.RevenueStats;
@@ -420,9 +421,9 @@ public class ChromeApplication extends ContentApplication {
      *            including scheme, domain, port, path, etc.
      */
     protected void showSingleOriginSettings(String url) {
-        Bundle fragmentArgs = SingleWebsitePreferences.createFragmentArgsForSite(url);
+        Bundle fragmentArgs = BrowserSingleWebsitePreferences.createFragmentArgsForSite(url);
         Intent intent = PreferencesLauncher.createIntentForSettingsPage(
-                this, SingleWebsitePreferences.class.getName());
+                this, BrowserSingleWebsitePreferences.class.getName());
         intent.putExtra(Preferences.EXTRA_SHOW_FRAGMENT_ARGUMENTS, fragmentArgs);
         startActivity(intent);
     }
