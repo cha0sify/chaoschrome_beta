@@ -37,6 +37,8 @@ public class ContentSettingsResources {
                 return R.drawable.permission_popups;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_PROTECTED_MEDIA_IDENTIFIER:
                 return R.drawable.permission_protected_media;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
+                return R.drawable.permission_webrefiner;
             default:
                 return 0;
         }
@@ -66,6 +68,8 @@ public class ContentSettingsResources {
                 return R.string.popup_permission_title;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_PROTECTED_MEDIA_IDENTIFIER:
                 return org.chromium.chrome.R.string.protected_content;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
+                return org.chromium.chrome.R.string.webrefiner;
             default:
                 return 0;
         }
@@ -97,6 +101,8 @@ public class ContentSettingsResources {
                 return R.string.popup_permission_title;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_PROTECTED_MEDIA_IDENTIFIER:
                 return R.string.protected_content;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
+                return R.string.webrefiner;
             default:
                 return 0;
         }
@@ -113,6 +119,7 @@ public class ContentSettingsResources {
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_FULLSCREEN:
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_JAVASCRIPT:
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_POPUPS:
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
                 return ContentSetting.ALLOW;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_GEOLOCATION:
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_MEDIASTREAM_CAMERA:
@@ -134,6 +141,7 @@ public class ContentSettingsResources {
         switch (contentType) {
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_FULLSCREEN:
                 return ContentSetting.ASK;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_COOKIES:
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_GEOLOCATION:
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_JAVASCRIPT:
@@ -158,6 +166,27 @@ public class ContentSettingsResources {
                 return R.string.website_settings_category_allowed;
             case BLOCK:
                 return R.string.website_settings_category_blocked;
+            case ASK:
+                return R.string.website_settings_category_ask;
+            default:
+                return 0;
+        }
+    }
+
+    /**
+     * Returns the string resource id for Browser settings that use Enabled/Disabled instead of
+     * Allowed/Blocked
+     * @param value The boolean that indicates whether the setting is enabled or disabled
+     * @param contentType is used to identify which content setting is being modified.
+     */
+    public static int getBrowserCategorySummary(int contentType, boolean value) {
+        ContentSetting setting = value ? getDefaultEnabledValue(contentType)
+                                        : getDefaultDisabledValue(contentType);
+        switch (setting) {
+            case ALLOW:
+                return R.string.website_settings_category_enabled;
+            case BLOCK:
+                return R.string.website_settings_category_disabled;
             case ASK:
                 return R.string.website_settings_category_ask;
             default:
@@ -205,6 +234,8 @@ public class ContentSettingsResources {
                 return R.string.website_settings_category_allowed_recommended;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_NOTIFICATIONS:
                 return R.string.website_settings_category_ask_before_sending;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
+                return R.string.website_settings_category_enabled;
             default:
                 return getCategorySummary(getDefaultEnabledValue(contentType));
         }
@@ -219,6 +250,8 @@ public class ContentSettingsResources {
                 return R.string.website_settings_category_ask_first_recommended;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_POPUPS:
                 return R.string.website_settings_category_blocked_recommended;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
+                return R.string.website_settings_category_disabled;
             default:
                 return getCategorySummary(getDefaultDisabledValue(contentType));
         }
@@ -229,6 +262,13 @@ public class ContentSettingsResources {
      */
     public static int getGeolocationAllowedSummary() {
         return R.string.website_settings_category_allowed;
+    }
+
+    /**
+     * Returns the summary for WebRefiner content settings when it is set to Enabled.
+     */
+    public static int getWebRefinerEnabledSummary() {
+        return R.string.website_settings_category_enabled_recommended;
     }
 
     /**

@@ -45,6 +45,8 @@
         android:key="site_permissions"
         android:title="@string/website_settings_permissions_category" />
     <org.chromium.chrome.browser.preferences.ChromeBaseListPreference
+        android:key="webrefiner_permission_list" />
+    <org.chromium.chrome.browser.preferences.ChromeBaseListPreference
         android:key="cookies_permission_list" />
     <org.chromium.chrome.browser.preferences.ChromeBaseListPreference
         android:key="location_access_list" />

@@ -538,6 +538,15 @@ Usage statistics include information such as preferences, button clicks, and mem
       <message name="IDS_WEBSITE_SETTINGS_CATEGORY_BLOCKED" desc="Summary text explaining that a permission is blocked, e.g. JavaScript: blocked.">
         Blocked
       </message>
+      <message name="IDS_WEBSITE_SETTINGS_CATEGORY_ENABLED" desc="Summary text explaining that a feature is Enabled, e.g. WebRefiner: Enabled.">
+        Enabled
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_CATEGORY_ENABLED_RECOMMENDED" desc="Summary text explaining that feature should be enabled, e.g. WebRefiner: Enable to block ads, trackers and malware">
+        Enable to block Ads, Trackers and Malware (Recommended)
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_CATEGORY_DISABLED" desc="Summary text explaining that a feature is disabled, e.g. WebRefiner: Disabled.">
+        Disabled
+      </message>
       <message name="IDS_WEBSITE_SETTINGS_CATEGORY_ALLOWED_EXCEPT_THIRD_PARTY" desc="Summary text for when only third-party cookies are blocked.">
         Allowed, except third-party
       </message>
@@ -660,6 +669,39 @@ particular permission.">
       </message>
       <message name="IDS_SSL_SECURE" desc="Text shown when SSL certificate has no erros and site is secure">
         Site's SSL certificate is valid. Communication is encrypted and identity is verified
+      </message>
+
+      <!-- WebRefiner prefernces -->
+      <message name="IDS_WEBREFINER" desc="Title for the WebRefiner setting [CHAR-LIMIT=32]">
+        WebRefiner
+      </message>
+
+      <message name="IDS_WEBREFINER_ADS" desc="Number of ads blocked [CHAR-LIMIT=32]">
+        advertisement
+      </message>
+      <message name="IDS_WEBREFINER_ADS_PLURAL" desc="Number of ads blocked [CHAR-LIMIT=32]">
+        advertisements
+      </message>
+
+      <message name="IDS_WEBREFINER_TRACKERS" desc="Number of trackers blocked [CHAR-LIMIT=32]">
+        tracker
+      </message>
+      <message name="IDS_WEBREFINER_TRACKERS_PLURAL" desc="Number of trackers blocked [CHAR-LIMIT=32]">
+        trackers
+      </message>
+
+      <message name="IDS_WEBREFINER_MALWARE" desc="Number of malware blocked [CHAR-LIMIT=32]">
+        malware
+      </message>
+
+      <message name="IDS_WEBREFINER_ONE_MESSAGE" desc="Blocked one type of content">
+        Blocked <ph name="NUMBER_BLOCKED">%s.<ex>2 advertisements</ex></ph>
+      </message>
+      <message name="IDS_WEBREFINER_TWO_MESSAGE" desc="Blocked two types of contents">
+        Blocked <ph name="NUMBER_BLOCKED_1">%1$s<ex>2 advertisements</ex></ph> and <ph name="NUMBER_BLOCKED_2">%2$s.<ex>1 tracker</ex></ph>
+      </message>
+      <message name="IDS_WEBREFINER_THREE_MESSAGE" desc="Blocked three types of contents">
+        Blocked <ph name="NUMBER_BLOCKED_1">%1$s<ex>2 advertisements</ex></ph>, <ph name="NUMBER_BLOCKED_2">%2$s<ex>1 tracker</ex></ph> and <ph name="NUMBER_BLOCKED_3">%3$s.<ex>5 malware</ex></ph>
       </message>
 
       <!-- Protected content preferences -->

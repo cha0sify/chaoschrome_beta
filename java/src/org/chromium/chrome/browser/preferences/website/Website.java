@@ -36,6 +36,7 @@ public class Website implements Serializable {
     private ProtectedMediaIdentifierInfo mProtectedMediaIdentifierInfo;
     private PushNotificationInfo mPushNotificationInfo;
     private LocalStorageInfo mLocalStorageInfo;
+    private WebRefinerInfo mWebRefinerInfo;
     private final List<StorageInfo> mStorageInfo = new ArrayList<StorageInfo>();
     private int mStorageInfoCallbacksLeft;
     private FullscreenInfo mFullscreenInfo;
@@ -425,6 +426,48 @@ public class Website implements Serializable {
     public void setFullscreenPermission(ContentSetting value) {
         if (mFullscreenInfo != null) {
             mFullscreenInfo.setContentSetting(value);
+        }
+    }
+
+    /**
+     * @return Set WebRefiner information of the site.
+     */
+    public void setWebRefinerInfo(WebRefinerInfo info) {
+        mWebRefinerInfo = info;
+        WebsiteAddress embedder = WebsiteAddress.create(info.getEmbedder());
+        if (embedder != null) {
+            mSummary = embedder.getTitle();
+        }
+    }
+
+    /**
+     * @return WebRefiner information of the site.
+     */
+    public WebRefinerInfo getWebRefinerInfo() {
+        return mWebRefinerInfo;
+    }
+
+    /**
+     * @return what permission governs fullscreen access.
+     */
+    public ContentSetting getWebRefinerpermission() {
+        return mWebRefinerInfo != null ? mWebRefinerInfo.getContentSetting() : null;
+    }
+
+    /**
+     * Configure WebRefiner setting for this stie.
+     *
+     * @param value Content setting for WebRefiner permission.
+     */
+    public void setWebRefinerPermission(ContentSetting value) {
+        if (value == null) {
+            WebRefinerPreferenceHandler.useDefaultPermissionForOrigins(getAddress().getOrigin());
+        } else {
+            WebRefinerPreferenceHandler.setWebRefinerSettingForOrigin(getAddress().getOrigin(),
+                (value == ContentSetting.ALLOW) ? true : false);
+        }
+        if (mWebRefinerInfo != null) {
+            mWebRefinerInfo.setContentSetting(value);
         }
     }
 }

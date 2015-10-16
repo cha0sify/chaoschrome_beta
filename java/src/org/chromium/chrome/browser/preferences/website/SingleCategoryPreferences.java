@@ -223,6 +223,8 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
             return site.getPushNotificationPermission() != null;
         } else if (mCategory.showProtectedMediaSites()) {
             return site.getProtectedMediaIdentifierPermission() != null;
+        } else if (mCategory.showWebRefinerSites()) {
+            return site.getWebRefinerpermission() != null;
         }
 
         return false;
@@ -251,6 +253,8 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
             return website.site().getPushNotificationPermission() == ContentSetting.BLOCK;
         } else if (mCategory.showProtectedMediaSites()) {
             return website.site().getProtectedMediaIdentifierPermission() == ContentSetting.BLOCK;
+        } else if (mCategory.showWebRefinerSites()) {
+            return website.site().getWebRefinerpermission() == ContentSetting.BLOCK;
         }
 
         return false;
@@ -421,6 +425,8 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
             } else if (mCategory.showProtectedMediaSites()) {
                 PrefServiceBridge.getInstance().setProtectedMediaIdentifierEnabled(
                         (boolean) newValue);
+            } else if (mCategory.showWebRefinerSites()) {
+                PrefServiceBridge.getInstance().setWebRefinerEnabled((boolean) newValue);
             }
 
             // Categories that support adding exceptions also manage the 'Add site' preference.
@@ -575,6 +581,9 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
                         && PrefServiceBridge.getInstance().isLocationAllowedByPolicy()) {
                     globalToggle.setSummaryOn(
                             ContentSettingsResources.getGeolocationAllowedSummary());
+                } else if (mCategory.showWebRefinerSites()) {
+                    globalToggle.setSummaryOn(ContentSettingsResources.
+                            getWebRefinerEnabledSummary());
                 } else {
                     globalToggle.setSummaryOn(
                             ContentSettingsResources.getEnabledSummary(contentType));
@@ -607,6 +616,8 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
                 } else if (mCategory.showProtectedMediaSites()) {
                     globalToggle.setChecked(
                             PrefServiceBridge.getInstance().isProtectedMediaIdentifierEnabled());
+                } else if (mCategory.showWebRefinerSites()) {
+                    globalToggle.setChecked(PrefServiceBridge.getInstance().isWebRefinerEnabled());
                 }
             }
         }

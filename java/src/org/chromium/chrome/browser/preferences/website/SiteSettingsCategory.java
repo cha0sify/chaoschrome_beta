@@ -43,6 +43,7 @@ public class SiteSettingsCategory {
     public static final String CATEGORY_PROTECTED_MEDIA = "protected_content";
     public static final String CATEGORY_NOTIFICATIONS = "notifications";
     public static final String CATEGORY_USE_STORAGE = "use_storage";
+    public static final String CATEGORY_WEBREFINER = "webrefiner";
 
     // The id of this category.
     private String mCategory;
@@ -121,6 +122,10 @@ public class SiteSettingsCategory {
         if (CATEGORY_USE_STORAGE.equals(category)) {
             return new SiteSettingsCategory(CATEGORY_USE_STORAGE, "", -1);
         }
+        if (CATEGORY_WEBREFINER.equals(category)) {
+            return new SiteSettingsCategory(CATEGORY_WEBREFINER, "",
+                    ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER);
+        }
 
         return null;
     }
@@ -158,6 +163,9 @@ public class SiteSettingsCategory {
         }
         if (contentSettingsType == ContentSettingsType.CONTENT_SETTINGS_TYPE_NOTIFICATIONS) {
             return fromString(CATEGORY_NOTIFICATIONS);
+        }
+        if (contentSettingsType == ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER) {
+            return fromString(CATEGORY_WEBREFINER);
         }
 
         return null;
@@ -248,6 +256,14 @@ public class SiteSettingsCategory {
      */
     public boolean showStorageSites() {
         return CATEGORY_USE_STORAGE.equals(mCategory);
+    }
+
+    /**
+     * Returns whether this category is the WebRefiner category.
+     */
+    public boolean showWebRefinerSites() {
+        return mContentSettingsType ==
+                ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER;
     }
 
     /**

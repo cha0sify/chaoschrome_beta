@@ -73,6 +73,7 @@ import org.chromium.chrome.browser.preferences.password.SavePasswordsPreferences
 import org.chromium.chrome.browser.preferences.privacy.PrivacyPreferences;
 import org.chromium.chrome.browser.preferences.website.BrowserSingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.SingleWebsitePreferences;
+import org.chromium.chrome.browser.preferences.website.WebRefinerPreferenceHandler;
 import org.chromium.chrome.browser.printing.PrintingControllerFactory;
 import org.chromium.chrome.browser.rlz.RevenueStats;
 import org.chromium.chrome.browser.services.AndroidEduOwnerCheckCallback;
@@ -502,7 +503,8 @@ public class ChromeApplication extends ContentApplication {
      * @param callback the callback to be called when browser startup is complete.
      * @throws ProcessInitException
      */
-    public void startChromeBrowserProcessesAsync(BrowserStartupController.StartupCallback callback)
+    public void startChromeBrowserProcessesAsync(
+            final BrowserStartupController.StartupCallback callback)
             throws ProcessInitException {
         assert ThreadUtils.runningOnUiThread() : "Tried to start the browser on the wrong thread";
         // The policies are used by browser startup, so we need to register the policy providers
@@ -510,7 +512,18 @@ public class ChromeApplication extends ContentApplication {
         registerPolicyProviders(CombinedPolicyProvider.get());
         Context applicationContext = getApplicationContext();
         BrowserStartupController.get(applicationContext, LibraryProcessType.PROCESS_BROWSER)
-                .startBrowserProcessesAsync(callback);
+                .startBrowserProcessesAsync( new BrowserStartupController.StartupCallback() {
+                    @Override
+                    public void onFailure() {
+                        callback.onFailure();
+                    }
+
+                    @Override
+                    public void onSuccess(boolean alreadyStarted) {
+                        callback.onSuccess(alreadyStarted);
+                        WebRefinerPreferenceHandler.applyInitialPreferences();
+                    }
+        });
     }
 
     /**
@@ -536,6 +549,7 @@ public class ChromeApplication extends ContentApplication {
         if (initGoogleServicesManager) {
             GoogleServicesManager.get(getApplicationContext());
         }
+        WebRefinerPreferenceHandler.applyInitialPreferences();
     }
 
     /**

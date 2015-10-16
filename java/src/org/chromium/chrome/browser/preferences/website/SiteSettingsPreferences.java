@@ -39,6 +39,7 @@ public class SiteSettingsPreferences extends BrowserPreferenceFragment
     static final String POPUPS_KEY = "popups";
     static final String PROTECTED_CONTENT_KEY = "protected_content";
     static final String STORAGE_KEY = "use_storage";
+    static final String WEBREFINER_KEY = "webrefiner";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -48,6 +49,9 @@ public class SiteSettingsPreferences extends BrowserPreferenceFragment
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
             getPreferenceScreen().removePreference(findPreference(PROTECTED_CONTENT_KEY));
+        }
+        if (!WebRefinerPreferenceHandler.isInitialized()) {
+            getPreferenceScreen().removePreference(findPreference(WEBREFINER_KEY));
         }
 
         updatePreferenceStates();
@@ -72,6 +76,8 @@ public class SiteSettingsPreferences extends BrowserPreferenceFragment
             return ContentSettingsType.CONTENT_SETTINGS_TYPE_POPUPS;
         } else if (PROTECTED_CONTENT_KEY.equals(key)) {
             return ContentSettingsType.CONTENT_SETTINGS_TYPE_PROTECTED_MEDIA_IDENTIFIER;
+        } else if (WEBREFINER_KEY.equals(key)) {
+            return ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER;
         }
         return -1;
     }
@@ -92,6 +98,9 @@ public class SiteSettingsPreferences extends BrowserPreferenceFragment
         websitePrefs.add(MICROPHONE_KEY);
         websitePrefs.add(NOTIFICATIONS_KEY);
         websitePrefs.add(POPUPS_KEY);
+        if (WebRefinerPreferenceHandler.isInitialized()) {
+            websitePrefs.add(WEBREFINER_KEY);
+        }
         // Initialize the summary and icon for all preferences that have an
         // associated content settings entry.
         for (String prefName : websitePrefs) {
@@ -115,6 +124,8 @@ public class SiteSettingsPreferences extends BrowserPreferenceFragment
                 checked = PrefServiceBridge.getInstance().popupsEnabled();
             } else if (FULLSCREEN_KEY.equals(prefName)) {
                 checked = PrefServiceBridge.getInstance().isFullscreenAllowed();
+            } else if (WEBREFINER_KEY.equals(prefName)) {
+                checked = PrefServiceBridge.getInstance().isWebRefinerEnabled();
             }
             int contentType = keyToContentSettingsType(prefName);
             p.setTitle(ContentSettingsResources.getTitle(contentType));
@@ -124,6 +135,9 @@ public class SiteSettingsPreferences extends BrowserPreferenceFragment
             } else if (LOCATION_KEY.equals(prefName) && checked
                     && prefServiceBridge.isLocationAllowedByPolicy()) {
                 p.setSummary(ContentSettingsResources.getGeolocationAllowedSummary());
+            } else if (WEBREFINER_KEY.equals(prefName)) {
+                p.setSummary(ContentSettingsResources.getBrowserCategorySummary(
+                        contentType, checked));
             } else {
                 p.setSummary(ContentSettingsResources.getCategorySummary(contentType, checked));
             }

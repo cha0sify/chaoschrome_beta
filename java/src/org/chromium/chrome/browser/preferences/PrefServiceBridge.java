@@ -17,6 +17,7 @@ import org.chromium.chrome.browser.UrlUtilities;
 import org.chromium.chrome.browser.preferences.website.ContentSetting;
 import org.chromium.chrome.browser.preferences.website.ContentSettingException;
 import org.chromium.chrome.browser.preferences.website.GeolocationInfo;
+import org.chromium.chrome.browser.preferences.website.WebRefinerPreferenceHandler;
 import org.chromium.chrome.browser.preferences.website.WebsitePreferenceBridge;
 import org.chromium.chrome.browser.search_engines.TemplateUrlService;
 
@@ -969,6 +970,22 @@ public final class PrefServiceBridge {
         return nativeHasSetMetricsReporting();
     }
 
+    /**
+     * Sets whether the WebRefiner should be enabled.
+     */
+    public void setWebRefinerEnabled(boolean enabled) {
+        WebRefinerPreferenceHandler.setWebRefinerEnabled(enabled);
+        nativeSetWebRefinerEnabled(enabled);
+    }
+
+    /**
+     * @return whether the WebRefiner preference is enabled.
+     */
+    public boolean isWebRefinerEnabled() {
+        return nativeGetWebRefinerEnabled();
+    }
+
+
     private native boolean nativeGetAcceptCookiesEnabled();
     private native boolean nativeGetAcceptCookiesManaged();
     private native boolean nativeGetBlockThirdPartyCookiesEnabled();
@@ -1063,4 +1080,6 @@ public final class PrefServiceBridge {
     private native boolean nativeGetMetricsReportingEnabled();
     private native void nativeSetMetricsReportingEnabled(boolean enabled);
     private native boolean nativeHasSetMetricsReporting();
+    private native void nativeSetWebRefinerEnabled(boolean enabled);
+    private native boolean nativeGetWebRefinerEnabled();
 }

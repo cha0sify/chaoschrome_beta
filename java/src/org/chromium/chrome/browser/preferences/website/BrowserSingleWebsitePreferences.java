@@ -34,8 +34,10 @@ import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.ListPreference;
@@ -57,11 +59,14 @@ import org.chromium.chrome.browser.UrlUtilities;
 import org.chromium.chrome.browser.favicon.FaviconHelper;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.widget.TintedImageView;
+import org.chromium.content.browser.WebRefiner;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.util.EnumMap;
+import java.util.Formatter;
 import java.util.Map;
 
 public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
@@ -69,6 +74,9 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     public static final String EXTRA_SECURITY_CERT_LEVEL = "org.chromium.chrome.preferences." +
             "website_security_cert_level";
     public static final String EXTRA_FAVICON = "org.chromium.chrome.preferences.favicon";
+    public static final String EXTRA_WEB_REFINER_ADS_INFO = "website_refiner_ads_info";
+    public static final String EXTRA_WEB_REFINER_TRACKER_INFO = "website_refiner_tracker_info";
+    public static final String EXTRA_WEB_REFINER_MALWARE_INFO = "website_refiner_malware_info";
 
     private int mSecurityLevel = -1;
 
@@ -80,8 +88,12 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         mSecurityViews = new SiteSecurityViewFactory();
-        mSecurityLevel = getArguments().getInt(EXTRA_SECURITY_CERT_LEVEL);
-        updateSecurityInfo();
+        Bundle arguments = getArguments();
+        if (arguments != null) {
+            setupWebRefinerInformation(arguments);
+            mSecurityLevel = arguments.getInt(EXTRA_SECURITY_CERT_LEVEL);
+            updateSecurityInfo();
+        }
         super.onActivityCreated(savedInstanceState);
     }
 
@@ -108,12 +120,74 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     }
 
     @Override
+    protected Drawable getEnabledIcon(int contentType) {
+        if (mSiteColor == -1) return super.getEnabledIcon(contentType);
+        Drawable icon = getResources().getDrawable(ContentSettingsResources.getIcon(contentType));
+        icon.mutate();
+        icon.setColorFilter(mSiteColor, PorterDuff.Mode.SRC_IN);
+        return icon;
+    }
+
+    @Override
+    protected void setUpBrowserListPreference(Preference preference,
+                                                 ContentSetting value) {
+        if (value == null) {
+            value = getGlobalDefaultPermission(preference);
+            if (value == null) {
+                getPreferenceScreen().removePreference(preference);
+                return;
+            }
+        }
+
+        ListPreference listPreference = (ListPreference) preference;
+        int contentType = getContentSettingsTypeFromPreferenceKey(preference.getKey());
+
+        if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER == contentType
+                && !WebRefinerPreferenceHandler.isInitialized()) {
+            getPreferenceScreen().removePreference(preference);
+            return;
+        }
+
+        CharSequence[] keys = new String[2];
+        CharSequence[] descriptions = new String[2];
+        keys[0] = ContentSetting.ALLOW.toString();
+        keys[1] = ContentSetting.BLOCK.toString();
+        descriptions[0] = getResources().getString(
+                ContentSettingsResources.getEnabledSummary(contentType));
+        descriptions[1] = getResources().getString(
+                ContentSettingsResources.getDisabledSummary(contentType));
+        listPreference.setEntryValues(keys);
+        listPreference.setEntries(descriptions);
+        int index = (value == ContentSetting.ALLOW ||
+                value == ContentSetting.ASK ? 0 : 1);
+        listPreference.setValueIndex(index);
+        int explanationResourceId = ContentSettingsResources.getExplanation(contentType);
+        if (explanationResourceId != 0) {
+            listPreference.setTitle(explanationResourceId);
+        }
+
+        if (listPreference.isEnabled()) {
+                listPreference.setIcon(getEnabledIcon(contentType));
+            }
+        preference.setSummary("%s");
+        updateSummary(preference, contentType, value);
+        listPreference.setOnPreferenceChangeListener(this);
+    }
+
+    @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         ContentSetting permission = ContentSetting.fromString((String) newValue);
         createPermissionInfo(preference, permission);
-        super.onPreferenceChange(preference, newValue);
-        updateSecurityPreferenceVisibility();
-        return true;
+        if (PREF_WEBREFINER_PERMISSION.equals(preference.getKey())) {
+            preference.setSummary("%s");
+            mSite.setWebRefinerPermission(permission);
+            updateSecurityPreferenceVisibility();
+            return true;
+        } else {
+            super.onPreferenceChange(preference, newValue);
+            updateSecurityPreferenceVisibility();
+            return true;
+        }
     }
 
     @Override
@@ -234,7 +308,7 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
         public void appendText(ViewType type, String text) {
             String new_text = mTexts.get(type);
             if (new_text != null)
-                new_text += text;
+                new_text += " " + text;
             else
                 new_text = text;
 
@@ -301,6 +375,8 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
             isEnabled = PrefServiceBridge.getInstance().isProtectedMediaIdentifierEnabled();
         } else if (PREF_PUSH_NOTIFICATIONS_PERMISSION.equals(preferenceKey)) {
             isEnabled = PrefServiceBridge.getInstance().isPushNotificationsEnabled();
+        } else if (PREF_WEBREFINER_PERMISSION.equals(preferenceKey)) {
+            isEnabled = PrefServiceBridge.getInstance().isWebRefinerEnabled();
         } else {
             return null;
         }
@@ -364,6 +440,12 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                         new PushNotificationInfo(mSite.getAddress().getOrigin(),
                                 null,
                                 false));
+            } else if (PREF_WEBREFINER_PERMISSION.equals(preferenceKey)) {
+                mSite.setWebRefinerInfo(
+                        new WebRefinerInfo(mSite.getAddress().getOrigin(),
+                                null,
+                                false)
+                );
             }
         }
     }
@@ -394,6 +476,8 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
             doesExist = mSite.getProtectedMediaIdentifierInfo() != null;
         } else if (PREF_PUSH_NOTIFICATIONS_PERMISSION.equals(preferenceKey)) {
             doesExist = mSite.getPushNotificationInfo() != null;
+        } else if (PREF_WEBREFINER_PERMISSION.equals(preferenceKey)) {
+            doesExist = mSite.getWebRefinerInfo() != null;
         }
 
         return doesExist;
@@ -475,6 +559,44 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
         }
     }
 
+    private void setupWebRefinerInformation(Bundle args) {
+        int ads = args.getInt(EXTRA_WEB_REFINER_ADS_INFO, 0);
+        String[] strings = new String[3];
+        int index = 0;
+
+        if (ads > 0) {
+            strings[index++] = ads + " " + getResources().getString((ads > 1) ?
+                    R.string.webrefiner_ads_plural :
+                    R.string.webrefiner_ads);
+        }
+
+        int trackers = args.getInt(EXTRA_WEB_REFINER_TRACKER_INFO, 0);
+        if (trackers > 0) {
+            strings[index++] = trackers + " " + getResources().getString((trackers > 1) ?
+                    R.string.webrefiner_trackers_plural :
+                    R.string.webrefiner_trackers);
+
+        }
+
+        int malware = args.getInt(EXTRA_WEB_REFINER_MALWARE_INFO, 0);
+        if (malware > 0) {
+            strings[index++] = malware + " " + getResources().getString(
+                    R.string.webrefiner_malware);
+        }
+        if (index > 0) {
+            String[] formats = new String[3];
+            formats[0] = getResources().getString(R.string.webrefiner_one_message);
+            formats[1] = getResources().getString(R.string.webrefiner_two_message);
+            formats[2] = getResources().getString(R.string.
+                    webrefiner_three_message);
+
+            Formatter formatter = new Formatter();
+            formatter.format(formats[index - 1], strings[0], strings[1], strings[2]);
+            mSecurityViews.appendText(SiteSecurityViewFactory.ViewType.INFO,
+                    formatter.toString());
+        }
+    }
+
     /**
      * Creates a Bundle with the correct arguments for opening this fragment for
      * the website with the given url and icon.
@@ -482,21 +604,55 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
      * @param url The URL to open the fragment with. This is a complete url including scheme,
      *            domain, port,  path, etc.
      * @param icon The favicon for the URL
+     *
+     * @param tab The tab for the url
      * @return The bundle to attach to the preferences intent.
      */
-    public static Bundle createFragmentArgsForSite(String url, Bitmap icon, int securityLevel) {
+    public static Bundle createFragmentArgsForSite(String url, Bitmap icon, Tab tab) {
         Bundle fragmentArgs = new Bundle();
         // TODO(mvanouwerkerk): Define a pure getOrigin method in UrlUtilities that is the
         // equivalent of the call below, because this is perfectly fine for non-display purposes.
         String origin = UrlUtilities.getOriginForDisplay(URI.create(url), true /*  showScheme */);
         fragmentArgs.putString(SingleWebsitePreferences.EXTRA_ORIGIN, origin);
-        fragmentArgs.putInt(BrowserSingleWebsitePreferences.EXTRA_SECURITY_CERT_LEVEL, securityLevel);
 
         if (icon != null) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             icon.compress(Bitmap.CompressFormat.PNG, 100, baos);
             fragmentArgs.putByteArray(EXTRA_FAVICON, baos.toByteArray());
         }
+
+        // Add webrefiner related messages
+        int ads, trackers, malware;
+        ads = trackers = malware = 0;
+        if (tab != null) {
+            fragmentArgs.putInt(BrowserSingleWebsitePreferences.EXTRA_SECURITY_CERT_LEVEL,
+                    tab.getSecurityLevel());
+            if (tab.getContentViewCore() != null) {
+                WebRefiner.PageInfo pageInfo =
+                        WebRefinerPreferenceHandler.getPageInfo(tab.getContentViewCore());
+                if (pageInfo != null) {
+                    for (WebRefiner.MatchedURLInfo urlInfo : pageInfo.mMatchedURLInfoList) {
+                        if (urlInfo.mActionTaken == WebRefiner.MatchedURLInfo.ACTION_BLOCKED) {
+                            switch (urlInfo.mMatchedFilterCategory) {
+                                case WebRefiner.RuleSet.CATEGORY_ADS:
+                                    ads++;
+                                    break;
+                                case WebRefiner.RuleSet.CATEGORY_TRACKERS:
+                                    trackers++;
+                                    break;
+                                case WebRefiner.RuleSet.CATEGORY_MALWARE_DOMAINS:
+                                    malware++;
+                                    break;
+                            }
+                        }
+                    }
+                }
+                fragmentArgs.putInt(EXTRA_WEB_REFINER_ADS_INFO, ads);
+                fragmentArgs.putInt(EXTRA_WEB_REFINER_TRACKER_INFO, trackers);
+                fragmentArgs.putInt(EXTRA_WEB_REFINER_MALWARE_INFO, malware);
+            }
+        }
+
         return fragmentArgs;
     }
 

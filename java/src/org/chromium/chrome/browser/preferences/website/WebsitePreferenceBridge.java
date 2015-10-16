@@ -245,6 +245,24 @@ public abstract class WebsitePreferenceBridge {
         list.add(new FullscreenInfo(origin, embedder, false));
     }
 
+    /**
+     * @return the list of all sites that have WebRefiner modified
+     */
+    public static List<WebRefinerInfo> getWebRefinerInfo() {
+        ArrayList<WebRefinerInfo> list = new ArrayList<WebRefinerInfo>();
+        nativeGetWebRefinerOrigins(list, false);
+        return list;
+    }
+
+    /**
+     * Inserts WebRefiner information into a list.
+     */
+    @CalledByNative
+    private static void insertWebRefinerInfoIntoList(
+        ArrayList<WebRefinerInfo> list, String origin, String embedder) {
+        list.add(new WebRefinerInfo(origin, embedder, false));
+    }
+
     private static native void nativeGetGeolocationOrigins(Object list, boolean managedOnly);
     static native int nativeGetGeolocationSettingForOrigin(
             String origin, String embedder, boolean isIncognito);
@@ -291,5 +309,11 @@ public abstract class WebsitePreferenceBridge {
     static native int nativeGetFullscreenSettingForOrigin(
             String origin, String embedder, boolean isIncognito);
     static native void nativeSetFullscreenSettingForOrigin(
+            String origin, String embedder, int value, boolean isIncognito);
+    private static native void nativeGetWebRefinerOrigins(
+            Object list, boolean managedOnly);
+    static native int nativeGetWebRefinerSettingForOrigin(
+            String origin, String embedder, boolean isIncognito);
+    static native void nativeSetWebRefinerSettingForOrigin(
             String origin, String embedder, int value, boolean isIncognito);
 }

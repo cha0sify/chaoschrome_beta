@@ -80,6 +80,8 @@ public class WebsitePermissionsFetcher {
         queue.add(new CameraCaptureInfoFetcher());
         // Micropohone capture permission is per-origin and per-embedder.
         queue.add(new MicrophoneCaptureInfoFetcher());
+        // WebRefiner permission is per-origin
+        queue.add(new WebRefinerInfoFetcher());
         queue.add(new PermissionsAvailableCallbackRunner());
         queue.next();
     }
@@ -130,6 +132,9 @@ public class WebsitePermissionsFetcher {
         } else if (category.showProtectedMediaSites()) {
             // Protected media identifier permission is per-origin and per-embedder.
             queue.add(new ProtectedMediaIdentifierInfoFetcher());
+        } else if (category.showWebRefinerSites()) {
+            // WebRefiner permission is per-origin.
+            queue.add(new WebRefinerInfoFetcher());
         }
         queue.add(new PermissionsAvailableCallbackRunner());
         queue.next();
@@ -363,6 +368,18 @@ public class WebsitePermissionsFetcher {
                 WebsiteAddress address = WebsiteAddress.create(info.getOrigin());
                 if (address == null) continue;
                 createSiteByOriginAndHost(address).setMicrophoneInfo(info);
+            }
+            queue.next();
+        }
+    }
+
+    private class WebRefinerInfoFetcher implements Task {
+        @Override
+        public void run(TaskQueue queue) {
+            for (WebRefinerInfo info : WebsitePreferenceBridge.getWebRefinerInfo()) {
+                WebsiteAddress address = WebsiteAddress.create(info.getOrigin());
+                if (address == null) continue;
+                createSiteByOriginAndHost(address).setWebRefinerInfo(info);
             }
             queue.next();
         }

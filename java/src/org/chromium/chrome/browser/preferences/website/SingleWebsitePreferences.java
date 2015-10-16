@@ -97,6 +97,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
             "protected_media_identifier_permission_list";
     public static final String PREF_PUSH_NOTIFICATIONS_PERMISSION =
             "push_notifications_list";
+    public static final String PREF_WEBREFINER_PERMISSION = "webrefiner_permission_list";
 
     // All permissions from the permissions preference category must be listed here.
     // TODO(mvanouwerkerk): Use this array in more places to reduce verbosity.
@@ -111,6 +112,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         PREF_POPUP_PERMISSION,
         PREF_PROTECTED_MEDIA_IDENTIFIER_PERMISSION,
         PREF_PUSH_NOTIFICATIONS_PERMISSION,
+        PREF_WEBREFINER_PERMISSION,
     };
 
     // The website this page is displaying details about.
@@ -259,6 +261,14 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
                     if (other.getPopupException().getPattern().equalsIgnoreCase(origin))
                         merged.setPopupException(other.getPopupException());
                 }
+                if (merged.getWebRefinerInfo() == null &&
+                        other.getWebRefinerInfo() != null) {
+                    if (origin.equals(other.getWebRefinerInfo().getOrigin()) &&
+                            (origin.equals(other.getWebRefinerInfo().getEmbedderSafe()) ||
+                            "*".equals(other.getWebRefinerInfo().getEmbedderSafe()))) {
+                        merged.setWebRefinerInfo(other.getWebRefinerInfo());
+                    }
+                }
                 // TODO(mvanouwerkerk): Make the various info types share a common interface that
                 // supports reading the origin or host.
                 // TODO(mvanouwerkerk): Merge in PopupExceptionInfo? It uses a pattern, and is never
@@ -320,6 +330,8 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
                 setUpListPreference(preference, mSite.getProtectedMediaIdentifierPermission());
             } else if (PREF_PUSH_NOTIFICATIONS_PERMISSION.equals(preference.getKey())) {
                 setUpListPreference(preference, mSite.getPushNotificationPermission());
+            } else if (PREF_WEBREFINER_PERMISSION.equals(preference.getKey())) {
+                setUpBrowserListPreference(preference, mSite.getWebRefinerpermission());
             }
         }
 
@@ -358,6 +370,11 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
             preferenceScreen.removePreference(heading);
         }
         updateSecurityPreferenceVisibility();
+    }
+
+    protected void setUpBrowserListPreference(Preference preference,
+                                                 ContentSetting webRefinerpermission) {
+        setUpListPreference(preference, webRefinerpermission);
     }
 
     protected void updateSecurityPreferenceVisibility() { };
@@ -455,7 +472,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
                 listPreference.setIcon(category.getDisabledInAndroidIcon(getActivity()));
                 listPreference.setEnabled(false);
             } else {
-                listPreference.setIcon(ContentSettingsResources.getIcon(contentType));
+                listPreference.setIcon(getEnabledIcon(contentType));
             }
         } else {
             listPreference.setIcon(getDisabledInChromeIcon(contentType));
@@ -463,6 +480,10 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         preference.setSummary("%s");
         updateSummary(preference, contentType, value);
         listPreference.setOnPreferenceChangeListener(this);
+    }
+
+    protected Drawable getEnabledIcon(int contentType) {
+        return getResources().getDrawable(ContentSettingsResources.getIcon(contentType));
     }
 
     protected void updateSummary(Preference preference, int contentType, ContentSetting value) {
@@ -557,6 +578,8 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
                 return ContentSettingsType.CONTENT_SETTINGS_TYPE_PROTECTED_MEDIA_IDENTIFIER;
             case PREF_PUSH_NOTIFICATIONS_PERMISSION:
                 return ContentSettingsType.CONTENT_SETTINGS_TYPE_NOTIFICATIONS;
+            case PREF_WEBREFINER_PERMISSION:
+                return ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER;
             default:
                 return 0;
         }
@@ -658,6 +681,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         mSite.setPopupPermission(null);
         mSite.setProtectedMediaIdentifierPermission(null);
         mSite.setPushNotificationPermission(null);
+        mSite.setWebRefinerPermission(null);
 
         // Clear the storage and finish the activity if necessary.
         if (mSite.getTotalUsage() > 0) {

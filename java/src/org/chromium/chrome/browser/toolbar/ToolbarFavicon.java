@@ -50,11 +50,13 @@ import org.chromium.chrome.browser.preferences.Preferences;
 import org.chromium.chrome.browser.preferences.PreferencesLauncher;
 import org.chromium.chrome.browser.preferences.website.BrowserSingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.SingleWebsitePreferences;
+import org.chromium.chrome.browser.preferences.website.WebRefinerPreferenceHandler;
 import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
 import org.chromium.chrome.browser.tab.ChromeTab;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObserver;
+import org.chromium.content.browser.WebRefiner;
 
 public class ToolbarFavicon implements View.OnClickListener {
 
@@ -63,6 +65,7 @@ public class ToolbarFavicon implements View.OnClickListener {
     private TabObserver mTabObserver;
     private Tab mTab;
     private boolean mbSiteSettingsVisible;
+    private boolean mBlockedCountSet = false;
 
     public ToolbarFavicon(final ToolbarLayout parent) {
         mFaviconView = (SiteTileView) parent.findViewById(R.id.swe_favicon_badge);
@@ -79,6 +82,8 @@ public class ToolbarFavicon implements View.OnClickListener {
                 @Override
                 public void onPageLoadStarted(Tab tab, String url) {
                     refreshTabSecurityState();
+                    mBlockedCountSet = false;
+                    mFaviconView.setBadgeBlockedObjectsCount(0); //Clear the count
                     if (mFaviconView != null && tab != null) {
                         mFaviconView.replaceFavicon(tab.getFavicon());
                     }
@@ -87,6 +92,17 @@ public class ToolbarFavicon implements View.OnClickListener {
                 @Override
                 public void onPageLoadFinished(Tab tab) {
                     refreshTabSecurityState();
+                }
+
+                @Override
+                public void onLoadProgressChanged(Tab tab, int progress) {
+                    if (mBlockedCountSet == true || tab == null ||
+                            tab.getContentViewCore() == null) return ;
+                    int count = WebRefinerPreferenceHandler.getBlockedURLCount(
+                            tab.getContentViewCore());
+                    mFaviconView.setBadgeBlockedObjectsCount(count);
+                    if (count > 0)
+                        mBlockedCountSet = true;
                 }
 
                 @Override
@@ -214,8 +230,9 @@ public class ToolbarFavicon implements View.OnClickListener {
         String url = mTab.getUrl();
         Context context = ApplicationStatus.getApplicationContext();
         Bitmap favicon = mTab.getFavicon();
-        Bundle fragmentArguments = BrowserSingleWebsitePreferences.createFragmentArgsForSite(url, favicon,
-                mTab.getSecurityLevel());
+        Bundle fragmentArguments = BrowserSingleWebsitePreferences.createFragmentArgsForSite(url,
+                favicon,
+                mTab);
         Intent preferencesIntent = PreferencesLauncher.createIntentForSettingsPage(
                 context, BrowserSingleWebsitePreferences.class.getName());
         preferencesIntent.putExtra(
