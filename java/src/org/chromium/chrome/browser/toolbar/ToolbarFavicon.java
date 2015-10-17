@@ -36,8 +36,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.WindowManager;
 
@@ -45,7 +47,9 @@ import org.chromium.base.ApplicationStatus;
 import org.chromium.base.VisibleForTesting;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.SiteTileView;
+import org.chromium.chrome.browser.TabLoadStatus;
 import org.chromium.chrome.browser.favicon.FaviconHelper;
+import org.chromium.chrome.browser.favicon.LargeIconBridge;
 import org.chromium.chrome.browser.preferences.Preferences;
 import org.chromium.chrome.browser.preferences.PreferencesLauncher;
 import org.chromium.chrome.browser.preferences.website.BrowserSingleWebsitePreferences;
@@ -57,21 +61,36 @@ import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.content.browser.WebRefiner;
+import org.chromium.chrome.browser.widget.RoundedIconGenerator;
+import org.chromium.content_public.browser.LoadUrlParams;
+
+import java.util.Set;
 
 public class ToolbarFavicon implements View.OnClickListener {
 
     private SiteTileView mFaviconView;
+    private Context mContext;
     private ToolbarLayout mParent;
     private TabObserver mTabObserver;
+    private Bitmap mFavicon;
     private Tab mTab;
+    private LargeIconBridge mLargeIconBridge;
     private boolean mbSiteSettingsVisible;
     private boolean mBlockedCountSet = false;
+    //Variable to track when the layout has decided to hide the favicon.
+    private boolean mBrowsingModeViewsHidden = false;
+
+    //Favicon statics
+    private static final int FAVICON_MIN_SIZE = 48;
+    private static final int FAVICON_CORNER_RADIUS = 4;
+    private static final int FAVICON_TEXT_SIZE = 20;
 
     public ToolbarFavicon(final ToolbarLayout parent) {
         mFaviconView = (SiteTileView) parent.findViewById(R.id.swe_favicon_badge);
         if (mFaviconView != null) {
             mFaviconView.setOnClickListener(this);
             mParent = parent;
+            mContext = ApplicationStatus.getApplicationContext();
 
             mTabObserver = new EmptyTabObserver() {
                 @Override
@@ -79,13 +98,32 @@ public class ToolbarFavicon implements View.OnClickListener {
                     refreshTabSecurityState();
                 }
 
+                //onContentChanged notifies us when the nativePages are modified/swapped
+                @Override
+                public void onContentChanged(Tab tab) {
+                    if (mFavicon == null) refreshFavicon();
+                }
+
                 @Override
                 public void onPageLoadStarted(Tab tab, String url) {
-                    refreshTabSecurityState();
                     mBlockedCountSet = false;
                     mFaviconView.setBadgeBlockedObjectsCount(0); //Clear the count
-                    if (mFaviconView != null && tab != null) {
-                        mFaviconView.replaceFavicon(tab.getFavicon());
+                }
+
+                @Override
+                public void onDidCommitProvisionalLoadForFrame(Tab tab,
+                                                               long frameId, boolean isMainFrame,
+                                                               String url, int transitionType) {
+                    refreshFavicon();
+                    refreshTabSecurityState();
+                }
+
+                @Override
+                public void onLoadUrl(Tab tab, LoadUrlParams params, int loadType) {
+                    if (loadType == TabLoadStatus.FULL_PRERENDERED_PAGE_LOAD ||
+                            loadType == TabLoadStatus.PARTIAL_PRERENDERED_PAGE_LOAD) {
+                        refreshFavicon();
+                        refreshTabSecurityState();
                     }
                 }
 
@@ -118,9 +156,17 @@ public class ToolbarFavicon implements View.OnClickListener {
         mbSiteSettingsVisible = false;
     }
 
+    /**
+     * @return True if tab doesn't exist/Or a Navtive page is visible since we don't want to update
+     * the favicon when there's no tab or when showing a native page.
+     */
+    private boolean isNativePage() {
+        return (mTab == null) ? true : mTab.isNativePage();
+    }
+
     @Override
     public void onClick(View v) {
-        if (mFaviconView == v) {
+        if (mFaviconView == v && !isNativePage()) {
             showCurrentSiteSettings();
             mbSiteSettingsVisible = true;
         }
@@ -140,6 +186,7 @@ public class ToolbarFavicon implements View.OnClickListener {
             chromeTab.addObserver(mTabObserver);
         }
 
+        refreshFavicon();
         refreshTabSecurityState();
     }
 
@@ -153,17 +200,16 @@ public class ToolbarFavicon implements View.OnClickListener {
     }
 
     public void refreshFavicon() {
+        if (isNativePage() && mFaviconView.getVisibility() != View.GONE) {
+            mFaviconView.setVisibility(View.GONE);
+            mFavicon = null;
+        }
         if (mTab != null) {
-            Bitmap favicon = mTab.getFavicon();
-            if (favicon != null) {
-                int color = FaviconHelper.getDominantColorForBitmap(favicon);
-                setStatusBarColor(color);
-            }
-
-            if (mFaviconView != null) {
-                mFaviconView.replaceFavicon(favicon);
-                mFaviconView.setVisibility(View.VISIBLE);
-            }
+            String url = mTab.getUrl();
+            if (mLargeIconBridge == null) mLargeIconBridge = new LargeIconBridge(mTab.getProfile());
+            LargeIconForTab callback = new LargeIconForTab(mTab);
+            mLargeIconBridge.getLargeIconForUrl(
+                    url, FAVICON_MIN_SIZE, callback);
         }
     }
 
@@ -229,7 +275,8 @@ public class ToolbarFavicon implements View.OnClickListener {
     private void showCurrentSiteSettings() {
         String url = mTab.getUrl();
         Context context = ApplicationStatus.getApplicationContext();
-        Bitmap favicon = mTab.getFavicon();
+
+        Bitmap favicon = mFavicon != null ? mFavicon : mTab.getFavicon();
         Bundle fragmentArguments = BrowserSingleWebsitePreferences.createFragmentArgsForSite(url,
                 favicon,
                 mTab);
@@ -238,5 +285,50 @@ public class ToolbarFavicon implements View.OnClickListener {
         preferencesIntent.putExtra(
                 Preferences.EXTRA_SHOW_FRAGMENT_ARGUMENTS, fragmentArguments);
         context.startActivity(preferencesIntent);
+    }
+
+    public void setVisibility(int browsingModeVisibility) {
+        mBrowsingModeViewsHidden = browsingModeVisibility == View.INVISIBLE;
+
+        if (mFavicon != null) {
+            mFaviconView.setVisibility(browsingModeVisibility);
+        }
+    }
+
+
+    class LargeIconForTab implements LargeIconBridge.LargeIconCallback {
+        // Tab that made the request
+        private Tab mClientTab;
+
+        public LargeIconForTab(Tab tab) {
+            mClientTab = tab;
+        }
+
+        @Override
+        public void onLargeIconAvailable(Bitmap icon, int fallbackColor) {
+            if (mClientTab == null || mTab == null || mTab != mClientTab) return;
+
+            if (icon == null) {
+                String url;
+                url = mClientTab.getUrl();
+
+                RoundedIconGenerator roundedIconGenerator = new RoundedIconGenerator(
+                        mContext, FAVICON_MIN_SIZE, FAVICON_MIN_SIZE,
+                        FAVICON_CORNER_RADIUS, fallbackColor,
+                        FAVICON_TEXT_SIZE);
+                icon = roundedIconGenerator.generateIconForUrl(url);
+                setStatusBarColor(fallbackColor);
+            } else {
+                int color = FaviconHelper.getDominantColorForBitmap(icon);
+                setStatusBarColor(color);
+            }
+
+            if (mFaviconView != null && !isNativePage()) {
+                mFavicon = icon;
+                mFaviconView.replaceFavicon(icon);
+                mFaviconView.setVisibility(mBrowsingModeViewsHidden ?
+                        View.GONE : View.VISIBLE);
+            }
+        }
     }
 }

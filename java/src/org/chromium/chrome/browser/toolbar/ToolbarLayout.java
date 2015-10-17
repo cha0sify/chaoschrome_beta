@@ -381,12 +381,6 @@ abstract class ToolbarLayout extends FrameLayout implements Toolbar {
         getLocationBar().updateMicButtonState();
 
         mFaviconView.refreshTab(getToolbarDataProvider().getTab());
-        if (this instanceof ToolbarTablet) {
-            // Do this only for Tablet UI. Phone UI has
-            // tab switcher animation and the Favicon is
-            // set after tab switcher animation is finished
-            mFaviconView.refreshFavicon();
-        }
     }
 
     /**

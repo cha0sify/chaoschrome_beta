@@ -1252,6 +1252,10 @@ public class ToolbarPhone extends ToolbarLayout
             view.setVisibility(tabSwitcherViewsVisibility);
         }
         for (View view : mBrowsingModeViews) {
+            if (view == mFaviconView.getView()) {
+                mFaviconView.setVisibility(browsingViewsVisibility);
+                continue;
+            }
             view.setVisibility(browsingViewsVisibility);
         }
         getProgressBar().setVisibility(
