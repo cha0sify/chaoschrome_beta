@@ -190,7 +190,8 @@ public class EdgeNavigationLayout extends Layout
         }
 
         private void showLiveView(Tab tab) {
-            if (mLayout.mSwipeDirection == EdgeSwipeEventFilter.ScrollDirection.UNKNOWN) {
+            if (mLayout.mSwipeDirection == EdgeSwipeEventFilter.ScrollDirection.UNKNOWN &&
+                    mLayoutManager.isActiveLayout(EdgeNavigationLayout.this)) {
                 int index = tab.getWebContents().getNavigationController()
                         .getLastCommittedEntryIndex();
 
