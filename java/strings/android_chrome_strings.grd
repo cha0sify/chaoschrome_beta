@@ -1511,6 +1511,14 @@ Hit the back button to exit.
         Description:
       </message>
 
+      <!-- Night mode messages -->
+      <message name="IDS_NIGHT_MODE_TITLE" desc="The title of a preference which controls whether night mode is enabled or not.">
+        Night mode
+      </message>
+      <message name="IDS_NIGHT_MODE_RELOAD_TIP_TEXT" desc="Text to remind user to reload the page after changing the setting">
+        Night mode setting change will take effect for the current webpage(s) after reload
+      </message>
+
       <!-- Document mode messages -->
       <message name="IDS_CLOSE_ALL_INCOGNITO_NOTIFICATION" desc="Message on the notification that closes all incognito tabs in document mode">
         Close all incognito tabs

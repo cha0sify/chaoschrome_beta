@@ -985,6 +985,19 @@ public final class PrefServiceBridge {
         return nativeGetWebRefinerEnabled();
     }
 
+    /**
+     * Sets whether the Night Mode should be enabled.
+     */
+    public void setNightModeEnabled(boolean enabled) {
+        nativeSetNightModeEnabled(enabled);
+    }
+
+    /**
+     * @return whether the Night Mode is enabled.
+     */
+    public boolean getNightModeEnabled() {
+        return nativeGetNightModeEnabled();
+    }
 
     private native boolean nativeGetAcceptCookiesEnabled();
     private native boolean nativeGetAcceptCookiesManaged();
@@ -1082,4 +1095,8 @@ public final class PrefServiceBridge {
     private native boolean nativeHasSetMetricsReporting();
     private native void nativeSetWebRefinerEnabled(boolean enabled);
     private native boolean nativeGetWebRefinerEnabled();
+// SWE-feature-NightMode
+    private native void nativeSetNightModeEnabled(boolean enabled);
+    private native boolean nativeGetNightModeEnabled();
+// SWE-feature-NightMode
 }

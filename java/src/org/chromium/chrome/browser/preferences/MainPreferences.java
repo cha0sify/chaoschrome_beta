@@ -40,6 +40,7 @@ public class MainPreferences extends BrowserPreferenceFragment implements SignIn
 
     public static final String PREF_SIGN_IN = "sign_in";
     public static final String PREF_SEARCH_ENGINE = "search_engine";
+    public static final String PREF_NIGHT_MODE = "night_mode";
     public static final String PREF_DOCUMENT_MODE = "document_mode";
     public static final String PREF_AUTOFILL_SETTINGS = "autofill_settings";
     public static final String PREF_SAVED_PASSWORDS = "saved_passwords";
@@ -127,6 +128,10 @@ public class MainPreferences extends BrowserPreferenceFragment implements SignIn
                 }
             });
         }
+
+        Preference nightMode = findPreference(PREF_NIGHT_MODE);
+        setOnOffSummary(nightMode,
+                PrefServiceBridge.getInstance().getNightModeEnabled());
 
         Preference documentMode = findPreference(PREF_DOCUMENT_MODE);
         if (FeatureUtilities.isDocumentModeEligible(getActivity())) {

@@ -18,6 +18,10 @@
         android:key="search_engine"
         android:title="@string/prefs_search_engine"/>
     <Preference
+        android:fragment="org.chromium.chrome.browser.preferences.NightModePreference"
+        android:key="night_mode"
+        android:title="@string/night_mode_title" />
+    <Preference
         android:fragment="org.chromium.chrome.browser.preferences.DocumentModePreference"
         android:key="document_mode"
         android:title="@string/tabs_and_apps_title" />
