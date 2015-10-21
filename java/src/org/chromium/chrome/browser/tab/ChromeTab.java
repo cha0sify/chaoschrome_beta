@@ -1210,7 +1210,7 @@ public class ChromeTab extends Tab {
                     }
 
                     EdgeNavigationLayout.captureBeforeNavigation(
-                            getWebContents().getNavigationController().getLastCommittedEntryIndex(),
+                            getLastCommittedEntryIndex(),
                             ChromeTab.this, mTabContentManager);
                     return false;
             }

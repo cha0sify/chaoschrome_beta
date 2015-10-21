@@ -119,7 +119,6 @@ public class EdgeNavigationLayout extends Layout
     private EventFilter mEventFilter;
 
     private EdgeSwipeEventFilter.ScrollDirection mSwipeDirection;
-    private EdgeSwipeEventFilter.ScrollDirection mLastSwipeMovement;
 
     private FaviconHelper mFaviconHelper;
 
@@ -494,8 +493,6 @@ public class EdgeNavigationLayout extends Layout
     @Override
     public void swipeUpdated(long time, float x, float y, float dx, float dy, float tx, float ty) {
         mOffsetTarget = MathUtils.clamp(mOffsetStart + tx, 0, getWidth());
-        mLastSwipeMovement = (tx > 0) ? EdgeSwipeEventFilter.ScrollDirection.RIGHT :
-                EdgeSwipeEventFilter.ScrollDirection.LEFT;
         requestUpdate();
     }
 
@@ -522,14 +519,19 @@ public class EdgeNavigationLayout extends Layout
     public void swipeFlingOccurred(long time, float x, float y, float tx,
                                    float ty, float vx, float vy) {
         if (mbNavigationPossible) {
-            settleSlidingView(vx < -FLING_MIN_VELOCITY, vx > FLING_MIN_VELOCITY);
+            // Use the velocity to add on final step which simulate a fling.
+            final float kickRangeX = getWidth();
+            final float kickRangeY = getHeight();
+            final float kickX = MathUtils.clamp(vx, -kickRangeX, kickRangeX);
+            final float kickY = MathUtils.clamp(vy, -kickRangeY, kickRangeY);
+            swipeUpdated(time, x, y, 0, 0, tx + kickX, ty + kickY);
         }
     }
 
     @Override
     public void swipeFinished(long time) {
         float commitDistance = getWidth() / 2;
-        settleSlidingView(mOffset < commitDistance, mOffset > commitDistance);
+        settleSlidingView(mOffsetTarget < commitDistance, mOffsetTarget > commitDistance);
         requestRender();
     }
 
@@ -613,14 +615,11 @@ public class EdgeNavigationLayout extends Layout
     private void animateSwipe(final float start, final float end) {
         long duration = (long) (ANIMATION_SPEED_SCREEN * Math.abs(start - end) / getWidth());
         forceAnimationToFinish();
-        if (duration > 0) {
-            addToAnimation(this, Property.OFFSET, start, end, duration, 0);
-        }
+        //Even if animation duration is 0, call it because we depend on onAnimationFinished().
+        addToAnimation(this, Property.OFFSET, start, end, duration, 0);
     }
 
     private void settleSlidingView(boolean leftCondition, boolean rightCondition) {
-        if (mLastSwipeMovement == mSwipeDirection) {
-            mLastSwipeMovement = EdgeSwipeEventFilter.ScrollDirection.UNKNOWN;
             switch (mSwipeDirection) {
                 case LEFT:
                     mbSettlingViews = true;
@@ -642,7 +641,6 @@ public class EdgeNavigationLayout extends Layout
                     break;
                 default:
                     break;
-            }
         }
     }
 
@@ -675,7 +673,8 @@ public class EdgeNavigationLayout extends Layout
             int snapshotID = generateThumbnailID(tab, index);
 
             if (!(tab.getProgress() < MIN_LOAD_PROGRESS
-                    && manager.hasFullCachedThumbnail(snapshotID))) {
+                    && manager.hasFullCachedThumbnail(snapshotID))
+                    && !tab.isIncognito()) {
                 manager.cacheTabThumbnailWithID(tab, snapshotID);
             }
         }
