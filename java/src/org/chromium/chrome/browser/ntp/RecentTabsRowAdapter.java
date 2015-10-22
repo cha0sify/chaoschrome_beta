@@ -21,7 +21,9 @@ import android.widget.BaseExpandableListAdapter;
 import android.widget.TextView;
 
 import org.chromium.base.ApiCompatibilityUtils;
+import org.chromium.base.CommandLine;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.favicon.FaviconHelper.FaviconImageCallback;
 import org.chromium.chrome.browser.ntp.ForeignSessionHelper.ForeignSession;
 import org.chromium.chrome.browser.ntp.ForeignSessionHelper.ForeignSessionTab;
@@ -816,11 +818,14 @@ public class RecentTabsRowAdapter extends BaseExpandableListAdapter {
             addGroup(new CurrentlyOpenTabsGroup(tabList));
         }
         addGroup(mRecentlyClosedTabsGroup);
-        for (ForeignSession session : mRecentTabsManager.getForeignSessions()) {
-            addGroup(new ForeignSessionGroup(session));
-        }
-        if (mRecentTabsManager.shouldDisplaySyncPromo()) {
-            addGroup(new SyncPromoGroup());
+        if (CommandLine.getInstance().hasSwitch(ChromeSwitches.
+                ENABLE_SUPPRESSED_CHROMIUM_FEATURES)) {
+            for (ForeignSession session : mRecentTabsManager.getForeignSessions()) {
+                addGroup(new ForeignSessionGroup(session));
+            }
+            if (mRecentTabsManager.shouldDisplaySyncPromo()) {
+                addGroup(new SyncPromoGroup());
+            }
         }
 
         // Add separator line after the recently closed tabs group.

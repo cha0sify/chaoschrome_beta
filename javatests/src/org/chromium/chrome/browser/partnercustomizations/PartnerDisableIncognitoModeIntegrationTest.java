@@ -20,6 +20,8 @@ import org.chromium.chrome.test.partnercustomizations.TestPartnerBrowserCustomiz
 import org.chromium.chrome.test.util.TestHttpServerClient;
 import org.chromium.content.browser.test.util.Criteria;
 import org.chromium.content.browser.test.util.CriteriaHelper;
+import org.chromium.base.test.util.CommandLineFlags;
+import org.chromium.chrome.browser.ChromeSwitches;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -27,6 +29,7 @@ import java.util.concurrent.ExecutionException;
 /**
  * Integration tests for the partner disabling incognito mode feature.
  */
+@CommandLineFlags.Add(ChromeSwitches.ENABLE_SUPPRESSED_CHROMIUM_FEATURES)
 public class PartnerDisableIncognitoModeIntegrationTest extends
         BasePartnerBrowserCustomizationIntegrationTest {
 

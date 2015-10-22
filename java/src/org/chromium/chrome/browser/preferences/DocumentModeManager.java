@@ -243,7 +243,7 @@ public class DocumentModeManager {
             if (isDeviceTabbedModeByDefault() && !hasMigrated) {
                 optOutState = OPTED_OUT_OF_DOCUMENT_MODE;
             } else {
-                optOutState = OPT_IN_TO_DOCUMENT_MODE;
+                optOutState = OPTED_OUT_OF_DOCUMENT_MODE; //Always opt out.
             }
             setOptedOutState(optOutState);
         }

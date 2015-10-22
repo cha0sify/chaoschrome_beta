@@ -27,8 +27,10 @@ import android.util.Log;
 
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.ApplicationStatus;
+import org.chromium.base.CommandLine;
 import org.chromium.base.TraceEvent;
 import org.chromium.chrome.browser.ChromeApplication;
+import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.IntentHandler.TabOpenType;
@@ -147,8 +149,11 @@ public class ChromeLauncherActivity extends Activity
         // Read partner browser customizations information asynchronously.
         // We want to initialize early because when there is no tabs to restore, we should possibly
         // show homepage, which might require reading PartnerBrowserCustomizations provider.
-        PartnerBrowserCustomizations.initializeAsync(getApplicationContext(),
-                PARTNER_BROWSER_CUSTOMIZATIONS_TIMEOUT_MS);
+        if (CommandLine.getInstance().hasSwitch(ChromeSwitches.
+                ENABLE_SUPPRESSED_CHROMIUM_FEATURES)) {
+            PartnerBrowserCustomizations.initializeAsync(getApplicationContext(),
+                    PARTNER_BROWSER_CUSTOMIZATIONS_TIMEOUT_MS);
+        }
 
         mIsInMultiInstanceMode = MultiWindowUtils.getInstance().shouldRunInMultiInstanceMode(this);
         mIntentHandler = new IntentHandler(this, getPackageName());

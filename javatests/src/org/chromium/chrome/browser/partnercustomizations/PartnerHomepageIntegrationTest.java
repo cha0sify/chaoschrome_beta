@@ -41,6 +41,7 @@ import java.util.concurrent.TimeoutException;
 /**
  * Integration test suite for partner homepage.
  */
+@CommandLineFlags.Add(ChromeSwitches.ENABLE_SUPPRESSED_CHROMIUM_FEATURES)
 public class PartnerHomepageIntegrationTest extends BasePartnerBrowserCustomizationIntegrationTest {
     private static final String TEST_URL =
             TestHttpServerClient.getUrl("chrome/test/data/android/about.html");

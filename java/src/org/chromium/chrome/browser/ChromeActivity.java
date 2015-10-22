@@ -706,7 +706,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (mContextReporter != null) mContextReporter.disable();
 
         // We want to refresh partner browser provider every onStart().
-        mPartnerBrowserRefreshNeeded = true;
+        mPartnerBrowserRefreshNeeded =
+                CommandLine.getInstance().hasSwitch(ChromeSwitches.
+                        ENABLE_SUPPRESSED_CHROMIUM_FEATURES);
         if (mCompositorViewHolder != null) mCompositorViewHolder.onStop();
     }
 

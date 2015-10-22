@@ -25,6 +25,7 @@ import org.chromium.base.ApplicationState;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ApplicationStatus.ApplicationStateListener;
 import org.chromium.base.BuildInfo;
+import org.chromium.base.CommandLine;
 import org.chromium.base.PathUtils;
 import org.chromium.base.ResourceExtractor;
 import org.chromium.base.ThreadUtils;
@@ -492,6 +493,14 @@ public class ChromeApplication extends ContentApplication {
     public void initCommandLine() {
         // TODO(newt): delete this when deleting ChromeShell.
         ChromeCommandLineInitUtil.initChromeCommandLine(this);
+        if (!CommandLine.getInstance().hasSwitch(
+                ChromeSwitches.ENABLE_SUPPRESSED_CHROMIUM_FEATURES)) {
+            if (!CommandLine.getInstance().hasSwitch(ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE)) {
+                CommandLine.getInstance().appendSwitch(ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE);
+            }
+            CommandLine.getInstance().
+                    appendSwitchWithValue(ChromeSwitches.ENABLE_ENHANCED_BOOKMARKS, "0");
+        }
     }
 
     /**
@@ -523,7 +532,7 @@ public class ChromeApplication extends ContentApplication {
                         callback.onSuccess(alreadyStarted);
                         WebRefinerPreferenceHandler.applyInitialPreferences();
                     }
-        });
+                });
     }
 
     /**

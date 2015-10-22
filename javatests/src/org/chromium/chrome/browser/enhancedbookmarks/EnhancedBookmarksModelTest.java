@@ -32,6 +32,10 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Tests for {@link EnhancedBookmarksModel}, the data layer of Enhanced Bookmarks.
  */
+@CommandLineFlags.Add({
+    ChromeSwitches.ENABLE_SUPPRESSED_CHROMIUM_FEATURES,
+    ChromeSwitches.ENABLE_ENHANCED_BOOKMARKS + "=1"
+})
 public class EnhancedBookmarksModelTest extends NativeLibraryTestBase {
     private static final int TIMEOUT_MS = 5000;
     private EnhancedBookmarksModel mBookmarksModel;

@@ -15,6 +15,11 @@ public abstract class ChromeSwitches {
     /** Testing: pretend that the switch value is the name of a child account. */
     public static final String CHILD_ACCOUNT = "child-account";
 
+    /** Testing: This will unblock the FRE and partner customizations as well as other
+     * UI that is related to SignIn */
+    public static final String ENABLE_SUPPRESSED_CHROMIUM_FEATURES =
+            "enable-suppressed-chromium-features";
+
     /** Mimic a low end device */
     public static final String ENABLE_ACCESSIBILITY_TAB_SWITCHER =
             "enable-accessibility-tab-switcher";
