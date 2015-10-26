@@ -30,6 +30,7 @@
 package org.chromium.chrome.browser.preferences.website;
 
 import android.app.Activity;
+import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -43,10 +44,12 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
+import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.ArraySet;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -63,12 +66,15 @@ import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.widget.TintedImageView;
 import org.chromium.content.browser.WebRefiner;
+import org.chromium.mojom.mojo.Application;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.util.EnumMap;
 import java.util.Formatter;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
 
@@ -177,6 +183,7 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
+        requestReloadForOrigin();
         ContentSetting permission = ContentSetting.fromString((String) newValue);
         createPermissionInfo(preference, permission);
         if (PREF_WEBREFINER_PERMISSION.equals(preference.getKey())) {
@@ -189,6 +196,13 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
             updateSecurityPreferenceVisibility();
             return true;
         }
+    }
+
+    @Override
+    protected void requestReloadForOrigin() {
+        String origin = (mSiteAddress != null)
+                ? mSiteAddress.getOrigin() : mSite.getAddress().getOrigin();
+        PrefServiceBridge.getInstance().addOriginForReload(origin);
     }
 
     @Override

@@ -119,7 +119,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
     protected Website mSite;
 
     // The address of the site we want to display. Used only if EXTRA_ADDRESS is provided.
-    private WebsiteAddress mSiteAddress;
+    protected WebsiteAddress mSiteAddress;
 
     private class SingleWebsitePermissionsPopulator
             implements WebsitePermissionsFetcher.WebsitePermissionsCallback {
@@ -590,7 +590,10 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         clearStoredData();
     }
 
+    protected void requestReloadForOrigin() { }
+
     private void clearStoredData() {
+        requestReloadForOrigin();
         mSite.clearAllStoredData(
                 new Website.StoredDataClearedCallback() {
                     @Override
@@ -668,6 +671,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
             Preference preference = screen.findPreference(key);
             if (preference != null) screen.removePreference(preference);
         }
+        requestReloadForOrigin();
 
         // Clear the permissions.
         mSite.setCameraPermission(null);

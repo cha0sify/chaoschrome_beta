@@ -2083,7 +2083,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     /**
      * Set whether the Tab needs to be reloaded. {@see #mNeedsReload}
      */
-    protected void setNeedsReload(boolean needsReload) {
+    public void setNeedsReload(boolean needsReload) {
         mNeedsReload = needsReload;
     }
 

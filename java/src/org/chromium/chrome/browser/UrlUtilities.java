@@ -129,6 +129,15 @@ public class UrlUtilities {
     }
 
     /**
+     * @param uri A URI.
+     *
+     * @return Whether the URI's scheme is for a internal chrome page.
+     */
+    public static boolean isInternalScheme(Uri uri) {
+        return INTERNAL_SCHEMES.contains(uri.getScheme());
+    }
+
+    /**
      * Refer to url_formatter::FixupURL.
      *
      * Given a URL-like string, returns a real URL or null. For example:

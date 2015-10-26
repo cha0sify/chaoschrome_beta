@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
+import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.chrome.browser.ContentSettingsType;
@@ -22,8 +23,10 @@ import org.chromium.chrome.browser.preferences.website.WebsitePreferenceBridge;
 import org.chromium.chrome.browser.search_engines.TemplateUrlService;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * PrefServiceBridge is a singleton which provides access to some native preferences. Ideally
@@ -58,6 +61,55 @@ public final class PrefServiceBridge {
     // The key to store whether the Location Permission was automatically added for the search
     // engine set as default.
     public static final String LOCATION_AUTO_ALLOWED = "search_engine_location_auto_allowed";
+    public static final String ALL_TABS_PENDING_RELOAD = "all_tabs_pending_reload";
+    public static final String SITES_PENDING_RELOAD = "sites_pending_reload";
+
+    public void addOriginForReload(String origin) {
+        SharedPreferences sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(
+                        ApplicationStatus.getApplicationContext());
+        Set<String> current =
+                new HashSet<>(sharedPreferences.getStringSet(
+                        PrefServiceBridge.SITES_PENDING_RELOAD,
+                        new HashSet<String>()));
+        current.add(origin);
+        sharedPreferences.edit().putStringSet(PrefServiceBridge.SITES_PENDING_RELOAD, current)
+                .commit();
+    }
+
+    public Set<String> getOriginsPendingReload() {
+        SharedPreferences sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(
+                        ApplicationStatus.getApplicationContext());
+        return sharedPreferences.getStringSet(
+                PrefServiceBridge.SITES_PENDING_RELOAD,
+                new HashSet<String>());
+    }
+
+    public boolean getPendingReload() {
+        SharedPreferences sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(
+                        ApplicationStatus.getApplicationContext());
+        return sharedPreferences.getBoolean(
+                PrefServiceBridge.ALL_TABS_PENDING_RELOAD,
+                false);
+    }
+
+    public void requestReload() {
+        SharedPreferences sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(
+                        ApplicationStatus.getApplicationContext());
+        sharedPreferences.edit().putBoolean(PrefServiceBridge.ALL_TABS_PENDING_RELOAD, true)
+                .commit();
+    }
+
+    public void reloadComplete() {
+        SharedPreferences sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(
+                        ApplicationStatus.getApplicationContext());
+        sharedPreferences.edit().remove(PrefServiceBridge.ALL_TABS_PENDING_RELOAD).commit();
+        sharedPreferences.edit().remove(PrefServiceBridge.SITES_PENDING_RELOAD).commit();
+    }
 
     /**
      * Structure that holds all the version information about the current Chrome browser.

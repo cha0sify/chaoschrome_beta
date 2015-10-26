@@ -27,6 +27,7 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AlertDialog;
+import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -94,6 +95,7 @@ import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomiza
 import org.chromium.chrome.browser.preferences.ChromePreferenceManager;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.PreferencesLauncher;
+import org.chromium.chrome.browser.preferences.website.WebsiteAddress;
 import org.chromium.chrome.browser.printing.TabPrinter;
 import org.chromium.chrome.browser.share.ShareHelper;
 import org.chromium.chrome.browser.snackbar.LoFiBarPopupController;
@@ -132,7 +134,9 @@ import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
 
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -605,7 +609,41 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (getActivityTab() != null) {
             LaunchMetrics.commitLaunchMetrics(getActivityTab().getWebContents());
         }
+        reloadTabsIfNecessary();
         FeatureUtilities.setCustomTabVisible(isCustomTab());
+    }
+
+    private void reloadTabsIfNecessary() {
+        Set<String> origins = PrefServiceBridge.getInstance().getOriginsPendingReload();
+        boolean reload = PrefServiceBridge.getInstance().getPendingReload();
+        List<TabModel> tabModels = getTabModelSelector().getModels();
+        for (TabModel model : tabModels) {
+            if (model == null) continue;
+            int tabCount = model.getCount();
+            for (int tabCounter = 0; tabCounter < tabCount; tabCounter++) {
+                Tab tab = model.getTabAt(tabCounter);
+                if (tab == null) continue;
+                if (reload) {
+                    if (tab == getActivityTab()) {
+                        tab.reload();
+                    } else {
+                        tab.setNeedsReload(true);
+                    }
+                } else {
+                    for (String url : origins) {
+                        if (TextUtils.equals(url,
+                                WebsiteAddress.create(tab.getUrl()).getOrigin())) {
+                            if (tab == getTabModelSelector().getCurrentTab()) {
+                                tab.reload();
+                            } else {
+                                tab.setNeedsReload(true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        PrefServiceBridge.getInstance().reloadComplete();
     }
 
     @Override

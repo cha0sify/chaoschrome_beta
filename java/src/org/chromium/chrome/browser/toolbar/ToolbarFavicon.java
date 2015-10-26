@@ -37,6 +37,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -48,6 +49,7 @@ import org.chromium.base.VisibleForTesting;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.SiteTileView;
 import org.chromium.chrome.browser.TabLoadStatus;
+import org.chromium.chrome.browser.UrlUtilities;
 import org.chromium.chrome.browser.favicon.FaviconHelper;
 import org.chromium.chrome.browser.favicon.LargeIconBridge;
 import org.chromium.chrome.browser.preferences.Preferences;
@@ -64,6 +66,8 @@ import org.chromium.content.browser.WebRefiner;
 import org.chromium.chrome.browser.widget.RoundedIconGenerator;
 import org.chromium.content_public.browser.LoadUrlParams;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Set;
 
 public class ToolbarFavicon implements View.OnClickListener {
@@ -134,13 +138,7 @@ public class ToolbarFavicon implements View.OnClickListener {
 
                 @Override
                 public void onLoadProgressChanged(Tab tab, int progress) {
-                    if (mBlockedCountSet == true || tab == null ||
-                            tab.getContentViewCore() == null) return ;
-                    int count = WebRefinerPreferenceHandler.getBlockedURLCount(
-                            tab.getContentViewCore());
-                    mFaviconView.setBadgeBlockedObjectsCount(count);
-                    if (count > 0)
-                        mBlockedCountSet = true;
+                    refreshBlockedCount();
                 }
 
                 @Override
@@ -166,10 +164,18 @@ public class ToolbarFavicon implements View.OnClickListener {
 
     @Override
     public void onClick(View v) {
-        if (mFaviconView == v && !isNativePage()) {
+        if (mFaviconView == v && tabHasPermissions() ) {
             showCurrentSiteSettings();
             mbSiteSettingsVisible = true;
         }
+    }
+
+    private boolean tabHasPermissions() {
+        if (mTab == null) return false;
+        Uri parsedUrl = Uri.parse(mTab.getUrl());
+        boolean isInternalPage = UrlUtilities.isInternalScheme(parsedUrl);
+        return !isNativePage() && !mTab.isShowingInterstitialPage()
+                && !mTab.isShowingSadTab() && !isInternalPage;
     }
 
     public void refreshTab(Tab tab) {
@@ -186,8 +192,22 @@ public class ToolbarFavicon implements View.OnClickListener {
             chromeTab.addObserver(mTabObserver);
         }
 
+        mBlockedCountSet = false;
+        mFaviconView.setBadgeBlockedObjectsCount(0); //Clear the count
+
         refreshFavicon();
         refreshTabSecurityState();
+        refreshBlockedCount();
+    }
+
+    private void refreshBlockedCount() {
+        if (mBlockedCountSet == true || mTab == null ||
+                mTab.getContentViewCore() == null) return ;
+        int count = WebRefinerPreferenceHandler.getBlockedURLCount(
+                mTab.getContentViewCore());
+        mFaviconView.setBadgeBlockedObjectsCount(count);
+        if (count > 0)
+            mBlockedCountSet = true;
     }
 
     public final int getMeasuredWidth() {

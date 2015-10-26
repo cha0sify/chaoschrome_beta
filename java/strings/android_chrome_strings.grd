@@ -1515,8 +1515,8 @@ Hit the back button to exit.
       <message name="IDS_NIGHT_MODE_TITLE" desc="The title of a preference which controls whether night mode is enabled or not.">
         Night mode
       </message>
-      <message name="IDS_NIGHT_MODE_RELOAD_TIP_TEXT" desc="Text to remind user to reload the page after changing the setting">
-        Night mode setting change will take effect for the current webpage(s) after reload
+      <message name="IDS_NIGHT_MODE_RELOAD_TIP_TEXT" desc="Text to describe the Night Mode feature">
+        Use Night mode to make browsing easier on your eyes in the dark.
       </message>
 
       <!-- Document mode messages -->

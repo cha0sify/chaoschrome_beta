@@ -59,6 +59,7 @@ public class NightModePreference extends BrowserPreferenceFragment {
             @Override
             public boolean onPreferenceChange(Preference preference, Object newValue) {
                 PrefServiceBridge.getInstance().setNightModeEnabled((boolean) newValue);
+                PrefServiceBridge.getInstance().requestReload();
                 return true;
             }
         }
