@@ -210,6 +210,11 @@ public abstract class ChromeSwitches {
      */
     public static final String AUTO_UPDATE_SERVER_CMD = "auto-update-server";
 
+    /**
+     * Enable Debug Mode/Logs
+     */
+    public static final String ENABLE_DEBUG_MODE = "enable-debug-mode";
+
     // Prevent instantiation.
     private ChromeSwitches() {}
 }

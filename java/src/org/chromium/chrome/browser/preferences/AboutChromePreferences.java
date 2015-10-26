@@ -4,20 +4,25 @@
 
 package org.chromium.chrome.browser.preferences;
 
+import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.Preference;
-import android.preference.PreferenceScreen;
 import android.text.format.DateUtils;
 import android.view.ContextThemeWrapper;
 
+import org.chromium.base.ApplicationStatus;
 import org.chromium.base.CommandLine;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.ChromeVersionInfo;
 import org.chromium.chrome.browser.IntentHelper;
+import org.chromium.chrome.browser.UpdateNotificationService;
+import org.chromium.chrome.browser.document.ChromeLauncherActivity;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge.AboutVersionStrings;
 
 /**
@@ -31,6 +36,7 @@ public class AboutChromePreferences extends BrowserPreferenceFragment {
     public static final String TABURL = "tab_url";
     public static final String TABTITLE = "tab_title";
     public static final String TABBUNDLE = "tab_bundle";
+    public static final String PREF_UPDATE_NOTIFICATION = "update_notification";
     private String mTabURL = "";
     private String mTabTitle = "";
 
@@ -65,9 +71,7 @@ public class AboutChromePreferences extends BrowserPreferenceFragment {
                 (ButtonPreference) findPreference(PREF_FEEDBACK);
 
         if(CommandLine.getInstance().hasSwitch(ChromeSwitches.CMD_LINE_SWITCH_FEEDBACK)) {
-            ButtonPreference clearBrowsingData =
-                    (ButtonPreference) findPreference(PREF_FEEDBACK);
-            clearBrowsingData.setOnPreferenceClickListener(
+            prefFeedback.setOnPreferenceClickListener(
                     new Preference.OnPreferenceClickListener() {
                 @Override
                 public boolean onPreferenceClick(Preference preference) {
@@ -82,9 +86,31 @@ public class AboutChromePreferences extends BrowserPreferenceFragment {
                 }
             });
         } else {
-            PreferenceScreen preferenceScreen = getPreferenceScreen();
-            preferenceScreen.removePreference(prefFeedback);
+            getPreferenceScreen().removePreference(prefFeedback);
+        }
 
+        ButtonPreference updatePreference =
+                (ButtonPreference) findPreference(PREF_UPDATE_NOTIFICATION);
+        if (CommandLine.getInstance().hasSwitch(ChromeSwitches.AUTO_UPDATE_SERVER_CMD) &&
+                UpdateNotificationService.getCurrentVersionCode(getActivity()) <
+                        UpdateNotificationService.getLatestVersionCode(getActivity())) {
+            updatePreference.setOnPreferenceClickListener(
+                    new Preference.OnPreferenceClickListener() {
+                        @Override
+                        public boolean onPreferenceClick(Preference preference) {
+                            Context context = ApplicationStatus.getApplicationContext();
+                            Intent intent = new Intent(Intent.ACTION_VIEW);
+                            intent.setPackage(context.getPackageName());
+                            intent.setClass(context, ChromeLauncherActivity.class);
+                            intent.setData(Uri.parse(
+                                    UpdateNotificationService.getLatestDownloadUrl(getActivity())));
+                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            context.startActivity(intent);
+                            return true;
+                        }
+                    });
+        } else {
+            getPreferenceScreen().removePreference(updatePreference);
         }
     }
 

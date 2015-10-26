@@ -91,6 +91,7 @@ import org.chromium.chrome.browser.tabmodel.document.DocumentTabModelSelector;
 import org.chromium.chrome.browser.tabmodel.document.StorageDelegate;
 import org.chromium.chrome.browser.tabmodel.document.TabDelegate;
 import org.chromium.chrome.browser.util.FeatureUtilities;
+import org.chromium.chrome.browser.util.Logger;
 import org.chromium.content.app.ContentApplication;
 import org.chromium.content.browser.BrowserStartupController;
 import org.chromium.content.browser.ChildProcessLauncher;
@@ -499,6 +500,9 @@ public class ChromeApplication extends ContentApplication {
     public void initCommandLine() {
         // TODO(newt): delete this when deleting ChromeShell.
         ChromeCommandLineInitUtil.initChromeCommandLine(this);
+        if (CommandLine.getInstance().hasSwitch(ChromeSwitches.ENABLE_DEBUG_MODE)) {
+            Logger.enableVerboseLogging();
+        }
         if (!CommandLine.getInstance().hasSwitch(
                 ChromeSwitches.ENABLE_SUPPRESSED_CHROMIUM_FEATURES)) {
             if (!CommandLine.getInstance().hasSwitch(ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE)) {

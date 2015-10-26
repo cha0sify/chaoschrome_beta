@@ -19,4 +19,7 @@
     <org.chromium.chrome.browser.preferences.ButtonPreference
         android:key="feedback"
         android:title="@string/menu_help" />
+    <org.chromium.chrome.browser.preferences.ButtonPreference
+        android:key="update_notification"
+        android:title="@string/swe_update" />
 </PreferenceScreen>

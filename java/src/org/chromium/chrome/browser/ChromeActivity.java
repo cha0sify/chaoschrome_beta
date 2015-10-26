@@ -750,6 +750,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     @Override
     public void onStart() {
         super.onStart();
+        UpdateNotificationService.updateCheck(this);
         if (mContextReporter != null) mContextReporter.enable();
 
         if (mPartnerBrowserRefreshNeeded) {

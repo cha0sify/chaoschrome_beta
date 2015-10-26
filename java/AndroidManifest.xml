@@ -484,7 +484,7 @@ by a child template that "extends" this file.
             android:exported="false" />
         <receiver android:name="org.chromium.chrome.browser.bookmarkswidget.BookmarkWidgetProxy"
             android:exported="false" />
-            
+
         <!-- Receiver for GCM messages. -->
         <receiver android:name="com.google.android.gms.gcm.GcmReceiver"
             android:exported="true"
@@ -521,6 +521,15 @@ by a child template that "extends" this file.
             android:value="org.chromium.chrome.browser.services.gcm.InvalidationGcmUpstreamSender" />
         <service android:name="org.chromium.chrome.browser.services.gcm.InvalidationGcmUpstreamSender"
             android:exported="false"/>
+
+        <service
+            android:name="org.chromium.chrome.browser.UpdateNotificationService"
+            android:exported="false" >
+        </service>
+        <!-- Compiler gcc/llvm -->
+        <meta-data android:name="Compiler" android:value="{{ apk_compiler }}" />
+        <!-- Architecture x64/x32 -->
+        <meta-data android:name="Architecture" android:value="{{ apk_architecture }}" />
 
         <!-- Notification service for sync. -->
         <meta-data android:name="ipc.invalidation.ticl.listener_service_class"

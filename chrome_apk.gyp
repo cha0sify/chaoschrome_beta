@@ -21,11 +21,23 @@
                                         -i <(DEPTH)/chrome/VERSION \
                                         -o <(DEPTH)/swe/VERSION \
                                         --version-code-only)',
+
     'swe_app_manifest_version_name': '<!(python <(DEPTH)/swe/tools/swe_version.py \
                                         -i <(DEPTH)/chrome/VERSION \
                                         -o <(DEPTH)/swe/VERSION \
                                         --version-string-only)',
-
+    'conditions': [
+      ['target_arch=="arm64"', {
+        'architecture_name':'x64'
+      }, {
+        'architecture_name':'x32'
+      }],
+      ['clang==0', {
+        'compiler_name':'gcc'
+      }, {
+        'compiler_name':'llvm'
+      }],
+    ],
     'chrome_public_apk_manifest': '<(SHARED_INTERMEDIATE_DIR)/swe_browser_apk_manifest/AndroidManifest.xml',
     'chrome_public_test_apk_manifest': '<(SHARED_INTERMEDIATE_DIR)/swe_browser_test_apk_manifest/AndroidManifest.xml',
     # This list is shared with GN.
@@ -130,6 +142,8 @@
           'manifest_package=<(manifest_package)',
           'min_sdk_version=16',
           'target_sdk_version=23',
+          'apk_compiler=<(compiler_name)',
+          'apk_architecture=<(architecture_name)',
         ],
       },
       'includes': [ '../../build/android/jinja_template.gypi' ],

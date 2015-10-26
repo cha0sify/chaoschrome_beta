@@ -2330,6 +2330,13 @@ However, you aren’t invisible. Going incognito doesn’t hide your browsing fr
       <message name="IDS_HELP_CONTEXT_SAD_TAB" translateable="false">
         mobile_awsnap
       </message>
+      <!-- Update Notification -->
+      <message name="IDS_SWE_UPDATE" translateable="false">
+        SWE browser update available
+      </message>
+      <message name="IDS_SWE_UPDATE_MSG" translateable="false">
+        "Version: "
+      </message>
       <!-- Feedback strings -->
       <message name="IDS_SWE_FEEDBACK_SUBJECT" translateable="false">
         Browser Feedback
