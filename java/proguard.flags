@@ -16,7 +16,7 @@
 }
 
 # Keep code annotated with the following annotations.
--keep class com.google.android.apps.chrome.**,org.chromium.** {
+-keep class com.google.android.apps.chrome.**,org.chromium.**,org.codeaurora.** {
   @**.AccessedByNative <fields>;
   @**.CalledByNative <methods>;
   @**.CalledByNativeUnchecked <methods>;

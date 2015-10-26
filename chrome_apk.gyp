@@ -7,6 +7,8 @@
     '../../build/util/version.gypi',
     '../../components/web_refiner/web_refiner_vars.gypi',
     '../../third_party/libsweadrenoext/libsweadrenoext_vars.gypi',
+    '../../third_party/libnetxt/libnetxt_vars.gypi',
+    '../../third_party/libsta/libsta_vars.gypi',
    ],
   'variables': {
     'chromium_code': 1,
@@ -164,6 +166,8 @@
         'extra_native_libs': [
           '<@(web_refiner_native_libs)',
           '<@(libsweadrenoext_native_libs)',
+          '<@(libnetxt_native_libs)',
+          '<@(libsta_native_libs)',
         ],
         'res_extra_dirs': ['<!@pymod_do_main(swe_channels_dirs --swe-channels <(swe_channels) \
                            -d <(DEPTH) --channel-res-folder)',],
@@ -183,6 +187,8 @@
         '../chrome.gyp:chrome_java',
         '<@(web_refiner_dependencies)',
         '../<@(libsweadrenoext_dependencies)',
+        '<@(libnetxt_dependencies)',
+        '<@(libsta_dependencies)',
       ],
       'includes': [ 'chrome_apk.gypi' ],
     },
