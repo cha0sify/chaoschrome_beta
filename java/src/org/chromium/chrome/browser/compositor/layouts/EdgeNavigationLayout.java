@@ -175,6 +175,9 @@ public class EdgeNavigationLayout extends Layout
 
         @Override
         public void onLoadProgressChanged(Tab tab, int progress) {
+            updateHistoryIndexIfPossible(tab.getWebContents().getNavigationController()
+                    .getLastCommittedEntryIndex());
+
             if (progress > MIN_LOAD_PROGRESS) {
                 showLiveView(tab);
             }
@@ -186,6 +189,31 @@ public class EdgeNavigationLayout extends Layout
                     .getLastCommittedEntryIndex();
             showLiveView(tab);
             mLayout.mNextHistoryIndex = mLayout.mCurrHistoryIndex;
+
+            // Special case to handle following scenario
+            // 1. Open new tab
+            // 2. Go to any URL
+            // 3. Navigate back by pressing back key (or through overflow menu)
+            //    and not through edge navigation
+            // 4. Edge navigate to go forward
+            if (mLayout.mCurrHistoryIndex == 1) {
+                mLayout.captureBeforeNavigation(1, tab, mLayout.mTabContentManager);
+            }
+        }
+
+        @Override
+        public void onDidStartNavigationToPendingEntry(Tab tab, String url) {
+            updateHistoryIndexIfPossible(tab.getWebContents().getNavigationController()
+                    .getLastCommittedEntryIndex());
+        }
+
+        private void updateHistoryIndexIfPossible(int index) {
+            synchronized (mLayout) {
+                if (mLayout.mCurrHistoryIndex == mLayout.mNextHistoryIndex) {
+                    mLayout.mCurrHistoryIndex = index;
+                    mLayout.mNextHistoryIndex = mLayout.mCurrHistoryIndex;
+                }
+            }
         }
 
         private void showLiveView(Tab tab) {
@@ -270,6 +298,8 @@ public class EdgeNavigationLayout extends Layout
                 mLayout.mSwipeRecognizer.onTouchEvent(event);
                 return true;
             }
+
+            mLayout.goLive(mLayout.mLiveLayout);
 
             return false;
         }
@@ -655,11 +685,15 @@ public class EdgeNavigationLayout extends Layout
         Tab tab = mTabModelSelector.getCurrentTab();
         NavigationController controller = tab.getWebContents().getNavigationController();
 
-        mCurrHistoryIndex = controller.getLastCommittedEntryIndex();
-        mNextHistoryIndex += nextIndexOffset;
+        synchronized (this) {
+            mCurrHistoryIndex = controller.getLastCommittedEntryIndex();
+            mNextHistoryIndex += nextIndexOffset;
+        }
 
         Log.e("EdgeNav", "Update index: index " + mCurrHistoryIndex +
                 " next expected " + mNextHistoryIndex);
+
+        captureBeforeNavigation(mCurrHistoryIndex, tab, mTabContentManager);
 
         controller.goToNavigationIndex(mNextHistoryIndex);
     }
