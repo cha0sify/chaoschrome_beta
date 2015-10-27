@@ -619,6 +619,15 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     @Override
     public void onResumeWithNative() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            if (PrefServiceBridge.getInstance().getPowersaveModeEnabled()) {
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            } else {
+                getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            }
+        }
+
         super.onResumeWithNative();
         markSessionResume();
 

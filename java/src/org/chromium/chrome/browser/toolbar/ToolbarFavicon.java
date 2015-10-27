@@ -54,6 +54,7 @@ import org.chromium.chrome.browser.favicon.FaviconHelper;
 import org.chromium.chrome.browser.favicon.LargeIconBridge;
 import org.chromium.chrome.browser.preferences.Preferences;
 import org.chromium.chrome.browser.preferences.PreferencesLauncher;
+import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.website.BrowserSingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.SingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.WebRefinerPreferenceHandler;
@@ -266,6 +267,10 @@ public class ToolbarFavicon implements View.OnClickListener {
     }
 
     private void setStatusBarColor(int color) {
+        // The flag that allows coloring is disabled in PowerSaveMode, don't color
+        if (PrefServiceBridge.getInstance().getPowersaveModeEnabled()) {
+            return;
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             final Activity activity = ApplicationStatus.getLastTrackedFocusedActivity();
             activity.getWindow().addFlags(

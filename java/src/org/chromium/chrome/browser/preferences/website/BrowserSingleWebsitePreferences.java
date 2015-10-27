@@ -537,8 +537,10 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     private void setStatusBarColor(int color) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             final Activity activity = ApplicationStatus.getLastTrackedFocusedActivity();
-            activity.getWindow().addFlags(
-                    WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            if (!PrefServiceBridge.getInstance().getPowersaveModeEnabled()) {
+                activity.getWindow().addFlags(
+                        WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            }
 
             float[] hsv = new float[3];
             Color.colorToHSV(color, hsv);
