@@ -548,7 +548,7 @@ public class EdgeNavigationLayout extends Layout
     @Override
     public void swipeFlingOccurred(long time, float x, float y, float tx,
                                    float ty, float vx, float vy) {
-        if (mbNavigationPossible) {
+        if (mbNavigationPossible && Math.abs(vx) - FLING_MIN_VELOCITY >= 0) {
             // Use the velocity to add on final step which simulate a fling.
             final float kickRangeX = getWidth();
             final float kickRangeY = getHeight();
@@ -561,7 +561,11 @@ public class EdgeNavigationLayout extends Layout
     @Override
     public void swipeFinished(long time) {
         float commitDistance = getWidth() / 2;
-        settleSlidingView(mOffsetTarget < commitDistance, mOffsetTarget > commitDistance);
+        if (mbNavigationPossible) {
+            settleSlidingView(mOffsetTarget < commitDistance, mOffsetTarget > commitDistance);
+        } else {
+            settleSlidingView(mOffset < commitDistance, mOffset > commitDistance);
+        }
         requestRender();
     }
 
