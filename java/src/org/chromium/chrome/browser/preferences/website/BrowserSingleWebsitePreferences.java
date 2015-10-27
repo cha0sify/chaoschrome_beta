@@ -38,6 +38,7 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.ListPreference;
@@ -612,7 +613,7 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
         Bundle fragmentArgs = new Bundle();
         // TODO(mvanouwerkerk): Define a pure getOrigin method in UrlUtilities that is the
         // equivalent of the call below, because this is perfectly fine for non-display purposes.
-        String origin = UrlUtilities.getOriginForDisplay(URI.create(url), true /*  showScheme */);
+        String origin = UrlUtilities.getOriginForDisplay(Uri.parse(url), true /*  showScheme */);
         fragmentArgs.putString(SingleWebsitePreferences.EXTRA_ORIGIN, origin);
 
         if (icon != null) {

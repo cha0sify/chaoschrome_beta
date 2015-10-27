@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser;
 
+import android.net.Uri;
 import android.text.TextUtils;
 
 import org.chromium.base.CollectionUtil;
@@ -150,6 +151,41 @@ public class UrlUtilities {
      *         it fails to parse it.
      */
     public static String getOriginForDisplay(URI uri, boolean showScheme) {
+        String scheme = uri.getScheme();
+        String host = uri.getHost();
+        int port = uri.getPort();
+
+        String displayUrl;
+        if (TextUtils.isEmpty(scheme) || TextUtils.isEmpty(host)) {
+            displayUrl = uri.toString();
+        } else {
+            if (showScheme) {
+                scheme += "://";
+            } else {
+                scheme = "";
+            }
+
+            if (port == -1 || (port == 80 && "http".equals(scheme))
+                    || (port == 443 && "https".equals(scheme))) {
+                displayUrl = scheme + host;
+            } else {
+                displayUrl = scheme + host + ":" + port;
+            }
+        }
+
+        return displayUrl;
+    }
+
+    /**
+     * Builds a String that strips down the URL to the its scheme, host, and port. This method uses
+     * Android.net.Uri instead of Java.net.URI. It's better suited to some more complicated urls.
+     * @param uri URI to break down.
+     * @param showScheme Whether or not to show the scheme.  If the URL can't be parsed, this value
+     *                   is ignored.
+     * @return Stripped-down String containing the essential bits of the URL, or the original URL if
+     *         it fails to parse it.
+     */
+    public static String getOriginForDisplay(Uri uri, boolean showScheme) {
         String scheme = uri.getScheme();
         String host = uri.getHost();
         int port = uri.getPort();
