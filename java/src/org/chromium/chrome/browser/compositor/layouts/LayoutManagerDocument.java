@@ -235,6 +235,7 @@ public class LayoutManagerDocument extends LayoutManager
     protected void addGlobalSceneOverlay(SceneOverlay helper) {
         mStaticLayout.addSceneOverlay(helper);
         mContextualSearchLayout.addSceneOverlay(helper);
+        mEdgeNavigationLayout.addSceneOverlay(helper);
     }
 
     /**
