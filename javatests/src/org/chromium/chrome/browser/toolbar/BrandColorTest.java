@@ -9,9 +9,11 @@ import android.test.suitebuilder.annotation.SmallTest;
 import android.text.TextUtils;
 
 import org.chromium.base.ThreadUtils;
+import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.UrlUtils;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.test.DocumentActivityTestBase;
 import org.chromium.chrome.test.util.DisableInTabbedMode;
 import org.chromium.content.browser.InterstitialPageDelegateAndroid;
@@ -24,6 +26,7 @@ import java.util.concurrent.Callable;
  * Contains tests for the brand color feature.
  */
 @DisableInTabbedMode
+@CommandLineFlags.Add(ChromeSwitches.ENABLE_SUPPRESSED_CHROMIUM_FEATURES)
 public class BrandColorTest extends DocumentActivityTestBase {
     private static final String BRAND_COLOR_1 = "#482329";
     private static final String BRAND_COLOR_2 = "#505050";

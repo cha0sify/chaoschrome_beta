@@ -37,6 +37,9 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.text.TextUtils;
 import android.view.MotionEvent;
 
 import org.chromium.base.Log;
@@ -51,6 +54,7 @@ import org.chromium.chrome.browser.compositor.scene_layer.SceneLayer;
 import org.chromium.chrome.browser.compositor.scene_layer.TabListSceneLayer;
 import org.chromium.chrome.browser.contextualsearch.SwipeRecognizer;
 import org.chromium.chrome.browser.favicon.FaviconHelper;
+import org.chromium.chrome.browser.favicon.LargeIconBridge;
 import org.chromium.chrome.browser.fullscreen.ChromeFullscreenManager;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
@@ -120,7 +124,7 @@ public class EdgeNavigationLayout extends Layout
 
     private EdgeSwipeEventFilter.ScrollDirection mSwipeDirection;
 
-    private FaviconHelper mFaviconHelper;
+    private LargeIconBridge mIconBridge;
 
     private Layout mLiveLayout;
 
@@ -130,6 +134,108 @@ public class EdgeNavigationLayout extends Layout
 
     private int mCurrHistoryIndex;
     private int mNextHistoryIndex;
+
+    private int mNextSiteColor;
+    private int mPrevSiteColor;
+
+    class LargeIconForNav implements LargeIconBridge.LargeIconCallback {
+        private EdgeNavigationLayout mLayout;
+        private Tab mClientTab;
+        private int mCurrIndex;
+        private int mNavDirection;
+
+        public LargeIconForNav(EdgeNavigationLayout layout, Tab tab, int currIndex, int nav) {
+            mLayout = layout;
+            mClientTab = tab;
+            mCurrIndex = currIndex;
+            mNavDirection = nav;
+        }
+
+        @Override
+        public void onLargeIconAvailable(Bitmap icon, int fallbackColor) {
+            if (mLayout.mTabModelSelector.getCurrentTab() != mClientTab) return;
+            if (mLayout.mCurrHistoryIndex != mCurrIndex) return;
+            if (mNavDirection != NAV_BACK && mNavDirection != NAV_FWD) return;
+
+            if (icon != null) {
+                fallbackColor = FaviconHelper.getDominantColorForBitmap(icon);
+                float[] hsv = new float[3];
+                Color.colorToHSV(fallbackColor, hsv);
+                hsv[2] *= 0.7f;
+                fallbackColor = Color.HSVToColor(Color.alpha(fallbackColor), hsv);
+            }
+
+            if (mNavDirection == NAV_BACK) {
+                mPrevSiteColor = fallbackColor;
+            } else {
+                mNextSiteColor = fallbackColor;
+            }
+
+            int snapshotID = generateThumbnailID(mClientTab, mCurrIndex + mNavDirection);
+            if (!mLayout.mTabContentManager.hasFullCachedThumbnail(snapshotID)) {
+                int imageHeight = (mClientTab.getWidth() > mClientTab.getHeight()) ?
+                        mClientTab.getWidth() : mClientTab.getHeight();
+
+                if (imageHeight <= 0) {
+                    return;
+                }
+
+                Bitmap textBM = null;
+
+                // Find navigation entry for next history item
+                NavigationEntry entry = mClientTab.getWebContents().getNavigationController()
+                        .getEntryAtIndex(mCurrIndex + mNavDirection);
+                if (entry != null) {
+                    String title = entry.getTitle();
+                    String url = entry.getUrl();
+                    if (!TextUtils.isEmpty(title)) {
+                        String newtabstr = mLayout.getContext()
+                                .getResources().getString(R.string.accessibility_new_tab_page);
+                        if ((title.equalsIgnoreCase(newtabstr) || title.equalsIgnoreCase("New tab"))
+                                && mCurrHistoryIndex == 1) {
+                            title = mLayout.getContext().getResources()
+                                    .getString(R.string.accessibility_toolbar_btn_home);
+                        }
+                        textBM = createBitmapFromText(title, imageHeight);
+                    } else if (!TextUtils.isEmpty(url)) {
+                        textBM = createBitmapFromText(url, imageHeight);
+                    }
+                }
+
+                Bitmap bitmapForCache = Bitmap.createBitmap(imageHeight, imageHeight,
+                        Bitmap.Config.ARGB_8888);
+
+                // Create canvas and set background color
+                Canvas combo = new Canvas(bitmapForCache);
+                Paint paint = new Paint();
+                paint.setStyle(Paint.Style.FILL);
+                paint.setStrokeWidth(5);
+                paint.setAntiAlias(true);
+                paint.setColor(fallbackColor);
+                combo.drawRect(0, 0, imageHeight, imageHeight, paint);
+
+                int height_offset = 0;
+                // Add favicon
+                if (icon != null) {
+                    Drawable favicon = new BitmapDrawable(mLayout.getContext().getResources(),icon);
+                    favicon.setBounds(0, 0, icon.getWidth(), icon.getHeight());
+                    height_offset = icon.getHeight();
+                    favicon.draw(combo);
+                }
+
+                // Add text (title or URL)
+                if (textBM != null) {
+                    Drawable text = new BitmapDrawable(mLayout.getContext().getResources(), textBM);
+                    text.setBounds(0, height_offset, textBM.getWidth(),
+                            height_offset + textBM.getHeight());
+                    text.draw(combo);
+                }
+
+                // Cache this bitmap for the snapshot ID
+                mLayout.mTabContentManager.cacheThumbnailWithID(snapshotID, bitmapForCache);
+            }
+        }
+    }
 
     private class EdgeNavigationTabObserver extends EmptyTabObserver {
         private EdgeNavigationLayout mLayout;
@@ -175,8 +281,7 @@ public class EdgeNavigationLayout extends Layout
 
         @Override
         public void onLoadProgressChanged(Tab tab, int progress) {
-            updateHistoryIndexIfPossible(tab.getWebContents().getNavigationController()
-                    .getLastCommittedEntryIndex());
+            updateHistoryIndexIfPossible(tab);
 
             if (progress > MIN_LOAD_PROGRESS) {
                 showLiveView(tab);
@@ -203,15 +308,22 @@ public class EdgeNavigationLayout extends Layout
 
         @Override
         public void onDidStartNavigationToPendingEntry(Tab tab, String url) {
-            updateHistoryIndexIfPossible(tab.getWebContents().getNavigationController()
-                    .getLastCommittedEntryIndex());
+            updateHistoryIndexIfPossible(tab);
         }
 
-        private void updateHistoryIndexIfPossible(int index) {
+        private void updateHistoryIndexIfPossible(Tab tab) {
+            NavigationController controller = tab.getWebContents().getNavigationController();
+            int index = controller.getLastCommittedEntryIndex();
             synchronized (mLayout) {
-                if (mLayout.mCurrHistoryIndex == mLayout.mNextHistoryIndex) {
+                if (index != mLayout.mCurrHistoryIndex) {
+                    mLayout.requestFaviconForAdjacentNavigationEntries(tab, index, controller);
+                    if (mLayout.mCurrHistoryIndex == mLayout.mNextHistoryIndex) {
+                        mLayout.mNextHistoryIndex = index;
+                    }
                     mLayout.mCurrHistoryIndex = index;
-                    mLayout.mNextHistoryIndex = mLayout.mCurrHistoryIndex;
+                } else if (mLayout.mCurrHistoryIndex == mLayout.mNextHistoryIndex) {
+                    mLayout.mNextHistoryIndex = index;
+                    mLayout.mCurrHistoryIndex = index;
                 }
             }
         }
@@ -236,6 +348,15 @@ public class EdgeNavigationLayout extends Layout
         @Override
         public void didSelectTab(Tab tab, TabModel.TabSelectionType type, int lastId) {
             tab.addObserver(mTabObserver);
+            mIconBridge = new LargeIconBridge(tab.getProfile());
+            if (tab.getWebContents() != null) {
+                NavigationController controller = tab.getWebContents().getNavigationController();
+                if (controller != null) {
+                    requestFaviconForAdjacentNavigationEntries(tab,
+                            controller.getLastCommittedEntryIndex(),
+                            controller);
+                }
+            }
         }
     }
 
@@ -389,7 +510,6 @@ public class EdgeNavigationLayout extends Layout
         mToolbarHeight = res.getDimension(R.dimen.toolbar_height_no_shadow);
 
         mTabObserver = new EdgeNavigationTabObserver(this);
-        mFaviconHelper = new FaviconHelper();
     }
 
     @Override
@@ -404,11 +524,23 @@ public class EdgeNavigationLayout extends Layout
             model.addObserver(modelObserver);
         }
 
-        if (modelSelector.getCurrentTab() != null)
-            modelSelector.getCurrentTab().addObserver(mTabObserver);
+        int imageHeight = (getHeight() > getWidth()) ? (int) getHeight() : (int) getWidth();
+        Tab tab = modelSelector.getCurrentTab();
+        if (tab != null) {
+            tab.addObserver(mTabObserver);
+            mIconBridge = new LargeIconBridge(tab.getProfile());
+            if (tab.getWebContents() != null) {
+                NavigationController controller = tab.getWebContents().getNavigationController();
+                if (controller != null)
+                    requestFaviconForAdjacentNavigationEntries(tab,
+                            controller.getLastCommittedEntryIndex(),
+                            controller);
+            }
+            imageHeight = (tab.getWidth() > tab.getHeight()) ? tab.getWidth() : tab.getHeight();
+        }
 
 /*
-        Bitmap image = createBitmapFromText("No more navigation entries");
+        Bitmap image = createBitmapFromText("No more navigation entries", imageHeight);
         manager.cacheThumbnailWithID(INVALID_NAV_VIEW_ID, image);
 */
     }
@@ -607,11 +739,18 @@ public class EdgeNavigationLayout extends Layout
         } else {
             mNextView = newLayoutView(generateThumbnailID(tab, nav_idx));
 
-            if (entry.getFavicon() == null) {
-                mNextView.setBackgroundColorRes(R.color.light_active_color);
-            } else {
-                mNextView.setBackgroundColor(
-                        FaviconHelper.getDominantColorForBitmap(entry.getFavicon()));
+            if (nav_offset == NAV_BACK) {
+                if (mPrevSiteColor == 0) {
+                    mNextView.setBackgroundColorRes(R.color.light_active_color);
+                } else {
+                    mNextView.setBackgroundColor(mPrevSiteColor);
+                }
+            } else if (nav_offset == NAV_FWD) {
+                if (mNextSiteColor == 0) {
+                    mNextView.setBackgroundColorRes(R.color.light_active_color);
+                } else {
+                    mNextView.setBackgroundColor(mNextSiteColor);
+                }
             }
         }
         mNextView.setBitmapView();
@@ -702,7 +841,7 @@ public class EdgeNavigationLayout extends Layout
         controller.goToNavigationIndex(mNextHistoryIndex);
     }
 
-    public static int generateThumbnailID(Tab tab, int navID) {
+    private static int generateThumbnailID(Tab tab, int navID) {
         return tab.getId() | RESERVED_BIT_VAL | navID << (NUM_TAB_ID_BITS + NUM_RESERVED_BITS);
     }
 
@@ -718,14 +857,14 @@ public class EdgeNavigationLayout extends Layout
         }
     }
 
-    public Bitmap createBitmapFromText(String text) {
+    private Bitmap createBitmapFromText(String text, int reqwidth) {
         Paint paint = new Paint();
         paint.setTextSize(30.f);
         paint.setColor(Color.WHITE);
-        paint.setTextAlign(Paint.Align.CENTER);
+        paint.setTextAlign(Paint.Align.LEFT);
 
         float baseline = -paint.ascent();
-        int width = (int) paint.measureText(text);
+        int width = (reqwidth > 0) ? reqwidth : (int) paint.measureText(text);
         int height = (int) (baseline + paint.descent());
         Bitmap image = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_4444);
 
@@ -736,5 +875,22 @@ public class EdgeNavigationLayout extends Layout
         matrix.postRotate(90);
 
         return Bitmap.createBitmap(image, 0, 0, width, height, matrix, true);
+    }
+
+    private void requestFaviconForAdjacentNavigationEntries(Tab tab, int index,
+                                                            NavigationController controller) {
+        if (index > 0) {
+            NavigationEntry entry = controller.getEntryAtIndex(index + NAV_BACK);
+            if (entry != null) {
+                mIconBridge.getLargeIconForUrl(entry.getUrl(), 48,
+                        new LargeIconForNav(this, tab, index, NAV_BACK));
+            }
+        }
+
+        NavigationEntry entry = controller.getEntryAtIndex(index + NAV_FWD);
+        if (entry != null) {
+            mIconBridge.getLargeIconForUrl(entry.getUrl(), 48,
+                    new LargeIconForNav(this, tab, index, NAV_FWD));
+        }
     }
 }

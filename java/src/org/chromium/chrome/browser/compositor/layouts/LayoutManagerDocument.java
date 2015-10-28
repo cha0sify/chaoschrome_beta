@@ -12,7 +12,9 @@ import android.util.SparseArray;
 import android.view.MotionEvent;
 import android.view.ViewGroup;
 
+import org.chromium.base.CommandLine;
 import org.chromium.chrome.browser.ChromeApplication;
+import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.UrlConstants;
 import org.chromium.chrome.browser.compositor.bottombar.contextualsearch.ContextualSearchPanel;
 import org.chromium.chrome.browser.compositor.layouts.components.LayoutTab;
@@ -117,7 +119,10 @@ public class LayoutManagerDocument extends LayoutManager
         mGestureHandler = new GestureHandlerLayoutDelegate(this);
         mToolbarSwipeHandler = new ToolbarSwipeHandler(this);
 
-        mEdgeNavigationLayout = EdgeNavigationLayout.getNewLayout(context, this, renderHost);
+        if (!CommandLine.getInstance().hasSwitch(
+                ChromeSwitches.ENABLE_SUPPRESSED_CHROMIUM_FEATURES)) {
+            mEdgeNavigationLayout = EdgeNavigationLayout.getNewLayout(context, this, renderHost);
+        }
 
         // Build Event Filters
         mStaticEdgeEventFilter =
@@ -128,9 +133,17 @@ public class LayoutManagerDocument extends LayoutManager
                 context, this, mContextualSearchPanel, mContextualSearchEdgeSwipeHandler, this);
         EventFilter readerModeStaticEventFilter = new ReaderModeStaticEventFilter(
                 context, this, mReaderModePanelSelector, mReaderModeEdgeSwipeHandler, this);
-        EventFilter staticCascadeEventFilter = new CascadeEventFilter(context, this,
-                new EventFilter[] {readerModeStaticEventFilter, contextualSearchStaticEventFilter,
-                        mEdgeNavigationLayout.getEventFilter(), mStaticEdgeEventFilter});
+
+        EventFilter staticCascadeEventFilter;
+        if (mEdgeNavigationLayout != null) {
+            staticCascadeEventFilter = new CascadeEventFilter(context, this,
+                    new EventFilter[]{readerModeStaticEventFilter,contextualSearchStaticEventFilter,
+                            mEdgeNavigationLayout.getEventFilter(), mStaticEdgeEventFilter});
+        } else {
+            staticCascadeEventFilter = new CascadeEventFilter(context, this,
+                    new EventFilter[]{readerModeStaticEventFilter,contextualSearchStaticEventFilter,
+                            mStaticEdgeEventFilter});
+        }
 
         // Build Layouts
         mStaticLayout = new StaticLayout(
@@ -235,7 +248,8 @@ public class LayoutManagerDocument extends LayoutManager
     protected void addGlobalSceneOverlay(SceneOverlay helper) {
         mStaticLayout.addSceneOverlay(helper);
         mContextualSearchLayout.addSceneOverlay(helper);
-        mEdgeNavigationLayout.addSceneOverlay(helper);
+        if (mEdgeNavigationLayout != null)
+            mEdgeNavigationLayout.addSceneOverlay(helper);
     }
 
     /**
