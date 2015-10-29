@@ -111,6 +111,7 @@ public class EdgeNavigationLayout extends Layout
     private boolean mbNavigationPossible;
     private boolean mbNavigateBack;
     private boolean mbNavigateForward;
+    private boolean mIsFullscreen;
 
     private float mOffsetStart;
     private float mOffset;
@@ -274,6 +275,9 @@ public class EdgeNavigationLayout extends Layout
         }
 
         @Override
+        public void onToggleFullscreenMode(Tab tab, boolean enable) { mIsFullscreen = enable; }
+
+        @Override
         public void onDestroyed(Tab tab) {
             tab.removeObserver(this);
             mLayout.mTabContentManager.removeThumbnailWithID(tab.getId(), TAB_ID_MASK);
@@ -409,7 +413,7 @@ public class EdgeNavigationLayout extends Layout
         @Override
         protected boolean onInterceptTouchEventInternal(MotionEvent event,
                                                         boolean isKeyboardShowing) {
-            if (mLayout == null) {
+            if (mLayout == null || isKeyboardShowing || mLayout.mIsFullscreen) {
                 return false;
             }
 
