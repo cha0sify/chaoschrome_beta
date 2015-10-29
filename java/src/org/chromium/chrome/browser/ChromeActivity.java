@@ -92,6 +92,7 @@ import org.chromium.chrome.browser.net.spdyproxy.DataReductionProxySettings;
 import org.chromium.chrome.browser.nfc.BeamController;
 import org.chromium.chrome.browser.nfc.BeamProvider;
 import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomizations;
+import org.chromium.chrome.browser.preferences.AboutChromePreferences;
 import org.chromium.chrome.browser.preferences.ChromePreferenceManager;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.PreferencesLauncher;
@@ -1428,14 +1429,15 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                 builder.setView(DistilledPagePrefsView.create(this));
                 builder.show();
             }
-        } else if (id == R.id.help_id) {
-            // Since reading back the compositor is asynchronous, we need to do the readback
-            // before starting the GoogleHelp.
-            String helpContextId = HelpAndFeedback.getHelpContextIdFromUrl(
-                    this, currentTab.getUrl(), getCurrentTabModel().isIncognito());
-            HelpAndFeedback.getInstance(this)
-                    .show(this, helpContextId, currentTab.getProfile(), currentTab.getUrl());
-            RecordUserAction.record("MobileMenuFeedback");
+        } else if (id == R.id.about_id) {
+            Intent preferencesIntent = PreferencesLauncher.createIntentForSettingsPage(
+                    this, AboutChromePreferences.class.getName());
+            Bundle bundle = new Bundle();
+            bundle.putCharSequence(AboutChromePreferences.TABTITLE, getActivityTab().getTitle());
+            bundle.putCharSequence(AboutChromePreferences.TABURL, getActivityTab().getUrl());
+            preferencesIntent.putExtra(AboutChromePreferences.TABBUNDLE, bundle);
+            this.startActivity(preferencesIntent, bundle);
+            RecordUserAction.record("MobileMenuAbout");
         } else {
             return false;
         }

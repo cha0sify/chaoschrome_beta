@@ -38,7 +38,7 @@ public abstract class IntentHelper {
      * @param fileToAttach The file name of the attachment.
      */
     @CalledByNative
-    static void sendEmail(Context context, String email, String subject, String body,
+    public static void sendEmail(Context context, String email, String subject, String body,
             String chooserTitle, String fileToAttach) {
         if (TextUtils.isEmpty(email)) {
             Account[] accounts = AccountManagerHelper.get(context).getGoogleAccounts();

@@ -924,6 +924,9 @@ To obtain new licenses, connect to the internet and play your downloaded content
       <message name="IDS_OPEN_SOURCE_LICENSE_URL" desc="URL for open source license" translateable="false">
         chrome://credits
       </message>
+       <message name="IDS_VERSION_URL" desc="URL for version info" translateable="false">
+        chrome://version
+      </message>
       <message name="IDS_TERMS_OF_SERVICE_TITLE" desc="Title for terms of service">
         Chrome Terms of Service
       </message>
@@ -2307,6 +2310,18 @@ However, you aren’t invisible. Going incognito doesn’t hide your browsing fr
       <message name="IDS_HELP_CONTEXT_SAD_TAB" translateable="false">
         mobile_awsnap
       </message>
+      <!-- Feedback strings -->
+      <message name="IDS_SWE_FEEDBACK_SUBJECT" translateable="false">
+        Browser Feedback
+      </message>
+      <message name="IDS_SWE_FEEDBACK_MSG" desc="Feedback email message" translateable="false">
+        Version : <ph name="VERSION_STRING">%1$s<ex>Chrome 40.0.2214.67</ex></ph>
+        &lt;br&gt;&lt;/br&gt;Build Hash: <ph name="BUILD_HASH">%2$s<ex>cefghig</ex></ph>
+        &lt;br&gt;&lt;/br&gt;Tab Title: <ph name="TAB_TITLE">%3$s<ex>cefghig</ex></ph>
+        &lt;br&gt;&lt;/br&gt;Tab URL: <ph name="TAB_URL">%4$s<ex>http://www.qualcomm.com</ex></ph>
+        &lt;br&gt;&lt;/br&gt;Enter your feedback here..
+      </message>
+
     </messages>
   </release>
 </grit>

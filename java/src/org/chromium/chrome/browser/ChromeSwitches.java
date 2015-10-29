@@ -195,6 +195,21 @@ public abstract class ChromeSwitches {
      */
     public static final String ENABLE_OFFLINE_PAGES = "enable-offline-pages";
 
+    /**
+     * Feedback email
+     */
+    public static final String CMD_LINE_SWITCH_FEEDBACK = "mail-feedback-to";
+
+    /**
+     * Crash log server url
+     */
+    public static final String CRASH_LOG_SERVER_CMD = "crash-log-server";
+
+    /**
+     * Auto-update server url
+     */
+    public static final String AUTO_UPDATE_SERVER_CMD = "auto-update-server";
+
     // Prevent instantiation.
     private ChromeSwitches() {}
 }
