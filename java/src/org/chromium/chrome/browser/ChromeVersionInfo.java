@@ -52,4 +52,6 @@ public class ChromeVersionInfo {
     public static boolean isOfficialBuild() {
         return ChromeVersionConstants.IS_OFFICIAL_BUILD;
     }
+
+    public static String getProductHash() { return ChromeVersionConstants.PRODUCT_HASH;}
 }

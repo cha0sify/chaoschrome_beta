@@ -16,6 +16,16 @@
     'manifest_package': '<!(python <(DEPTH)/swe/tools/swe_config.py \
                                         -i <(swe_branding_file) \
                                         -c PACKAGE_NAME)',
+
+    'swe_app_manifest_version_code': '<!(python <(DEPTH)/swe/tools/swe_version.py \
+                                        -i <(DEPTH)/chrome/VERSION \
+                                        -o <(DEPTH)/swe/VERSION \
+                                        --version-code-only)',
+    'swe_app_manifest_version_name': '<!(python <(DEPTH)/swe/tools/swe_version.py \
+                                        -i <(DEPTH)/chrome/VERSION \
+                                        -o <(DEPTH)/swe/VERSION \
+                                        --version-string-only)',
+
     'chrome_public_apk_manifest': '<(SHARED_INTERMEDIATE_DIR)/swe_browser_apk_manifest/AndroidManifest.xml',
     'chrome_public_test_apk_manifest': '<(SHARED_INTERMEDIATE_DIR)/swe_browser_test_apk_manifest/AndroidManifest.xml',
     # This list is shared with GN.
@@ -132,6 +142,8 @@
         'android_manifest_path': '<(chrome_public_apk_manifest)',
         'apk_name': 'SWE_Browser',
         'native_lib_target': 'libswe',
+        'app_manifest_version_code': '<(swe_app_manifest_version_code)',
+        'app_manifest_version_name': '<(swe_app_manifest_version_name)',
         'java_in_dir': 'java',
         'resource_dir': '../../chrome/android/java/res_chromium',
         'extra_native_libs': ['<@(web_refiner_native_libs)'],
