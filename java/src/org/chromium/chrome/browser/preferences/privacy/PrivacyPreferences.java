@@ -14,7 +14,9 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 
+import org.chromium.base.CommandLine;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.contextualsearch.ContextualSearchFieldTrial;
 import org.chromium.chrome.browser.help.HelpAndFeedback;
 import org.chromium.chrome.browser.precache.PrecacheLauncher;
@@ -102,7 +104,13 @@ public class PrivacyPreferences extends BrowserPreferenceFragment
         ChromeBaseCheckBoxPreference uploadCrashDumpNoCellularPref =
                 (ChromeBaseCheckBoxPreference) findPreference(PREF_CRASH_DUMP_UPLOAD_NO_CELLULAR);
 
-        if (privacyPrefManager.isCellularExperimentEnabled()) {
+        //Disable Chromium crash log dump setting
+        if(!CommandLine.getInstance()
+                .hasSwitch(ChromeSwitches.ENABLE_SUPPRESSED_CHROMIUM_FEATURES)) {
+            preferenceScreen.removePreference(uploadCrashDumpNoCellularPref);
+            preferenceScreen.removePreference(uploadCrashDumpPref);
+            preferenceScreen.removePreference(findPreference(PREF_USAGE_AND_CRASH_REPORTING));
+        } else if (privacyPrefManager.isCellularExperimentEnabled()) {
             preferenceScreen.removePreference(uploadCrashDumpNoCellularPref);
             preferenceScreen.removePreference(uploadCrashDumpPref);
         } else {
@@ -313,9 +321,12 @@ public class PrivacyPreferences extends BrowserPreferenceFragment
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         menu.clear();
-        MenuItem help = menu.add(
-                Menu.NONE, R.id.menu_id_help_privacy, Menu.NONE, R.string.menu_help);
-        help.setIcon(R.drawable.ic_help_and_feedback);
+        if(CommandLine.getInstance()
+                .hasSwitch(ChromeSwitches.ENABLE_SUPPRESSED_CHROMIUM_FEATURES)) {
+            MenuItem help = menu.add(
+                    Menu.NONE, R.id.menu_id_help_privacy, Menu.NONE, R.string.menu_help);
+            help.setIcon(R.drawable.ic_help_and_feedback);
+        }
     }
 
     @Override

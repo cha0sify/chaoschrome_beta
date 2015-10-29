@@ -12,7 +12,9 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 
+import org.chromium.base.CommandLine;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.help.HelpAndFeedback;
 import org.chromium.chrome.browser.preferences.ChromeBaseCheckBoxPreference;
 import org.chromium.chrome.browser.preferences.ManagedPreferenceDelegate;
@@ -78,10 +80,13 @@ public class LanguagePreferences extends BrowserPreferenceFragment {
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         menu.clear();
-        MenuItem help = menu.add(
-                Menu.NONE, R.id.menu_id_translate_help, Menu.NONE, R.string.menu_help);
-        help.setIcon(R.drawable.ic_help_and_feedback);
-        help.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        if(CommandLine.getInstance()
+                .hasSwitch(ChromeSwitches.ENABLE_SUPPRESSED_CHROMIUM_FEATURES)) {
+            MenuItem help = menu.add(
+                    Menu.NONE, R.id.menu_id_translate_help, Menu.NONE, R.string.menu_help);
+            help.setIcon(R.drawable.ic_help_and_feedback);
+            help.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        }
 
         MenuItem reset = menu.add(Menu.NONE, Menu.NONE, Menu.NONE,
                 R.string.reset_translate_defaults);

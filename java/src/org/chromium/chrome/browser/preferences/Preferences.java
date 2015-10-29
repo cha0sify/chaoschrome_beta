@@ -27,11 +27,13 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 import org.chromium.base.ApiCompatibilityUtils;
+import org.chromium.base.CommandLine;
 import org.chromium.base.VisibleForTesting;
 import org.chromium.base.annotations.SuppressFBWarnings;
 import org.chromium.base.library_loader.ProcessInitException;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeApplication;
+import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.help.HelpAndFeedback;
 import org.chromium.chrome.browser.profiles.Profile;
 
@@ -211,9 +213,13 @@ public class Preferences extends AppCompatActivity implements
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
         // By default, every screen in Settings shows a "Help & feedback" menu item.
-        MenuItem help = menu.add(
-                Menu.NONE, R.id.menu_id_help_general, Menu.CATEGORY_SECONDARY, R.string.menu_help);
-        help.setIcon(R.drawable.ic_help_and_feedback);
+        if(CommandLine.getInstance()
+                .hasSwitch(ChromeSwitches.ENABLE_SUPPRESSED_CHROMIUM_FEATURES)) {
+            MenuItem help = menu.add(
+                    Menu.NONE, R.id.menu_id_help_general, Menu.CATEGORY_SECONDARY, R.string.menu_help);
+            help.setIcon(R.drawable.ic_help_and_feedback);
+            return true;
+        }
         return true;
     }
 
