@@ -12,6 +12,7 @@ import android.util.Log;
 
 import org.chromium.base.CommandLine;
 import org.chromium.base.annotations.SuppressFBWarnings;
+import org.chromium.chrome.R;
 
 import java.io.File;
 
@@ -46,11 +47,18 @@ public final class ChromeCommandLineInitUtil {
     @SuppressFBWarnings("DMI_HARDCODED_ABSOLUTE_FILENAME")
     public static void initChromeCommandLine(Context context) {
         if (!CommandLine.isInitialized()) {
+            CommandLine.init(null);
+            final int id = context.getResources().getIdentifier("swe_command_line", "raw",
+                    context.getPackageName());
+            if(id > 0) {
+                CommandLine.getInstance().appendSwitchesAndArguments(context, id);
+            }
+            //Commandline to get precedence over 'swe_command_line'
             File commandLineFile = getAlternativeCommandLinePath(context);
             if (commandLineFile == null) {
                 commandLineFile = new File(COMMAND_LINE_FILE_PATH, COMMAND_LINE_FILE);
             }
-            CommandLine.initFromFile(commandLineFile.getPath());
+            CommandLine.getInstance().appendSwitchesAndArguments(commandLineFile.getPath());
         }
     }
 
