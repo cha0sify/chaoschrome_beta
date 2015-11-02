@@ -9,8 +9,10 @@ import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
+import org.chromium.base.CommandLine;
 import org.chromium.base.StreamUtil;
 import org.chromium.base.VisibleForTesting;
+import org.chromium.chrome.browser.ChromeSwitches;
 import org.chromium.chrome.browser.preferences.privacy.CrashReportingPermissionManager;
 import org.chromium.chrome.browser.preferences.privacy.PrivacyPreferencesManager;
 import org.chromium.chrome.browser.util.HttpURLConnectionFactory;
@@ -47,10 +49,11 @@ public class MinidumpUploadCallable implements Callable<Boolean> {
     @VisibleForTesting protected static final String PREF_UPLOAD_COUNT = "crash_dump_upload_count";
 
     @VisibleForTesting
-    protected static final String CRASH_URL_STRING = "https://clients2.google.com/cr/report";
+    protected static String CRASH_URL_STRING = "https://clients2.google.com/cr/report";
 
     @VisibleForTesting
     protected static final String CONTENT_TYPE_TMPL = "multipart/form-data; boundary=%s";
+    protected static final String BROWSER_CONTENT_TYPE_TMPL = "binary/octet-stream";
 
     private final File mFileToUpload;
     private final File mLogfile;
@@ -76,17 +79,22 @@ public class MinidumpUploadCallable implements Callable<Boolean> {
 
     @Override
     public Boolean call() {
-        if (!mPermManager.isUploadPermitted()) {
+        if (!mPermManager.isUploadPermitted() &&
+                !CommandLine.getInstance().hasSwitch(ChromeSwitches.CRASH_LOG_SERVER_CMD)) {
             Log.i(TAG, "Minidump upload is not permitted");
             return false;
         }
 
         boolean isLimited = mPermManager.isUploadLimited();
-        if (isLimited && !isUploadSizeAndFrequencyAllowed()) {
+        if (isLimited && !isUploadSizeAndFrequencyAllowed() &&
+                !CommandLine.getInstance().hasSwitch(ChromeSwitches.CRASH_LOG_SERVER_CMD)) {
             Log.i(TAG, "Minidump cannot currently be uploaded due to constraints");
             return false;
         }
-
+        if (CommandLine.getInstance().hasSwitch(ChromeSwitches.CRASH_LOG_SERVER_CMD)) {
+            CRASH_URL_STRING = CommandLine.getInstance().
+                    getSwitchValue(ChromeSwitches.CRASH_LOG_SERVER_CMD);
+        }
         HttpURLConnection connection =
                 mHttpURLConnectionFactory.createHttpURLConnection(CRASH_URL_STRING);
         if (connection == null) {
@@ -137,7 +145,12 @@ public class MinidumpUploadCallable implements Callable<Boolean> {
         connection.setDoOutput(true);
         connection.setRequestProperty("Connection", "Keep-Alive");
         connection.setRequestProperty("Content-Encoding", "gzip");
-        connection.setRequestProperty("Content-Type", String.format(CONTENT_TYPE_TMPL, boundary));
+        if (CommandLine.getInstance().hasSwitch(ChromeSwitches.CRASH_LOG_SERVER_CMD)) {
+            connection.setRequestProperty("Content-Type", BROWSER_CONTENT_TYPE_TMPL);
+        } else {
+            connection.setRequestProperty("Content-Type",
+                    String.format(CONTENT_TYPE_TMPL, boundary));
+        }
         return true;
     }
 

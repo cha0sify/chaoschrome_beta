@@ -36,7 +36,7 @@ public class CrashFileManager {
     private static final Pattern MINIDUMP_PATTERN =
             Pattern.compile("\\.dmp([0-9]*)(\\.try[0-9])?\\z");
 
-    private static final Pattern UPLOADED_MINIDUMP_PATTERN = Pattern.compile("\\.up([0-9]*)\\z");
+    private static final Pattern UPLOADED_MINIDUMP_PATTERN = Pattern.compile("\\.up([0-9]*)");
 
     private static final String UPLOADED_MINIDUMP_SUFFIX = ".up";
 
@@ -46,6 +46,8 @@ public class CrashFileManager {
     protected static final String TMP_SUFFIX = ".tmp";
 
     private static final Pattern TMP_PATTERN = Pattern.compile("\\.tmp\\z");
+    private static final Pattern LOGCAT_PATTERN = Pattern.compile("\\.logcat");
+    private static final Pattern UPLOADS_LOG_PATTERN = Pattern.compile("\\.log\\z");
 
     private static Comparator<File> sFileComparator =  new Comparator<File>() {
         @Override
@@ -148,6 +150,20 @@ public class CrashFileManager {
         for (File f : getAllTempFiles()) {
             deleteFile(f);
         }
+        for (File f : getAllLogcatFiles()) {
+            deleteFile(f);
+        }
+        for (File f : getAllUploadLogFiles()) {
+            deleteFile(f);
+        }
+    }
+
+    private File[] getAllUploadLogFiles() {
+        return getMatchingFiles(UPLOADS_LOG_PATTERN);
+    }
+
+    private File[] getAllLogcatFiles() {
+        return getMatchingFiles(LOGCAT_PATTERN);
     }
 
     /**
