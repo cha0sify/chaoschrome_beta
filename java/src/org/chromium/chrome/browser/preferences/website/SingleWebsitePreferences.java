@@ -400,7 +400,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         return null;
     }
 
-    private boolean showWarningFor(int type) {
+    protected boolean showWarningFor(int type) {
         switch (type) {
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_GEOLOCATION:
                 if (mSite.getGeolocationPermission() == null) return false;

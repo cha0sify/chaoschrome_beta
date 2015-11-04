@@ -673,4 +673,21 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
         return fragmentArgs;
     }
 
+    //Because we expose all settings to the user always, we want to show the warning about
+    //Android's permission management to explain why some settings are disabled.
+    protected boolean showWarningFor(int type) {
+        switch (type) {
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_GEOLOCATION:
+                break;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_MEDIASTREAM_CAMERA:
+                break;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_MEDIASTREAM_MIC:
+                break;
+            default:
+                return false;
+        }
+        SiteSettingsCategory category = SiteSettingsCategory.fromContentSettingsType(type);
+        return category.showPermissionBlockedMessage(getActivity());
+    }
+
 }
