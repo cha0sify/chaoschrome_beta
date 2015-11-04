@@ -194,11 +194,26 @@ public class PrerenderServiceTest extends
             }
         };
 
-        assertTrue(CriteriaHelper.pollForCriteria(new Criteria() {
+        boolean result = CriteriaHelper.pollForCriteria(new Criteria() {
             @Override
             public boolean isSatisfied() {
                 return ThreadUtils.runOnUiThreadBlockingNoException(callable);
             }
-        }));
+        });
+
+        //We check once more in case the TimerQueue was suspended for the background tab
+        if (!result) {
+            try {
+                Thread.sleep(10000);
+            }
+            catch (InterruptedException ex) {}
+            result = CriteriaHelper.pollForCriteria(new Criteria() {
+              @Override
+              public boolean isSatisfied() {
+                  return ThreadUtils.runOnUiThreadBlockingNoException(callable);
+              }
+          });
+        }
+        assertTrue(result);
     }
 }
