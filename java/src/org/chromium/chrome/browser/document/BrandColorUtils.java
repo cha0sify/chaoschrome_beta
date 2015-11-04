@@ -15,6 +15,7 @@ public class BrandColorUtils {
 
     /** Percentage to darken the brand color by when setting the status bar color. */
     private static final float DARKEN_COLOR_FRACTION = 0.6f;
+    private static final float DARKEN_ACTIONBAR_COLOR_FRACTION = 0.7f;
 
     private static final float LIGHT_PROGRESSBAR_BACKGROUND_ALPHA = 0.5f;
 
@@ -54,6 +55,13 @@ public class BrandColorUtils {
         float[] hsv = new float[3];
         Color.colorToHSV(color, hsv);
         hsv[2] *= DARKEN_COLOR_FRACTION;
+        return Color.HSVToColor(hsv);
+    }
+
+    public static int computeActionBarColor(int color) {
+        float[] hsv = new float[3];
+        Color.colorToHSV(color, hsv);
+        hsv[2] *= DARKEN_ACTIONBAR_COLOR_FRACTION;
         return Color.HSVToColor(hsv);
     }
 

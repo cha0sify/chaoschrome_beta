@@ -53,6 +53,7 @@ import org.chromium.chrome.browser.compositor.layouts.eventfilter.EventFilterHos
 import org.chromium.chrome.browser.compositor.scene_layer.SceneLayer;
 import org.chromium.chrome.browser.compositor.scene_layer.TabListSceneLayer;
 import org.chromium.chrome.browser.contextualsearch.SwipeRecognizer;
+import org.chromium.chrome.browser.document.BrandColorUtils;
 import org.chromium.chrome.browser.favicon.FaviconHelper;
 import org.chromium.chrome.browser.favicon.LargeIconBridge;
 import org.chromium.chrome.browser.fullscreen.ChromeFullscreenManager;
@@ -159,11 +160,8 @@ public class EdgeNavigationLayout extends Layout
             if (mNavDirection != NAV_BACK && mNavDirection != NAV_FWD) return;
 
             if (icon != null) {
-                fallbackColor = FaviconHelper.getDominantColorForBitmap(icon);
-                float[] hsv = new float[3];
-                Color.colorToHSV(fallbackColor, hsv);
-                hsv[2] *= 0.7f;
-                fallbackColor = Color.HSVToColor(Color.alpha(fallbackColor), hsv);
+                fallbackColor = BrandColorUtils.computeStatusBarColor(
+                        FaviconHelper.getDominantColorForBitmap(icon));
             }
 
             if (mNavDirection == NAV_BACK) {

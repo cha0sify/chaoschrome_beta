@@ -10,7 +10,6 @@ import android.app.SearchManager;
 import android.app.assist.AssistContent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
@@ -24,12 +23,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.os.MessageQueue;
-import android.os.PowerManager;
 import android.os.Process;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AlertDialog;
-import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -85,7 +82,6 @@ import org.chromium.chrome.browser.fullscreen.ChromeFullscreenManager;
 import org.chromium.chrome.browser.gsa.ContextReporter;
 import org.chromium.chrome.browser.gsa.GSAServiceClient;
 import org.chromium.chrome.browser.gsa.GSAState;
-import org.chromium.chrome.browser.help.HelpAndFeedback;
 import org.chromium.chrome.browser.infobar.InfoBarContainer;
 import org.chromium.chrome.browser.init.AsyncInitializationActivity;
 import org.chromium.chrome.browser.metrics.LaunchMetrics;
@@ -94,11 +90,9 @@ import org.chromium.chrome.browser.net.spdyproxy.DataReductionProxySettings;
 import org.chromium.chrome.browser.nfc.BeamController;
 import org.chromium.chrome.browser.nfc.BeamProvider;
 import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomizations;
-import org.chromium.chrome.browser.preferences.AboutChromePreferences;
 import org.chromium.chrome.browser.preferences.ChromePreferenceManager;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.PreferencesLauncher;
-import org.chromium.chrome.browser.preferences.website.WebsiteAddress;
 import org.chromium.chrome.browser.printing.TabPrinter;
 import org.chromium.chrome.browser.share.ShareHelper;
 import org.chromium.chrome.browser.snackbar.LoFiBarPopupController;
@@ -137,16 +131,14 @@ import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
 
-import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
  * A {@link AsyncInitializationActivity} that builds and manages a {@link CompositorViewHolder}
  * and associated classes.
  */
-public abstract class ChromeActivity extends AsyncInitializationActivity
+public abstract class ChromeActivity extends BrowserChromeActivity
         implements TabCreatorManager, AccessibilityStateChangeListener, PolicyChangeListener,
         ContextualSearchTabPromotionDelegate, SnackbarManageable, SceneChangeObserver {
     /**
@@ -186,8 +178,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     private TabContentManager mTabContentManager;
     private UmaSessionStats mUmaSessionStats;
     private ContextReporter mContextReporter;
-    private PowerConnectionReceiver mPowerChangeReceiver;
-    private PowerConnectionReceiver mLowPowerReceiver;
     protected GSAServiceClient mGSAServiceClient;
 
     private boolean mPartnerBrowserRefreshNeeded = false;
@@ -293,17 +283,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             };
             manager.addTouchExplorationStateChangeListener(mTouchExplorationStateChangeListener);
         }
-
-        mPowerChangeReceiver = new PowerConnectionReceiver();
-        mLowPowerReceiver = new PowerConnectionReceiver();
-
-        IntentFilter filter = new IntentFilter();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            // Power save mode only exists in Lollipop and above
-            filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
-        }
-        filter.addAction(Intent.ACTION_BATTERY_OKAY);
-        this.registerReceiver(mPowerChangeReceiver, filter);
 
         // Make the activity listen to policy change events
         getChromeApplication().addPolicyChangeListener(this);
@@ -476,7 +455,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
      * Sets the {@link TabModelSelector} owned by this {@link ChromeActivity}.
      * @param tabModelSelector A {@link TabModelSelector} instance.
      */
+    @Override
     protected void setTabModelSelector(TabModelSelector tabModelSelector) {
+        super.setTabModelSelector(tabModelSelector);
         mTabModelSelector = tabModelSelector;
 
         if (mTabModelSelectorTabObserver != null) mTabModelSelectorTabObserver.destroy();
@@ -619,66 +600,18 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     @Override
     public void onResumeWithNative() {
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            if (PrefServiceBridge.getInstance().getPowersaveModeEnabled()) {
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            } else {
-                getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            }
-        }
-
         super.onResumeWithNative();
         markSessionResume();
-
-        this.registerReceiver(mLowPowerReceiver, new IntentFilter(Intent.ACTION_BATTERY_LOW));
 
         if (getActivityTab() != null) {
             LaunchMetrics.commitLaunchMetrics(getActivityTab().getWebContents());
         }
-        reloadTabsIfNecessary();
         FeatureUtilities.setCustomTabVisible(isCustomTab());
-    }
-
-    private void reloadTabsIfNecessary() {
-        Set<String> origins = PrefServiceBridge.getInstance().getOriginsPendingReload();
-        boolean reload = PrefServiceBridge.getInstance().getPendingReload();
-        List<TabModel> tabModels = getTabModelSelector().getModels();
-        for (TabModel model : tabModels) {
-            if (model == null) continue;
-            int tabCount = model.getCount();
-            for (int tabCounter = 0; tabCounter < tabCount; tabCounter++) {
-                Tab tab = model.getTabAt(tabCounter);
-                if (tab == null) continue;
-                if (reload) {
-                    if (tab == getActivityTab()) {
-                        tab.reload();
-                    } else {
-                        tab.setNeedsReload(true);
-                    }
-                } else {
-                    for (String url : origins) {
-                        if (TextUtils.equals(url,
-                                WebsiteAddress.create(tab.getUrl()).getOrigin())) {
-                            if (tab == getTabModelSelector().getCurrentTab()) {
-                                tab.reload();
-                            } else {
-                                tab.setNeedsReload(true);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        PrefServiceBridge.getInstance().reloadComplete();
     }
 
     @Override
     public void onPauseWithNative() {
         markSessionEnd();
-
-        this.unregisterReceiver(mLowPowerReceiver);
-
         super.onPauseWithNative();
     }
 
@@ -775,9 +708,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (mContextReporter != null) mContextReporter.disable();
 
         // We want to refresh partner browser provider every onStart().
-        mPartnerBrowserRefreshNeeded =
-                CommandLine.getInstance().hasSwitch(ChromeSwitches.
-                        ENABLE_SUPPRESSED_CHROMIUM_FEATURES);
+        mPartnerBrowserRefreshNeeded = partnerBrowserRefreshNeeded();
+
         if (mCompositorViewHolder != null) mCompositorViewHolder.onStop();
     }
 
@@ -864,8 +796,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             manager.removeTouchExplorationStateChangeListener(mTouchExplorationStateChangeListener);
         }
-
-        this.unregisterReceiver(mPowerChangeReceiver);
 
         super.onDestroy();
 
@@ -1402,10 +1332,15 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
      * @param fromMenu Whether this was triggered from the menu.
      * @return Whether the action was handled.
      */
+    @Override
     public boolean onMenuOrKeyboardAction(int id, boolean fromMenu) {
         if (id == R.id.preferences_id) {
             PreferencesLauncher.launchSettingsPage(this, null);
             RecordUserAction.record("MobileMenuSettings");
+        }
+
+        if (super.onMenuOrKeyboardAction(id, fromMenu)) {
+            return true;
         }
 
         // All the code below assumes currentTab is not null, so return early if it is null.
@@ -1461,15 +1396,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                 builder.setView(DistilledPagePrefsView.create(this));
                 builder.show();
             }
-        } else if (id == R.id.about_id) {
-            Intent preferencesIntent = PreferencesLauncher.createIntentForSettingsPage(
-                    this, AboutChromePreferences.class.getName());
-            Bundle bundle = new Bundle();
-            bundle.putCharSequence(AboutChromePreferences.TABTITLE, getActivityTab().getTitle());
-            bundle.putCharSequence(AboutChromePreferences.TABURL, getActivityTab().getUrl());
-            preferencesIntent.putExtra(AboutChromePreferences.TABBUNDLE, bundle);
-            this.startActivity(preferencesIntent, bundle);
-            RecordUserAction.record("MobileMenuAbout");
         } else {
             return false;
         }

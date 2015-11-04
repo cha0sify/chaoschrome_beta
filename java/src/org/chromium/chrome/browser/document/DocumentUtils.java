@@ -22,6 +22,7 @@ import android.util.Log;
 
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.ApplicationStatus;
+import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.document.ActivityDelegate;
 
@@ -47,8 +48,11 @@ public class DocumentUtils {
             int color, boolean useDefaultStatusBarColor) {
         ApiCompatibilityUtils.setTaskDescription(activity, title, icon, color);
         int statusBarColor = useDefaultStatusBarColor
-                ? Color.BLACK : BrandColorUtils.computeStatusBarColor(color);
-        ApiCompatibilityUtils.setStatusBarColor(activity.getWindow(), statusBarColor);
+                ? activity.getWindow().getStatusBarColor()
+                : BrandColorUtils.computeStatusBarColor(color);
+        if (!PrefServiceBridge.getInstance().getPowersaveModeEnabled()) {
+            ApiCompatibilityUtils.setStatusBarColor(activity.getWindow(), statusBarColor);
+        }
     }
 
     /**

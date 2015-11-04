@@ -35,12 +35,9 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.view.View;
 import android.view.WindowManager;
 
@@ -50,13 +47,14 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.SiteTileView;
 import org.chromium.chrome.browser.TabLoadStatus;
 import org.chromium.chrome.browser.UrlUtilities;
+import org.chromium.chrome.browser.document.BrandColorUtils;
+import org.chromium.chrome.browser.document.DocumentActivity;
 import org.chromium.chrome.browser.favicon.FaviconHelper;
 import org.chromium.chrome.browser.favicon.LargeIconBridge;
 import org.chromium.chrome.browser.preferences.Preferences;
 import org.chromium.chrome.browser.preferences.PreferencesLauncher;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.website.BrowserSingleWebsitePreferences;
-import org.chromium.chrome.browser.preferences.website.SingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.WebRefinerPreferenceHandler;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
@@ -64,13 +62,8 @@ import org.chromium.chrome.browser.tab.ChromeTab;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObserver;
-import org.chromium.content.browser.WebRefiner;
 import org.chromium.chrome.browser.widget.RoundedIconGenerator;
 import org.chromium.content_public.browser.LoadUrlParams;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Set;
 
 public class ToolbarFavicon implements View.OnClickListener {
 
@@ -85,11 +78,17 @@ public class ToolbarFavicon implements View.OnClickListener {
     private boolean mBlockedCountSet = false;
     //Variable to track when the layout has decided to hide the favicon.
     private boolean mBrowsingModeViewsHidden = false;
+    private static int mDefaultThemeColor;
+    private static int mDefaultThemeColorIncognito;
+    private boolean mUsingBrandColor;
 
     //Favicon statics
     private static final int FAVICON_MIN_SIZE = 48;
     private static final int FAVICON_CORNER_RADIUS = 4;
     private static final int FAVICON_TEXT_SIZE = 20;
+
+    private ValueAnimator mAnimator;
+    private Integer mStatusBarColor;
 
     public ToolbarFavicon(final ToolbarLayout parent) {
         mFaviconView = (SiteTileView) parent.findViewById(R.id.swe_favicon_badge);
@@ -97,6 +96,10 @@ public class ToolbarFavicon implements View.OnClickListener {
             mFaviconView.setOnClickListener(this);
             mParent = parent;
             mContext = ApplicationStatus.getApplicationContext();
+            mDefaultThemeColor = mContext.getResources().getColor(R.color.default_primary_color);
+            mDefaultThemeColorIncognito = mContext.getResources().
+                    getColor(R.color.incognito_primary_color);
+
 
             mTabObserver = new EmptyTabObserver() {
                 @Override
@@ -150,12 +153,28 @@ public class ToolbarFavicon implements View.OnClickListener {
                     refreshFavicon();
                 }
 
+                public void onDidChangeThemeColor(Tab tab, int color) {
+                    mUsingBrandColor = isBrandColor(color);
+                    if (mFavicon != null) {
+                        setStatusBarColor(FaviconHelper.getDominantColorForBitmap(mFavicon));
+                    }
+                }
+
             };
 
             refreshTab(mParent.getToolbarDataProvider().getTab());
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                final Activity activity = ApplicationStatus.getLastTrackedFocusedActivity();
+                mStatusBarColor = activity.getWindow().getStatusBarColor();
+            }
         }
 
         mbSiteSettingsVisible = false;
+    }
+
+    private boolean isBrandColor(int color) {
+        return color != mDefaultThemeColor && color != mDefaultThemeColorIncognito;
     }
 
     /**
@@ -277,27 +296,42 @@ public class ToolbarFavicon implements View.OnClickListener {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             final Activity activity = ApplicationStatus.getLastTrackedFocusedActivity();
+            if (activity instanceof DocumentActivity && mUsingBrandColor) {
+                return;
+            }
+
             activity.getWindow().addFlags(
                     WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
 
-            Integer from = activity.getWindow().getStatusBarColor();
-            float[] hsv = new float[3];
-            Color.colorToHSV(color, hsv);
-            hsv[2] *= 0.7f;
-            Integer to = Color.HSVToColor(Color.alpha(color), hsv);
-            ValueAnimator animator = ValueAnimator.ofObject(new ArgbEvaluator(), from, to);
+            synchronized (this) {
+                if (mAnimator != null && mAnimator.isRunning()) {
+                    mAnimator.cancel();
+                    mAnimator = null;
+                }
 
-            animator.addUpdateListener(
-                    new ValueAnimator.AnimatorUpdateListener() {
-                        @SuppressLint("NewApi")
-                        @Override
-                        public void onAnimationUpdate(ValueAnimator animation) {
-                            Integer value = (Integer) animation.getAnimatedValue();
-                            activity.getWindow().setStatusBarColor(value.intValue());
+                Integer to = BrandColorUtils.computeStatusBarColor(color);
+                if (mStatusBarColor.intValue() == to.intValue()) {
+                    activity.getWindow().setStatusBarColor(to.intValue());
+                    return;
+                }
+
+                mAnimator = ValueAnimator.ofObject(new ArgbEvaluator(), mStatusBarColor, to);
+
+                mAnimator.addUpdateListener(
+                        new ValueAnimator.AnimatorUpdateListener() {
+                            @SuppressLint("NewApi")
+                            @Override
+                            public void onAnimationUpdate(ValueAnimator animation) {
+                                synchronized (ToolbarFavicon.this) {
+                                    Integer value = (Integer) animation.getAnimatedValue();
+                                    activity.getWindow().setStatusBarColor(value.intValue());
+                                    mStatusBarColor = value;
+                                }
+                            }
                         }
-                    }
-            );
-            animator.start();
+                );
+                mAnimator.start();
+            }
         }
     }
 

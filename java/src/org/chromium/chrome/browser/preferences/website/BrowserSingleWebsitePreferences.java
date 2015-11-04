@@ -60,6 +60,7 @@ import org.chromium.base.ApplicationStatus;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ContentSettingsType;
 import org.chromium.chrome.browser.UrlUtilities;
+import org.chromium.chrome.browser.document.BrandColorUtils;
 import org.chromium.chrome.browser.favicon.FaviconHelper;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
@@ -542,10 +543,7 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                         WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
             }
 
-            float[] hsv = new float[3];
-            Color.colorToHSV(color, hsv);
-            hsv[2] *= 0.7f;
-            mSiteColor = Color.HSVToColor(Color.alpha(color), hsv);
+            mSiteColor = BrandColorUtils.computeStatusBarColor(color);
             activity.getWindow().setStatusBarColor(mSiteColor);
         }
     }
@@ -568,7 +566,9 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                                 ActionBar.DISPLAY_SHOW_HOME | ActionBar.DISPLAY_SHOW_TITLE);
                         bar.setHomeButtonEnabled(true);
                         bar.setIcon(new BitmapDrawable(getResources(), bitmap));
-                        bar.setBackgroundDrawable(new ColorDrawable(color));
+                        bar.setBackgroundDrawable(new ColorDrawable(
+                                BrandColorUtils.computeActionBarColor(color)
+                        ));
                         setStatusBarColor(color);
                     }
                 }
