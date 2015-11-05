@@ -58,6 +58,7 @@ import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.website.BrowserSingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.SingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.WebRefinerPreferenceHandler;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
 import org.chromium.chrome.browser.tab.ChromeTab;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
@@ -119,8 +120,10 @@ public class ToolbarFavicon implements View.OnClickListener {
                 public void onDidCommitProvisionalLoadForFrame(Tab tab,
                                                                long frameId, boolean isMainFrame,
                                                                String url, int transitionType) {
-                    refreshFavicon();
-                    refreshTabSecurityState();
+                    if (isMainFrame) {
+                        refreshFavicon();
+                        refreshTabSecurityState();
+                    }
                 }
 
                 @Override
@@ -227,7 +230,8 @@ public class ToolbarFavicon implements View.OnClickListener {
         }
         if (mTab != null) {
             String url = mTab.getUrl();
-            if (mLargeIconBridge == null) mLargeIconBridge = new LargeIconBridge(mTab.getProfile());
+            if (mLargeIconBridge == null) mLargeIconBridge =
+                    new LargeIconBridge(Profile.getLastUsedProfile());
             LargeIconForTab callback = new LargeIconForTab(mTab);
             mLargeIconBridge.getLargeIconForUrl(
                     url, FAVICON_MIN_SIZE, callback);
@@ -336,7 +340,10 @@ public class ToolbarFavicon implements View.OnClickListener {
             if (icon == null) {
                 String url;
                 url = mClientTab.getUrl();
-
+                if (mClientTab.isIncognito()) {
+                    fallbackColor = FaviconHelper.
+                            getDominantColorForBitmap(mClientTab.getFavicon());
+                }
                 RoundedIconGenerator roundedIconGenerator = new RoundedIconGenerator(
                         mContext, FAVICON_MIN_SIZE, FAVICON_MIN_SIZE,
                         FAVICON_CORNER_RADIUS, fallbackColor,
@@ -349,11 +356,15 @@ public class ToolbarFavicon implements View.OnClickListener {
             }
 
             if (mFaviconView != null && !isNativePage()) {
-                mFavicon = icon;
-                mFaviconView.replaceFavicon(icon);
-                mFaviconView.setVisibility(mBrowsingModeViewsHidden ?
-                        View.GONE : View.VISIBLE);
+                setFavicon(icon);
             }
         }
+    }
+
+    private void setFavicon(Bitmap icon) {
+        mFavicon = icon;
+        mFaviconView.replaceFavicon(icon);
+        mFaviconView.setVisibility(mBrowsingModeViewsHidden ?
+                View.GONE : View.VISIBLE);
     }
 }
