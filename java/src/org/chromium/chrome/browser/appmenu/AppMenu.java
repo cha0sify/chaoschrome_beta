@@ -51,6 +51,7 @@ public class AppMenu implements OnItemClickListener, OnKeyListener {
     private final int mItemDividerHeight;
     private final int mVerticalFadeDistance;
     private final int mNegativeSoftwareVerticalOffset;
+    private boolean mCanFit;
     private ListPopupWindow mPopup;
     private AppMenuAdapter mAdapter;
     private AppMenuHandler mHandler;
@@ -224,6 +225,9 @@ public class AppMenu implements OnItemClickListener, OnKeyListener {
         mPopup.show();
         mPopup.getListView().setItemsCanFocus(true);
         mPopup.getListView().setOnKeyListener(this);
+        if (mCanFit) {
+            mPopup.getListView().setScrollbarFadingEnabled(false);
+        }
 
         mHandler.onMenuVisibilityChanged(true);
 
@@ -353,6 +357,7 @@ public class AppMenu implements OnItemClickListener, OnKeyListener {
     private void setMenuHeight(int numMenuItems, Rect appDimensions,
             int screenHeight, Rect padding, int footerHeight) {
         assert mPopup.getAnchorView() != null;
+        mCanFit = false;
         View anchorView = mPopup.getAnchorView();
         int[] anchorViewLocation = new int[2];
         anchorView.getLocationOnScreen(anchorViewLocation);
@@ -384,6 +389,7 @@ public class AppMenu implements OnItemClickListener, OnKeyListener {
                         + padding.top + padding.bottom);
             }
         } else {
+            mCanFit = true;
             mPopup.setHeight(ViewGroup.LayoutParams.WRAP_CONTENT);
         }
     }
