@@ -62,7 +62,7 @@ public class WebRefinerPreferenceHandler {
                     for (Map.Entry<String, Set<Website>> element : sitesByOrigin.entrySet()) {
                         for (Website site : element.getValue()) {
 
-                            ContentSetting permission = site.getWebRefinerpermission();
+                            ContentSetting permission = site.getWebRefinerPermission();
                             if (permission != null) {
                                 if (permission == ContentSetting.ALLOW) {
                                     blockList.add(site.getAddress().getOrigin());

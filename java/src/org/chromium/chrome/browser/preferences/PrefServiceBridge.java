@@ -18,6 +18,7 @@ import org.chromium.chrome.browser.UrlUtilities;
 import org.chromium.chrome.browser.preferences.website.ContentSetting;
 import org.chromium.chrome.browser.preferences.website.ContentSettingException;
 import org.chromium.chrome.browser.preferences.website.GeolocationInfo;
+import org.chromium.chrome.browser.preferences.website.WebDefenderPreferenceHandler;
 import org.chromium.chrome.browser.preferences.website.WebRefinerPreferenceHandler;
 import org.chromium.chrome.browser.preferences.website.WebsitePreferenceBridge;
 import org.chromium.chrome.browser.search_engines.TemplateUrlService;
@@ -1023,6 +1024,21 @@ public final class PrefServiceBridge {
     }
 
     /**
+     * Sets whether WebDefender should be enabled.
+     */
+    public void setWebDefenderEnabled(boolean enabled) {
+        WebDefenderPreferenceHandler.setWebDefenderEnabled(enabled);
+        nativeSetWebDefenderEnabled(enabled);
+    }
+
+    /**
+     * @return whether the WebRefiner preference is enabled.
+     */
+    public boolean isWebDefenderEnabled() {
+        return nativeGetWebDefenderEnabled();
+    }
+
+    /**
      * Sets whether the WebRefiner should be enabled.
      */
     public void setWebRefinerEnabled(boolean enabled) {
@@ -1161,10 +1177,10 @@ public final class PrefServiceBridge {
     private native boolean nativeHasSetMetricsReporting();
     private native void nativeSetWebRefinerEnabled(boolean enabled);
     private native boolean nativeGetWebRefinerEnabled();
-// SWE-feature-NightMode
+    private native void nativeSetWebDefenderEnabled(boolean enabled);
+    private native boolean nativeGetWebDefenderEnabled();
     private native void nativeSetNightModeEnabled(boolean enabled);
     private native boolean nativeGetNightModeEnabled();
-// SWE-feature-NightMode
     private native void nativeSetPowersaveModeEnabled(boolean enabled);
     private native boolean nativeGetPowersaveModeEnabled();
 }

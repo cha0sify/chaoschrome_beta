@@ -16,6 +16,10 @@
     <Preference
         android:fragment="org.chromium.chrome.browser.preferences.website.SingleCategoryPreferences"
         android:key="webrefiner" />
+    <!-- WebDefender -->
+    <Preference
+        android:fragment="org.chromium.chrome.browser.preferences.website.SingleCategoryPreferences"
+        android:key="webdefender" />
     <!-- Cookies -->
     <Preference
         android:key="cookies"

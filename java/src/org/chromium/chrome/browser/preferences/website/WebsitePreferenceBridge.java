@@ -249,7 +249,7 @@ public abstract class WebsitePreferenceBridge {
      * @return the list of all sites that have WebRefiner modified
      */
     public static List<WebRefinerInfo> getWebRefinerInfo() {
-        ArrayList<WebRefinerInfo> list = new ArrayList<WebRefinerInfo>();
+        ArrayList<WebRefinerInfo> list = new ArrayList<>();
         nativeGetWebRefinerOrigins(list, false);
         return list;
     }
@@ -261,6 +261,24 @@ public abstract class WebsitePreferenceBridge {
     private static void insertWebRefinerInfoIntoList(
         ArrayList<WebRefinerInfo> list, String origin, String embedder) {
         list.add(new WebRefinerInfo(origin, embedder, false));
+    }
+
+    /**
+     * @return the list of all sites that have WebDefender modified
+     */
+    public static List<WebDefenderInfo> getWebDefenderInfo() {
+        ArrayList<WebDefenderInfo> list = new ArrayList<>();
+        nativeGetWebDefenderOrigins(list, false);
+        return list;
+    }
+
+    /**
+     * Inserts WebDefender information into a list
+     */
+    @CalledByNative
+    private static void insertWebDefenderInfoIntoList(
+            ArrayList<WebDefenderInfo> list, String origin, String embedder) {
+        list.add(new WebDefenderInfo(origin, embedder, false));
     }
 
     private static native void nativeGetGeolocationOrigins(Object list, boolean managedOnly);
@@ -315,5 +333,11 @@ public abstract class WebsitePreferenceBridge {
     static native int nativeGetWebRefinerSettingForOrigin(
             String origin, String embedder, boolean isIncognito);
     static native void nativeSetWebRefinerSettingForOrigin(
+            String origin, String embedder, int value, boolean isIncognito);
+    private static native void nativeGetWebDefenderOrigins(
+            Object list, boolean managedOnly);
+    static native int nativeGetWebDefenderSettingForOrigin(
+            String origin, String embedder, boolean isIncognito);
+    static native void nativeSetWebDefenderSettingForOrigin(
             String origin, String embedder, int value, boolean isIncognito);
 }

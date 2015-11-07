@@ -98,6 +98,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
     public static final String PREF_PUSH_NOTIFICATIONS_PERMISSION =
             "push_notifications_list";
     public static final String PREF_WEBREFINER_PERMISSION = "webrefiner_permission_list";
+    public static final String PREF_WEBDEFENDER_PERMISSION = "webdefender_permission_list";
 
     // All permissions from the permissions preference category must be listed here.
     // TODO(mvanouwerkerk): Use this array in more places to reduce verbosity.
@@ -113,6 +114,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         PREF_PROTECTED_MEDIA_IDENTIFIER_PERMISSION,
         PREF_PUSH_NOTIFICATIONS_PERMISSION,
         PREF_WEBREFINER_PERMISSION,
+        PREF_WEBDEFENDER_PERMISSION,
     };
 
     // The website this page is displaying details about.
@@ -269,6 +271,14 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
                         merged.setWebRefinerInfo(other.getWebRefinerInfo());
                     }
                 }
+                if (merged.getWebDefenderInfo() == null &&
+                        other.getWebDefenderInfo() != null) {
+                    if (origin.equals(other.getWebDefenderInfo().getOrigin()) &&
+                            (origin.equals(other.getWebDefenderInfo().getEmbedderSafe()) ||
+                                    "*".equals(other.getWebDefenderInfo().getEmbedderSafe()))) {
+                        merged.setWebDefenderInfo(other.getWebDefenderInfo());
+                    }
+                }
                 // TODO(mvanouwerkerk): Make the various info types share a common interface that
                 // supports reading the origin or host.
                 // TODO(mvanouwerkerk): Merge in PopupExceptionInfo? It uses a pattern, and is never
@@ -331,7 +341,9 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
             } else if (PREF_PUSH_NOTIFICATIONS_PERMISSION.equals(preference.getKey())) {
                 setUpListPreference(preference, mSite.getPushNotificationPermission());
             } else if (PREF_WEBREFINER_PERMISSION.equals(preference.getKey())) {
-                setUpBrowserListPreference(preference, mSite.getWebRefinerpermission());
+                setUpBrowserListPreference(preference, mSite.getWebRefinerPermission());
+            } else if (PREF_WEBDEFENDER_PERMISSION.equals(preference.getKey())) {
+                setUpBrowserListPreference(preference, mSite.getWebDefenderPermission());
             }
         }
 
@@ -372,12 +384,14 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         updateSecurityPreferenceVisibility();
     }
 
+    protected void setUpBrowserSwitchPreference(Preference preference, ContentSetting value) { }
+
     protected void setUpBrowserListPreference(Preference preference,
-                                                 ContentSetting webRefinerpermission) {
-        setUpListPreference(preference, webRefinerpermission);
+                                                 ContentSetting value) {
+        setUpListPreference(preference, value);
     }
 
-    protected void updateSecurityPreferenceVisibility() { };
+    protected void updateSecurityPreferenceVisibility() { }
 
     private SiteSettingsCategory getWarningCategory() {
         // If more than one per-app permission is disabled in Android, we can pick any category to
@@ -580,6 +594,8 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
                 return ContentSettingsType.CONTENT_SETTINGS_TYPE_NOTIFICATIONS;
             case PREF_WEBREFINER_PERMISSION:
                 return ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER;
+            case PREF_WEBDEFENDER_PERMISSION:
+                return ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER;
             default:
                 return 0;
         }
@@ -619,7 +635,6 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         ContentSetting permission = ContentSetting.fromString((String) newValue);
-        preference.setSummary("%s");
         if (PREF_CAMERA_CAPTURE_PERMISSION.equals(preference.getKey())) {
             mSite.setCameraPermission(permission);
         } else if (PREF_COOKIES_PERMISSION.equals(preference.getKey())) {
@@ -661,7 +676,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         return true;
     }
 
-    private void resetSite() {
+    protected void resetSite() {
         // Clear the screen.
         // TODO(mvanouwerkerk): Refactor this class so that it does not depend on the screen state
         // for its logic. This class should maintain its own data model, and only update the screen
@@ -671,7 +686,6 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
             Preference preference = screen.findPreference(key);
             if (preference != null) screen.removePreference(preference);
         }
-        requestReloadForOrigin();
 
         // Clear the permissions.
         mSite.setCameraPermission(null);
@@ -685,7 +699,6 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         mSite.setPopupPermission(null);
         mSite.setProtectedMediaIdentifierPermission(null);
         mSite.setPushNotificationPermission(null);
-        mSite.setWebRefinerPermission(null);
 
         // Clear the storage and finish the activity if necessary.
         if (mSite.getTotalUsage() > 0) {

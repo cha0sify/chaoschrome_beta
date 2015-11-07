@@ -224,7 +224,9 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
         } else if (mCategory.showProtectedMediaSites()) {
             return site.getProtectedMediaIdentifierPermission() != null;
         } else if (mCategory.showWebRefinerSites()) {
-            return site.getWebRefinerpermission() != null;
+            return site.getWebRefinerPermission() != null;
+        } else if (mCategory.showWebDefenderSites()) {
+            return site.getWebDefenderPermission() != null;
         }
 
         return false;
@@ -254,7 +256,9 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
         } else if (mCategory.showProtectedMediaSites()) {
             return website.site().getProtectedMediaIdentifierPermission() == ContentSetting.BLOCK;
         } else if (mCategory.showWebRefinerSites()) {
-            return website.site().getWebRefinerpermission() == ContentSetting.BLOCK;
+            return website.site().getWebRefinerPermission() == ContentSetting.BLOCK;
+        } else if (mCategory.showWebDefenderSites()) {
+            return website.site().getWebDefenderPermission() == ContentSetting.BLOCK;
         }
 
         return false;
@@ -427,6 +431,8 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
                         (boolean) newValue);
             } else if (mCategory.showWebRefinerSites()) {
                 PrefServiceBridge.getInstance().setWebRefinerEnabled((boolean) newValue);
+            } else if (mCategory.showWebDefenderSites()) {
+                PrefServiceBridge.getInstance().setWebDefenderEnabled((boolean) newValue);
             }
 
             // Categories that support adding exceptions also manage the 'Add site' preference.
@@ -487,8 +493,8 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
     @Override
     public void onAddSite(String hostname) {
         PrefServiceBridge.getInstance().nativeSetContentSettingForPattern(
-                    mCategory.toContentSettingsType(), hostname,
-                    ContentSetting.ALLOW.toInt());
+                mCategory.toContentSettingsType(), hostname,
+                ContentSetting.ALLOW.toInt());
 
         Toast.makeText(getActivity(),
                 String.format(getActivity().getString(
@@ -584,6 +590,9 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
                 } else if (mCategory.showWebRefinerSites()) {
                     globalToggle.setSummaryOn(ContentSettingsResources.
                             getWebRefinerEnabledSummary());
+                } else if (mCategory.showWebDefenderSites()) {
+                    globalToggle.setSummaryOn(ContentSettingsResources.
+                            getWebDefenderEnabledSummary());
                 } else {
                     globalToggle.setSummaryOn(
                             ContentSettingsResources.getEnabledSummary(contentType));
@@ -618,6 +627,8 @@ public class SingleCategoryPreferences extends BrowserPreferenceFragment
                             PrefServiceBridge.getInstance().isProtectedMediaIdentifierEnabled());
                 } else if (mCategory.showWebRefinerSites()) {
                     globalToggle.setChecked(PrefServiceBridge.getInstance().isWebRefinerEnabled());
+                } else if (mCategory.showWebDefenderSites()) {
+                    globalToggle.setChecked(PrefServiceBridge.getInstance().isWebDefenderEnabled());
                 }
             }
         }

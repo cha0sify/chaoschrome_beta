@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.preferences.website;
 
 import org.chromium.chrome.browser.util.MathUtils;
+import org.chromium.content.browser.WebDefender;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ public class Website implements Serializable {
     private PushNotificationInfo mPushNotificationInfo;
     private LocalStorageInfo mLocalStorageInfo;
     private WebRefinerInfo mWebRefinerInfo;
+    private WebDefenderInfo mWebDefenderInfo;
     private final List<StorageInfo> mStorageInfo = new ArrayList<StorageInfo>();
     private int mStorageInfoCallbacksLeft;
     private FullscreenInfo mFullscreenInfo;
@@ -448,14 +450,14 @@ public class Website implements Serializable {
     }
 
     /**
-     * @return what permission governs fullscreen access.
+     * @return what permission governs webrefiner access.
      */
-    public ContentSetting getWebRefinerpermission() {
+    public ContentSetting getWebRefinerPermission() {
         return mWebRefinerInfo != null ? mWebRefinerInfo.getContentSetting() : null;
     }
 
     /**
-     * Configure WebRefiner setting for this stie.
+     * Configure WebRefiner setting for this site.
      *
      * @param value Content setting for WebRefiner permission.
      */
@@ -464,10 +466,52 @@ public class Website implements Serializable {
             WebRefinerPreferenceHandler.useDefaultPermissionForOrigins(getAddress().getOrigin());
         } else {
             WebRefinerPreferenceHandler.setWebRefinerSettingForOrigin(getAddress().getOrigin(),
-                (value == ContentSetting.ALLOW) ? true : false);
+                value == ContentSetting.ALLOW);
         }
         if (mWebRefinerInfo != null) {
             mWebRefinerInfo.setContentSetting(value);
+        }
+    }
+
+    /**
+     * @return Set WebDefender information of the site.
+     */
+    public void setWebDefenderInfo(WebDefenderInfo info) {
+        mWebDefenderInfo = info;
+        WebsiteAddress embedder = WebsiteAddress.create(info.getEmbedder());
+        if (embedder != null) {
+            mSummary = embedder.getTitle();
+        }
+    }
+
+    /**
+     * @return WebDefender information of the site.
+     */
+    public WebDefenderInfo getWebDefenderInfo() {
+        return mWebDefenderInfo;
+    }
+
+    /**
+     * @return what permission governs webdefender access.
+     */
+    public ContentSetting getWebDefenderPermission() {
+        return mWebDefenderInfo != null ? mWebDefenderInfo.getContentSetting() : null;
+    }
+
+    /**
+     * Configure WebDefender setting for this site.
+     *
+     * @param value Content setting for WebDefender permission.
+     */
+    public void setWebDefenderPermission(ContentSetting value) {
+        if (value == null) {
+            WebDefenderPreferenceHandler.useDefaultPermissionForOrigins(getAddress().getOrigin());
+        } else {
+            WebDefenderPreferenceHandler.setWebDefenderSettingForOrigin(getAddress().getOrigin(),
+                    value == ContentSetting.ALLOW);
+        }
+        if (mWebDefenderInfo != null) {
+            mWebDefenderInfo.setContentSetting(value);
         }
     }
 }

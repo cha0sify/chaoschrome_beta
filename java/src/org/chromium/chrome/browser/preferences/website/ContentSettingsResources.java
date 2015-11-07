@@ -39,6 +39,8 @@ public class ContentSettingsResources {
                 return R.drawable.permission_protected_media;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
                 return R.drawable.permission_webrefiner;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER:
+                return R.drawable.permission_webrefiner;
             default:
                 return 0;
         }
@@ -70,6 +72,8 @@ public class ContentSettingsResources {
                 return org.chromium.chrome.R.string.protected_content;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
                 return org.chromium.chrome.R.string.webrefiner;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER:
+                return org.chromium.chrome.R.string.webdefender;
             default:
                 return 0;
         }
@@ -103,6 +107,8 @@ public class ContentSettingsResources {
                 return R.string.protected_content;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
                 return R.string.webrefiner;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER:
+                return R.string.webdefender;
             default:
                 return 0;
         }
@@ -120,6 +126,7 @@ public class ContentSettingsResources {
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_JAVASCRIPT:
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_POPUPS:
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER:
                 return ContentSetting.ALLOW;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_GEOLOCATION:
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_MEDIASTREAM_CAMERA:
@@ -142,6 +149,7 @@ public class ContentSettingsResources {
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_FULLSCREEN:
                 return ContentSetting.ASK;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER:
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_COOKIES:
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_GEOLOCATION:
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_JAVASCRIPT:
@@ -236,6 +244,8 @@ public class ContentSettingsResources {
                 return R.string.website_settings_category_ask_before_sending;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
                 return R.string.website_settings_category_enabled;
+            case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER:
+                return R.string.website_settings_category_enabled;
             default:
                 return getCategorySummary(getDefaultEnabledValue(contentType));
         }
@@ -268,7 +278,14 @@ public class ContentSettingsResources {
      * Returns the summary for WebRefiner content settings when it is set to Enabled.
      */
     public static int getWebRefinerEnabledSummary() {
-        return R.string.website_settings_category_enabled_recommended;
+        return R.string.website_settings_category_webrefiner_enabled_recommended;
+    }
+
+    /**
+     * Returns the summary for WebDefender content settings when it is set to Enabled.
+     */
+    public static int getWebDefenderEnabledSummary() {
+        return R.string.website_settings_category_webdefender_enabled;
     }
 
     /**

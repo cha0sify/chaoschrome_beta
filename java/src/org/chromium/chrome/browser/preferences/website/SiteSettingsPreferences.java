@@ -14,6 +14,7 @@ import org.chromium.chrome.browser.ContentSettingsType;
 import org.chromium.chrome.browser.preferences.LocationSettings;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
+import org.chromium.content.browser.WebDefender;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,7 @@ public class SiteSettingsPreferences extends BrowserPreferenceFragment
     static final String PROTECTED_CONTENT_KEY = "protected_content";
     static final String STORAGE_KEY = "use_storage";
     static final String WEBREFINER_KEY = "webrefiner";
+    static final String WEBDEFENDER_KEY = "webdefender";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -52,6 +54,9 @@ public class SiteSettingsPreferences extends BrowserPreferenceFragment
         }
         if (!WebRefinerPreferenceHandler.isInitialized()) {
             getPreferenceScreen().removePreference(findPreference(WEBREFINER_KEY));
+        }
+        if (!WebDefenderPreferenceHandler.isInitialized()) {
+            getPreferenceScreen().removePreference(findPreference(WEBDEFENDER_KEY));
         }
 
         updatePreferenceStates();
@@ -78,6 +83,8 @@ public class SiteSettingsPreferences extends BrowserPreferenceFragment
             return ContentSettingsType.CONTENT_SETTINGS_TYPE_PROTECTED_MEDIA_IDENTIFIER;
         } else if (WEBREFINER_KEY.equals(key)) {
             return ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER;
+        } else if (WEBDEFENDER_KEY.equals(key)) {
+            return ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER;
         }
         return -1;
     }
@@ -100,6 +107,9 @@ public class SiteSettingsPreferences extends BrowserPreferenceFragment
         websitePrefs.add(POPUPS_KEY);
         if (WebRefinerPreferenceHandler.isInitialized()) {
             websitePrefs.add(WEBREFINER_KEY);
+        }
+        if (WebDefenderPreferenceHandler.isInitialized()) {
+            websitePrefs.add(WEBDEFENDER_KEY);
         }
         // Initialize the summary and icon for all preferences that have an
         // associated content settings entry.
@@ -126,6 +136,8 @@ public class SiteSettingsPreferences extends BrowserPreferenceFragment
                 checked = PrefServiceBridge.getInstance().isFullscreenAllowed();
             } else if (WEBREFINER_KEY.equals(prefName)) {
                 checked = PrefServiceBridge.getInstance().isWebRefinerEnabled();
+            } else if (WEBDEFENDER_KEY.equals(prefName)) {
+                checked = PrefServiceBridge.getInstance().isWebDefenderEnabled();
             }
             int contentType = keyToContentSettingsType(prefName);
             p.setTitle(ContentSettingsResources.getTitle(contentType));
@@ -135,7 +147,7 @@ public class SiteSettingsPreferences extends BrowserPreferenceFragment
             } else if (LOCATION_KEY.equals(prefName) && checked
                     && prefServiceBridge.isLocationAllowedByPolicy()) {
                 p.setSummary(ContentSettingsResources.getGeolocationAllowedSummary());
-            } else if (WEBREFINER_KEY.equals(prefName)) {
+            } else if (WEBREFINER_KEY.equals(prefName) || WEBDEFENDER_KEY.equals(prefName)) {
                 p.setSummary(ContentSettingsResources.getBrowserCategorySummary(
                         contentType, checked));
             } else {

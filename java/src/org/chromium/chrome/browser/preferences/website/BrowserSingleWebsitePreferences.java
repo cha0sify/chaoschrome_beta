@@ -46,6 +46,7 @@ import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
+import android.preference.SwitchPreference;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
@@ -89,6 +90,8 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     private int mSecurityLevel = -1;
 
     private int mSiteColor = -1;
+
+    private String mWebRefinerMessages;
 
     private SiteSecurityViewFactory mSecurityViews;
     private Preference mSecurityInfoPrefs;
@@ -139,19 +142,31 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     @Override
     protected void setUpBrowserListPreference(Preference preference,
                                                  ContentSetting value) {
+
+        ListPreference listPreference = (ListPreference) preference;
+        int contentType = getContentSettingsTypeFromPreferenceKey(preference.getKey());
+
         if (value == null) {
             value = getGlobalDefaultPermission(preference);
             if (value == null) {
+                if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER == contentType)
+                    preference = findPreference("webrefinder_title");
+                else if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER == contentType)
+                    preference = findPreference("webdefender_title");
                 getPreferenceScreen().removePreference(preference);
                 return;
             }
         }
 
-        ListPreference listPreference = (ListPreference) preference;
-        int contentType = getContentSettingsTypeFromPreferenceKey(preference.getKey());
-
         if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER == contentType
                 && !WebRefinerPreferenceHandler.isInitialized()) {
+            preference = findPreference("webrefiner_title");
+            getPreferenceScreen().removePreference(preference);
+            return;
+        }
+        if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER == contentType
+                && !WebDefenderPreferenceHandler.isInitialized()) {
+            preference = findPreference("webdefender_title");
             getPreferenceScreen().removePreference(preference);
             return;
         }
@@ -176,27 +191,65 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
 
         if (listPreference.isEnabled()) {
                 listPreference.setIcon(getEnabledIcon(contentType));
-            }
-        preference.setSummary("%s");
+        }
+        if (PREF_WEBREFINER_PERMISSION.equals(preference.getKey())) {
+            setTextForPreference(preference, value);
+        } else if (PREF_WEBDEFENDER_PERMISSION.equals(preference.getKey())) {
+            setTextForPreference(preference, value);
+        } else {
+            preference.setSummary("%s");
+        }
         updateSummary(preference, contentType, value);
         listPreference.setOnPreferenceChangeListener(this);
     }
 
+    private void setTextForPreference(Preference preference, ContentSetting value) {
+        if (PREF_WEBREFINER_PERMISSION.equals(preference.getKey())) {
+            preference.setTitle(value == ContentSetting.ALLOW
+                    ? (mWebRefinerMessages != null) ?
+                    mWebRefinerMessages :
+                    getResources().getString(R.string.website_settings_webrefiner_enabled)
+                    : getResources().getString(R.string.website_settings_webrefiner_disabled));
+        } else if (PREF_WEBDEFENDER_PERMISSION.equals(preference.getKey())) {
+                preference.setTitle(value == ContentSetting.ALLOW
+                        ? getResources().getString(R.string.website_settings_webdefender_enabled)
+                        : getResources().getString(R.string.website_settings_webdefender_disabled));
+            }
+        }
+
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
-        requestReloadForOrigin();
         ContentSetting permission = ContentSetting.fromString((String) newValue);
         createPermissionInfo(preference, permission);
         if (PREF_WEBREFINER_PERMISSION.equals(preference.getKey())) {
-            preference.setSummary("%s");
+            requestReloadForOrigin();
+            setTextForPreference(preference, permission);
             mSite.setWebRefinerPermission(permission);
-            updateSecurityPreferenceVisibility();
-            return true;
+        } else if (PREF_WEBDEFENDER_PERMISSION.equals(preference.getKey())) {
+            setTextForPreference(preference, permission);
+            mSite.setWebDefenderPermission(permission);
         } else {
+            requestReloadForOrigin();
+            preference.setSummary("%s");
             super.onPreferenceChange(preference, newValue);
             updateSecurityPreferenceVisibility();
-            return true;
         }
+        return true;
+    }
+
+    @Override
+    protected void resetSite() {
+        requestReloadForOrigin();
+
+        mSite.setWebRefinerPermission(null);
+        mSite.setWebDefenderPermission(null);
+        PreferenceScreen screen = getPreferenceScreen();
+        Preference pref = findPreference("webrefiner_title");
+        if (pref != null) screen.removePreference(pref);
+        pref = findPreference("webdefender_title");
+        if (pref != null) screen.removePreference(pref);
+
+        super.resetSite();
     }
 
     @Override
@@ -370,8 +423,8 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     protected ContentSetting getGlobalDefaultPermission(Preference preference) {
         String preferenceKey = preference.getKey();
         int contentType = getContentSettingsTypeFromPreferenceKey(preferenceKey);
-        ContentSetting defaultValue = null;
-        boolean isEnabled = false;
+        ContentSetting defaultValue;
+        boolean isEnabled;
 
         if (PREF_CAMERA_CAPTURE_PERMISSION.equals(preferenceKey)) {
             isEnabled = PrefServiceBridge.getInstance().isCameraEnabled();
@@ -393,6 +446,8 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
             isEnabled = PrefServiceBridge.getInstance().isPushNotificationsEnabled();
         } else if (PREF_WEBREFINER_PERMISSION.equals(preferenceKey)) {
             isEnabled = PrefServiceBridge.getInstance().isWebRefinerEnabled();
+        } else if (PREF_WEBDEFENDER_PERMISSION.equals(preferenceKey)) {
+            isEnabled = PrefServiceBridge.getInstance().isWebDefenderEnabled();
         } else {
             return null;
         }
@@ -458,10 +513,10 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                                 false));
             } else if (PREF_WEBREFINER_PERMISSION.equals(preferenceKey)) {
                 mSite.setWebRefinerInfo(
-                        new WebRefinerInfo(mSite.getAddress().getOrigin(),
-                                null,
-                                false)
-                );
+                        new WebRefinerInfo(mSite.getAddress().getOrigin(), null, false));
+            } else if (PREF_WEBDEFENDER_PERMISSION.equals(preferenceKey)) {
+                mSite.setWebDefenderInfo(
+                        new WebDefenderInfo(mSiteAddress.getOrigin(), null, false));
             }
         }
     }
@@ -493,6 +548,8 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
         } else if (PREF_PUSH_NOTIFICATIONS_PERMISSION.equals(preferenceKey)) {
             doesExist = mSite.getPushNotificationInfo() != null;
         } else if (PREF_WEBREFINER_PERMISSION.equals(preferenceKey)) {
+            doesExist = mSite.getWebRefinerInfo() != null;
+        } else if (PREF_WEBDEFENDER_PERMISSION.equals(preferenceKey)) {
             doesExist = mSite.getWebRefinerInfo() != null;
         }
 
@@ -609,8 +666,7 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
 
             Formatter formatter = new Formatter();
             formatter.format(formats[index - 1], strings[0], strings[1], strings[2]);
-            mSecurityViews.appendText(SiteSecurityViewFactory.ViewType.INFO,
-                    formatter.toString());
+            mWebRefinerMessages = formatter.toString();
         }
     }
 

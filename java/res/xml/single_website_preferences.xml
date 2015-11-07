@@ -21,12 +21,30 @@
     <PreferenceCategory
         android:layout="@layout/browser_preference_category"
         android:key="site_security_info_title"
-        android:title="Security Information" >
+        android:title="@string/website_settings_security_title" >
 
         <PreferenceScreen
             android:key="site_security_info"
             android:selectable="false"
             android:layout="@layout/browser_website_security_info"/>
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/browser_preference_category"
+        android:key="webrefiner_title"
+        android:title="@string/website_settings_webrefiner_title" >
+
+        <org.chromium.chrome.browser.preferences.ChromeBaseListPreference
+        android:key="webrefiner_permission_list" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/browser_preference_category"
+        android:key="webdefender_title"
+        android:title="@string/website_settings_webdefender_title" >
+
+        <org.chromium.chrome.browser.preferences.ChromeBaseListPreference
+        android:key="webdefender_permission_list" />
     </PreferenceCategory>
 
     <PreferenceCategory
@@ -44,8 +62,7 @@
         android:layout="@layout/browser_preference_category"
         android:key="site_permissions"
         android:title="@string/website_settings_permissions_category" />
-    <org.chromium.chrome.browser.preferences.ChromeBaseListPreference
-        android:key="webrefiner_permission_list" />
+
     <org.chromium.chrome.browser.preferences.ChromeBaseListPreference
         android:key="cookies_permission_list" />
     <org.chromium.chrome.browser.preferences.ChromeBaseListPreference

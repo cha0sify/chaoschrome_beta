@@ -44,6 +44,7 @@ public class SiteSettingsCategory {
     public static final String CATEGORY_NOTIFICATIONS = "notifications";
     public static final String CATEGORY_USE_STORAGE = "use_storage";
     public static final String CATEGORY_WEBREFINER = "webrefiner";
+    public static final String CATEGORY_WEBDEFENDER = "webdefender";
 
     // The id of this category.
     private String mCategory;
@@ -126,6 +127,10 @@ public class SiteSettingsCategory {
             return new SiteSettingsCategory(CATEGORY_WEBREFINER, "",
                     ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER);
         }
+        if (CATEGORY_WEBDEFENDER.equals(category)) {
+            return new SiteSettingsCategory(CATEGORY_WEBDEFENDER, "",
+                    ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER);
+        }
 
         return null;
     }
@@ -166,6 +171,9 @@ public class SiteSettingsCategory {
         }
         if (contentSettingsType == ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER) {
             return fromString(CATEGORY_WEBREFINER);
+        }
+        if (contentSettingsType == ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER) {
+            return fromString(CATEGORY_WEBDEFENDER);
         }
 
         return null;
@@ -264,6 +272,13 @@ public class SiteSettingsCategory {
     public boolean showWebRefinerSites() {
         return mContentSettingsType ==
                 ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER;
+    }
+    /**
+     * Returns whether this category is the WebDefender category.
+     */
+    public boolean showWebDefenderSites() {
+        return mContentSettingsType ==
+                ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER;
     }
 
     /**
