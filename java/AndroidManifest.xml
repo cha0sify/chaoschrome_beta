@@ -127,7 +127,7 @@ by a child template that "extends" this file.
         <activity android:name="org.chromium.chrome.browser.document.ChromeLauncherActivity"
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
         </activity>
-        <activity-alias android:name="com.google.android.apps.chrome.Main"
+        <activity-alias android:name="{{ manifest_package }}.Main"
             android:targetActivity="org.chromium.chrome.browser.document.ChromeLauncherActivity"
             android:exported="true">
             <intent-filter>
@@ -208,7 +208,7 @@ by a child template that "extends" this file.
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc"
             android:hardwareAccelerated="false">
         </activity>
-        <activity-alias android:name="com.google.android.apps.chrome.document.DocumentActivity"
+        <activity-alias android:name="{{ manifest_package }}.document.DocumentActivity"
             android:targetActivity="org.chromium.chrome.browser.document.DocumentActivity"
             android:exported="false"/>
         <activity android:name="org.chromium.chrome.browser.document.IncognitoDocumentActivity"
@@ -222,7 +222,7 @@ by a child template that "extends" this file.
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc"
             android:hardwareAccelerated="false">
         </activity>
-        <activity-alias android:name="com.google.android.apps.chrome.document.IncognitoDocumentActivity"
+        <activity-alias android:name="{{ manifest_package }}.document.IncognitoDocumentActivity"
             android:targetActivity="org.chromium.chrome.browser.document.IncognitoDocumentActivity"
             android:exported="false"/>
         <activity android:name="org.chromium.chrome.browser.customtabs.CustomTabActivity"
@@ -334,7 +334,7 @@ by a child template that "extends" this file.
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-        <activity-alias android:name="com.google.android.apps.chrome.webapps.WebappManager"
+        <activity-alias android:name="{{ manifest_package }}.webapps.WebappManager"
             android:targetActivity="org.chromium.chrome.browser.webapps.WebappLauncherActivity">
         </activity-alias>
         <activity android:name="org.chromium.chrome.browser.webapps.WebappActivity"
@@ -346,7 +346,7 @@ by a child template that "extends" this file.
             android:hardwareAccelerated="false"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc">
         </activity>
-        <activity-alias android:name="com.google.android.apps.chrome.webapps.WebappActivity"
+        <activity-alias android:name="{{ manifest_package }}.webapps.WebappActivity"
             android:targetActivity="org.chromium.chrome.browser.webapps.WebappActivity"
             android:label="@string/webapp_activity_title">
         </activity-alias>
@@ -362,7 +362,7 @@ by a child template that "extends" this file.
             android:taskAffinity="{{ manifest_package }}.webapps.WebappActivity{{ i }}"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc">
         </activity>
-        <activity-alias android:name="com.google.android.apps.chrome.webapps.WebappActivity{{ i }}"
+        <activity-alias android:name="{{ manifest_package }}.webapps.WebappActivity{{ i }}"
             android:targetActivity="org.chromium.chrome.browser.webapps.WebappActivity{{ i }}"
             android:icon="@mipmap/app_shortcut_icon"
             android:label="@string/webapp_activity_title">

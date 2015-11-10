@@ -39,7 +39,7 @@ public final class ChromeCommandLineInitUtil {
      *
      */
     private static final String COMMAND_LINE_FILE_PATH_DEBUG_APP = "/data/local/tmp";
-    private static final String COMMAND_LINE_FILE = "chrome-command-line";
+    private static final String COMMAND_LINE_FILE = "swe-command-line";
 
     private ChromeCommandLineInitUtil() {
     }
@@ -54,10 +54,8 @@ public final class ChromeCommandLineInitUtil {
                 CommandLine.getInstance().appendSwitchesAndArguments(context, id);
             }
             //Commandline to get precedence over 'swe_command_line'
-            File commandLineFile = getAlternativeCommandLinePath(context);
-            if (commandLineFile == null) {
-                commandLineFile = new File(COMMAND_LINE_FILE_PATH, COMMAND_LINE_FILE);
-            }
+            //Always use 'COMMAND_LINE_FILE_PATH_DEBUG_APP' location for SWE
+            File commandLineFile = new File(COMMAND_LINE_FILE_PATH_DEBUG_APP, COMMAND_LINE_FILE);
             CommandLine.getInstance().appendSwitchesAndArguments(commandLineFile.getPath());
         }
     }
