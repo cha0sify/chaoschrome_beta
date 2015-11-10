@@ -31,6 +31,7 @@ package org.chromium.chrome.browser;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
@@ -50,6 +51,7 @@ import org.chromium.chrome.browser.tabmodel.EmptyTabModel;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
+import org.w3c.dom.Text;
 
 import java.util.List;
 import java.util.Set;
@@ -174,12 +176,15 @@ public abstract class BrowserChromeActivity extends AsyncInitializationActivity 
         Set<String> origins = PrefServiceBridge.getInstance().getOriginsPendingReload();
         boolean reload = PrefServiceBridge.getInstance().getPendingReload();
         List<TabModel> tabModels = mTabModelSelector.getModels();
+        if (!reload && origins.isEmpty()) {
+            return;
+        }
         for (TabModel model : tabModels) {
             if (model == null) continue;
             int tabCount = model.getCount();
             for (int tabCounter = 0; tabCounter < tabCount; tabCounter++) {
                 Tab tab = model.getTabAt(tabCounter);
-                if (tab == null) continue;
+                if (tab == null || TextUtils.isEmpty(tab.getUrl())) continue;
                 if (reload) {
                     if (tab == getActivityTab()) {
                         tab.reload();
@@ -189,7 +194,9 @@ public abstract class BrowserChromeActivity extends AsyncInitializationActivity 
                 } else {
                     for (String url : origins) {
                         if (TextUtils.equals(url,
-                                WebsiteAddress.create(tab.getUrl()).getOrigin())) {
+                                WebsiteAddress.create(tab.getUrl()).getOrigin())
+                            || TextUtils.equals(url,
+                                UrlUtilities.getOriginForDisplay(Uri.parse(tab.getUrl()), true))) {
                             if (tab == mTabModelSelector.getCurrentTab()) {
                                 tab.reload();
                             } else {
