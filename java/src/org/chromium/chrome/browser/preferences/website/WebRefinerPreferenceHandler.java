@@ -34,6 +34,7 @@ import org.chromium.content.browser.ContentViewCore;
 import org.chromium.content.browser.WebRefiner;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,6 +44,7 @@ import java.util.Set;
  */
 public class WebRefinerPreferenceHandler {
     private static boolean mWebRefinerSetupComplete = false;
+    private static HashMap<String, ContentSetting> mIncognitoPermissions;
 
     static public void applyInitialPreferences() {
         if (WebRefiner.isInitialized() && !mWebRefinerSetupComplete) {
@@ -121,5 +123,31 @@ public class WebRefinerPreferenceHandler {
 
     public static boolean isInitialized() {
         return WebRefiner.isInitialized();
+    }
+
+    public static void addIncognitoOrigin(String origin, ContentSetting permission) {
+        setWebRefinerSettingForOrigin(origin, permission == ContentSetting.ALLOW);
+        if (mIncognitoPermissions == null) {
+            mIncognitoPermissions = new HashMap<>();
+        }
+        mIncognitoPermissions.put(origin, permission);
+    }
+
+    public static ContentSetting getSettingForIncognitoOrigin(String origin) {
+
+        if (mIncognitoPermissions != null && mIncognitoPermissions.containsKey(origin)) {
+            return mIncognitoPermissions.get(origin);
+        }
+        return null;
+    }
+
+    public static void clearIncognitoOrigin(String origin) {
+        if (mIncognitoPermissions != null && mIncognitoPermissions.containsKey(origin)) {
+            mIncognitoPermissions.remove(origin);
+        }
+    }
+
+    public static void onIncognitoSessionFinish() {
+        mIncognitoPermissions = null;
     }
 }

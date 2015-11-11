@@ -19,6 +19,8 @@ import org.chromium.base.ApplicationStatus.ActivityStateListener;
 import org.chromium.base.VisibleForTesting;
 import org.chromium.chrome.browser.UrlConstants;
 import org.chromium.chrome.browser.document.DocumentUtils;
+import org.chromium.chrome.browser.preferences.website.WebDefenderPreferenceHandler;
+import org.chromium.chrome.browser.preferences.website.WebRefinerPreferenceHandler;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabIdManager;
 import org.chromium.chrome.browser.tabmodel.OffTheRecordTabModel.OffTheRecordTabModelDelegate;
@@ -170,6 +172,10 @@ public class DocumentTabModelSelector extends TabModelSelectorBase
         if (newState == ActivityState.STARTED || newState == ActivityState.DESTROYED) {
             mRegularTabModel.updateRecentlyClosed();
             mIncognitoTabModel.updateRecentlyClosed();
+            if (getModel(true).getCount() == 0) {
+                WebRefinerPreferenceHandler.onIncognitoSessionFinish();
+                WebDefenderPreferenceHandler.onIncognitoSessionFinish();
+            }
         }
     }
 

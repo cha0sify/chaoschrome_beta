@@ -44,13 +44,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
-import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
 import android.preference.SwitchPreference;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
-import android.util.ArraySet;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -68,15 +66,12 @@ import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.widget.TintedImageView;
 import org.chromium.content.browser.WebRefiner;
-import org.chromium.mojom.mojo.Application;
 
 import java.io.ByteArrayOutputStream;
-import java.net.URI;
 import java.util.EnumMap;
 import java.util.Formatter;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
+
 
 public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
 
@@ -86,12 +81,12 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     public static final String EXTRA_WEB_REFINER_ADS_INFO = "website_refiner_ads_info";
     public static final String EXTRA_WEB_REFINER_TRACKER_INFO = "website_refiner_tracker_info";
     public static final String EXTRA_WEB_REFINER_MALWARE_INFO = "website_refiner_malware_info";
+    public static final String EXTRA_INCOGNITO = "website_incognito";
 
     private int mSecurityLevel = -1;
-
     private int mSiteColor = -1;
-
     private String mWebRefinerMessages;
+    private boolean mIsIncognito;
 
     private SiteSecurityViewFactory mSecurityViews;
     private Preference mSecurityInfoPrefs;
@@ -103,6 +98,7 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
         if (arguments != null) {
             setupWebRefinerInformation(arguments);
             mSecurityLevel = arguments.getInt(EXTRA_SECURITY_CERT_LEVEL);
+            mIsIncognito = arguments.getBoolean(EXTRA_INCOGNITO);
             updateSecurityInfo();
         }
         super.onActivityCreated(savedInstanceState);
@@ -140,6 +136,15 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     }
 
     @Override
+    protected void setUpListPreference(Preference preference, ContentSetting value) {
+        if (mIsIncognito) {
+            getPreferenceScreen().removePreference(preference);
+        } else {
+            super.setUpListPreference(preference, value);
+        }
+    }
+
+    @Override
     protected void setUpBrowserListPreference(Preference preference,
                                                  ContentSetting value) {
 
@@ -158,19 +163,6 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
             }
         }
 
-        if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER == contentType
-                && !WebRefinerPreferenceHandler.isInitialized()) {
-            preference = findPreference("webrefiner_title");
-            getPreferenceScreen().removePreference(preference);
-            return;
-        }
-        if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER == contentType
-                && !WebDefenderPreferenceHandler.isInitialized()) {
-            preference = findPreference("webdefender_title");
-            getPreferenceScreen().removePreference(preference);
-            return;
-        }
-
         CharSequence[] keys = new String[2];
         CharSequence[] descriptions = new String[2];
         keys[0] = ContentSetting.ALLOW.toString();
@@ -181,9 +173,40 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                 ContentSettingsResources.getDisabledSummary(contentType));
         listPreference.setEntryValues(keys);
         listPreference.setEntries(descriptions);
+
+        if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER == contentType) {
+            if (!WebRefinerPreferenceHandler.isInitialized()) {
+                preference = findPreference("webrefiner_title");
+                getPreferenceScreen().removePreference(preference);
+                return;
+            }
+
+            if (mIsIncognito) {
+                ContentSetting setting = WebRefinerPreferenceHandler.
+                        getSettingForIncognitoOrigin(mSite.getAddress().getOrigin());
+                if (setting != null) {
+                    value = setting;
+                }
+            }
+        } else if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER == contentType) {
+            if (!WebDefenderPreferenceHandler.isInitialized()) {
+                preference = findPreference("webdefender_title");
+                getPreferenceScreen().removePreference(preference);
+                return;
+            }
+            if (mIsIncognito) {
+                ContentSetting setting = WebDefenderPreferenceHandler.
+                        getSettingForIncognitoOrigin(mSite.getAddress().getOrigin());
+                if (setting != null) {
+                    value = setting;
+                }
+            }
+        }
+
         int index = (value == ContentSetting.ALLOW ||
                 value == ContentSetting.ASK ? 0 : 1);
         listPreference.setValueIndex(index);
+
         int explanationResourceId = ContentSettingsResources.getExplanation(contentType);
         if (explanationResourceId != 0) {
             listPreference.setTitle(explanationResourceId);
@@ -224,10 +247,20 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
         if (PREF_WEBREFINER_PERMISSION.equals(preference.getKey())) {
             requestReloadForOrigin();
             setTextForPreference(preference, permission);
-            mSite.setWebRefinerPermission(permission);
+            if (mIsIncognito) {
+                WebRefinerPreferenceHandler.addIncognitoOrigin(mSite.getAddress().getOrigin(),
+                        permission);
+            } else {
+                mSite.setWebRefinerPermission(permission);
+            }
         } else if (PREF_WEBDEFENDER_PERMISSION.equals(preference.getKey())) {
             setTextForPreference(preference, permission);
-            mSite.setWebDefenderPermission(permission);
+            if (mIsIncognito) {
+                WebDefenderPreferenceHandler.addIncognitoOrigin(mSite.getAddress().getOrigin(),
+                        permission);
+            } else {
+                mSite.setWebDefenderPermission(permission);
+            }
         } else {
             requestReloadForOrigin();
             preference.setSummary("%s");
@@ -240,6 +273,12 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     @Override
     protected void resetSite() {
         requestReloadForOrigin();
+        if (mIsIncognito) {
+            WebRefinerPreferenceHandler.clearIncognitoOrigin(mSite.getAddress().getOrigin());
+            WebDefenderPreferenceHandler.clearIncognitoOrigin(mSite.getAddress().getOrigin());
+            getActivity().finish();
+            return;
+        }
 
         mSite.setWebRefinerPermission(null);
         mSite.setWebDefenderPermission(null);
@@ -299,6 +338,18 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
             }
         }
     }
+
+    @Override
+    protected boolean hasUsagePreferences() {
+        if (mIsIncognito) {
+            Preference preference = findPreference(PREF_CLEAR_DATA);
+            if (preference != null) {
+                getPreferenceScreen().removePreference(preference);
+            }
+        }
+        return super.hasUsagePreferences();
+    }
+
 
     @Override
     protected void updateSummary(Preference preference, int contentType, ContentSetting value){
@@ -474,15 +525,15 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
             if (PREF_CAMERA_CAPTURE_PERMISSION.equals(preferenceKey)) {
                 mSite.setCameraInfo(new CameraInfo(mSite.getAddress().getOrigin(),
                         null,
-                        false));
+                        mIsIncognito));
             } else if (PREF_COOKIES_PERMISSION.equals(preferenceKey)) {
                 mSite.setCookieInfo(new CookieInfo(mSite.getAddress().getOrigin(),
                         null,
-                        false));
+                        mIsIncognito));
             } else if (PREF_FULLSCREEN_PERMISSION.equals(preferenceKey)) {
                 mSite.setFullscreenInfo(new FullscreenInfo(mSite.getAddress().getOrigin(),
                         null,
-                        false));
+                        mIsIncognito));
             } else if (PREF_JAVASCRIPT_PERMISSION.equals(preferenceKey)) {
                 mSite.setJavaScriptException(new ContentSettingException(contentType,
                         mSite.getAddress().getOrigin(),
@@ -491,11 +542,11 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
             } else if (PREF_LOCATION_ACCESS.equals(preferenceKey)) {
                 mSite.setGeolocationInfo(new GeolocationInfo(mSite.getAddress().getOrigin(),
                         null,
-                        false));
+                        mIsIncognito));
             } else if (PREF_MIC_CAPTURE_PERMISSION.equals(preferenceKey)) {
                 mSite.setMicrophoneInfo(new MicrophoneInfo(mSite.getAddress().getOrigin(),
                         null,
-                        false));
+                        mIsIncognito));
             } else if (PREF_POPUP_PERMISSION.equals(preferenceKey)) {
                 mSite.setPopupException(new ContentSettingException(contentType,
                         mSite.getAddress().getOrigin(),
@@ -505,18 +556,18 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                 mSite.setProtectedMediaIdentifierInfo(
                         new ProtectedMediaIdentifierInfo(mSite.getAddress().getOrigin(),
                                 mSite.getAddress().getOrigin(),
-                                false));
+                                mIsIncognito));
             } else if (PREF_PUSH_NOTIFICATIONS_PERMISSION.equals(preferenceKey)) {
                 mSite.setPushNotificationInfo(
                         new PushNotificationInfo(mSite.getAddress().getOrigin(),
                                 null,
-                                false));
+                                mIsIncognito));
             } else if (PREF_WEBREFINER_PERMISSION.equals(preferenceKey)) {
                 mSite.setWebRefinerInfo(
-                        new WebRefinerInfo(mSite.getAddress().getOrigin(), null, false));
+                        new WebRefinerInfo(mSite.getAddress().getOrigin(), null, mIsIncognito));
             } else if (PREF_WEBDEFENDER_PERMISSION.equals(preferenceKey)) {
                 mSite.setWebDefenderInfo(
-                        new WebDefenderInfo(mSiteAddress.getOrigin(), null, false));
+                        new WebDefenderInfo(mSiteAddress.getOrigin(), null, mIsIncognito));
             }
         }
     }
@@ -550,7 +601,7 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
         } else if (PREF_WEBREFINER_PERMISSION.equals(preferenceKey)) {
             doesExist = mSite.getWebRefinerInfo() != null;
         } else if (PREF_WEBDEFENDER_PERMISSION.equals(preferenceKey)) {
-            doesExist = mSite.getWebRefinerInfo() != null;
+            doesExist = mSite.getWebDefenderInfo() != null;
         }
 
         return doesExist;
@@ -687,6 +738,7 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
         // equivalent of the call below, because this is perfectly fine for non-display purposes.
         String origin = UrlUtilities.getOriginForDisplay(Uri.parse(url), true /*  showScheme */);
         fragmentArgs.putString(SingleWebsitePreferences.EXTRA_ORIGIN, origin);
+        fragmentArgs.putBoolean(EXTRA_INCOGNITO, tab.isIncognito());
 
         if (icon != null) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -732,6 +784,7 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     //Because we expose all settings to the user always, we want to show the warning about
     //Android's permission management to explain why some settings are disabled.
     protected boolean showWarningFor(int type) {
+        if (mIsIncognito) return false;
         switch (type) {
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_GEOLOCATION:
                 break;

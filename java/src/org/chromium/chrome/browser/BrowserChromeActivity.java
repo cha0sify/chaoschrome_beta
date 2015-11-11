@@ -45,13 +45,17 @@ import org.chromium.chrome.browser.init.AsyncInitializationActivity;
 import org.chromium.chrome.browser.preferences.AboutChromePreferences;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.PreferencesLauncher;
+import org.chromium.chrome.browser.preferences.website.WebDefenderPreferenceHandler;
+import org.chromium.chrome.browser.preferences.website.WebRefinerPreferenceHandler;
 import org.chromium.chrome.browser.preferences.website.WebsiteAddress;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.EmptyTabModel;
+import org.chromium.chrome.browser.tabmodel.EmptyTabModelObserver;
+import org.chromium.chrome.browser.tabmodel.EmptyTabModelSelectorObserver;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
-import org.w3c.dom.Text;
+import org.chromium.chrome.browser.util.FeatureUtilities;
 
 import java.util.List;
 import java.util.Set;
@@ -60,6 +64,7 @@ public abstract class BrowserChromeActivity extends AsyncInitializationActivity 
     protected PowerConnectionReceiver mPowerChangeReceiver;
     protected PowerConnectionReceiver mLowPowerReceiver;
     private TabModelSelector mTabModelSelector;
+    private EmptyTabModelObserver mBrowserTabModelObserver;
 
     @SuppressLint("NewApi")
     @Override
@@ -117,6 +122,41 @@ public abstract class BrowserChromeActivity extends AsyncInitializationActivity 
      */
     protected void setTabModelSelector(TabModelSelector tabModelSelector) {
         mTabModelSelector = tabModelSelector;
+        if (!FeatureUtilities.isDocumentMode(this)) {
+            mBrowserTabModelObserver = new EmptyTabModelObserver() {
+                @Override
+                public void didCloseTab(Tab tab) {
+                    if (!tab.isIncognito()) return;
+                    boolean incognitoSessionEnded = true;
+                    for (TabModel tabModel : mTabModelSelector.getModels()) {
+
+                        if (tabModel.isIncognito() && tabModel.getCount() != 0) {
+                            incognitoSessionEnded = false;
+                        }
+                    }
+                    if (incognitoSessionEnded) {
+                        WebRefinerPreferenceHandler.onIncognitoSessionFinish();
+                        WebDefenderPreferenceHandler.onIncognitoSessionFinish();
+                    }
+                }
+            };
+
+            for (TabModel tabModel : mTabModelSelector.getModels()) {
+                if (tabModel.isIncognito()) {
+                    tabModel.removeObserver(mBrowserTabModelObserver);
+                    tabModel.addObserver(mBrowserTabModelObserver);
+                }
+            }
+            tabModelSelector.addObserver(new EmptyTabModelSelectorObserver() {
+                @Override
+                public void onTabModelSelected(TabModel newModel, TabModel oldModel) {
+                    if (newModel.isIncognito()) {
+                        newModel.removeObserver(mBrowserTabModelObserver);
+                        newModel.addObserver(mBrowserTabModelObserver);
+                    }
+                }
+            });
+        }
     }
 
     protected boolean partnerBrowserRefreshNeeded() {
@@ -175,10 +215,16 @@ public abstract class BrowserChromeActivity extends AsyncInitializationActivity 
     private void reloadTabsIfNecessary() {
         Set<String> origins = PrefServiceBridge.getInstance().getOriginsPendingReload();
         boolean reload = PrefServiceBridge.getInstance().getPendingReload();
-        List<TabModel> tabModels = mTabModelSelector.getModels();
+        List<TabModel> tabModels;
         if (!reload && origins.isEmpty()) {
             return;
         }
+        if (FeatureUtilities.isDocumentMode(this)) {
+            tabModels = ChromeApplication.getDocumentTabModelSelector().getModels();
+        } else {
+            tabModels = mTabModelSelector.getModels();
+        }
+
         for (TabModel model : tabModels) {
             if (model == null) continue;
             int tabCount = model.getCount();

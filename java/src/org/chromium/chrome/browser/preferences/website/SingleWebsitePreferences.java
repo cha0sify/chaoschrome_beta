@@ -432,7 +432,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
         return category.showPermissionBlockedMessage(getActivity());
     }
 
-    private boolean hasUsagePreferences() {
+    protected boolean hasUsagePreferences() {
         // New actions under the Usage preference category must be listed here so that the category
         // heading can be removed when no actions are shown.
         return getPreferenceScreen().findPreference(PREF_CLEAR_DATA) != null;
@@ -451,7 +451,7 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
      * @param preference The ListPreference to initialize.
      * @param value The value to initialize it to.
      */
-    private void setUpListPreference(Preference preference, ContentSetting value) {
+    protected void setUpListPreference(Preference preference, ContentSetting value) {
         if (value == null) {
             value = getGlobalDefaultPermission(preference);
             if (value == null) {

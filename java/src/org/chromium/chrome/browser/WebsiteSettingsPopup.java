@@ -328,7 +328,6 @@ public class WebsiteSettingsPopup implements OnClickListener, OnItemSelectedList
             mCopyUrlButton = null;
             mHorizontalSeparator = null;
             mLowerDialogArea = null;
-            mSiteSettingsButton.setVisibility(View.VISIBLE);
             mDisplayedPermissions = new ArrayList<PageInfoPermissionEntry>();
         } else {
             mCopyUrlButton =

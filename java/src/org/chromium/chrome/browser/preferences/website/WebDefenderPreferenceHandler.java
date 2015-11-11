@@ -34,6 +34,7 @@ import org.chromium.content.browser.ContentViewCore;
 import org.chromium.content.browser.WebDefender;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,6 +44,7 @@ import java.util.Set;
  */
 public class WebDefenderPreferenceHandler {
     private static boolean mWebDefenderSetupComplete = false;
+    private static HashMap<String, ContentSetting> mIncognitoPermissions;
 
     /**
      * Sets up webdefender when the browser initializes.
@@ -116,5 +118,31 @@ public class WebDefenderPreferenceHandler {
         String[] origins = new String[1];
         origins[0] = origin;
         WebDefender.getInstance().setPermissionForOrigins(origins, enabled);
+    }
+
+    public static void addIncognitoOrigin(String origin, ContentSetting permission) {
+        setWebDefenderSettingForOrigin(origin, permission == ContentSetting.ALLOW);
+        if (mIncognitoPermissions == null) {
+            mIncognitoPermissions = new HashMap<>();
+        }
+        mIncognitoPermissions.put(origin, permission);
+    }
+
+    public static ContentSetting getSettingForIncognitoOrigin(String origin) {
+
+        if (mIncognitoPermissions != null && mIncognitoPermissions.containsKey(origin)) {
+            return mIncognitoPermissions.get(origin);
+        }
+        return null;
+    }
+
+    public static void clearIncognitoOrigin(String origin) {
+        if (mIncognitoPermissions != null && mIncognitoPermissions.containsKey(origin)) {
+            mIncognitoPermissions.remove(origin);
+        }
+    }
+
+    public static void onIncognitoSessionFinish() {
+        mIncognitoPermissions = null;
     }
 }
