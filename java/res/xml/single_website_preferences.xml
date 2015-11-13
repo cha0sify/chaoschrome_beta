@@ -30,21 +30,34 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-        android:layout="@layout/browser_preference_category"
-        android:key="webrefiner_title"
-        android:title="@string/website_settings_webrefiner_title" >
-
-        <org.chromium.chrome.browser.preferences.ChromeBaseListPreference
-        android:key="webrefiner_permission_list" />
-    </PreferenceCategory>
-
-    <PreferenceCategory
-        android:layout="@layout/browser_preference_category"
+        android:layout="@layout/browser_preference_category_switch"
         android:key="webdefender_title"
         android:title="@string/website_settings_webdefender_title" >
 
-        <org.chromium.chrome.browser.preferences.ChromeBaseListPreference
-        android:key="webdefender_permission_list" />
+        <org.chromium.chrome.browser.preferences.TextMessagePreference
+            android:key="webdefender_permission" />
+
+        <Preference
+            android:icon="@android:color/transparent"
+            android:key="webdefender_privacy_meter"
+            android:selectable="false"
+            android:title="@string/website_settings_webdefender_privacy_meter_title"
+            android:widgetLayout="@layout/webdefender_privacy_meter" />
+
+        <org.chromium.chrome.browser.preferences.ButtonPreference
+            android:fragment=
+                "org.chromium.chrome.browser.preferences.website.WebDefenderDetailsPreferences"
+            android:key="webdefender_details"
+            android:title="@string/page_info_details_link" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/browser_preference_category_switch"
+        android:key="webrefiner_title"
+        android:title="@string/website_settings_webrefiner_title" >
+
+        <org.chromium.chrome.browser.preferences.TextMessagePreference
+            android:key="webrefiner_permission" />
     </PreferenceCategory>
 
     <PreferenceCategory

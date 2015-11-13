@@ -28,46 +28,41 @@
     IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/site_security_info"
+    android:id="@+id/browser_pref_cat_switch"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingEnd="?android:attr/scrollbarSize"
-    android:minHeight="?android:attr/listPreferredItemHeightSmall"
-    android:gravity="center_vertical"
-    android:background="?android:attr/selectableItemBackground"
-    android:layout_gravity="fill_horizontal"
     android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/site_security_error"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawableStart="@drawable/ic_sp_level_severe"
-        android:drawablePadding="36dp"
-        android:minHeight="?android:attr/listPreferredItemHeightSmall"
-        android:textAppearance="?android:attr/textAppearanceListItem"
-        android:layout_marginStart="5dip"
-        android:gravity="center_vertical" />
+    <ImageView
+        android:contentDescription="@null"
+        android:layout_width="fill_parent"
+        android:layout_height="8dp" />
 
-    <TextView
-        android:id="@+id/site_security_warning"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawableStart="@drawable/ic_sp_level_warning"
-        android:drawablePadding="36dp"
-        android:minHeight="?android:attr/listPreferredItemHeightSmall"
-        android:textAppearance="?android:attr/textAppearanceListItem"
-        android:layout_marginStart="5dip"
-        android:gravity="center_vertical" />
+    <ImageView
+        android:contentDescription="@null"
+        android:background="@drawable/img_deco_intrapanel"
+        android:layout_width="fill_parent"
+        android:layout_height="8dp" />
 
-    <TextView
-        android:id="@+id/site_security_verbose"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:drawableStart="@drawable/ic_sp_level_good"
-        android:drawablePadding="36dp"
-        android:minHeight="?android:attr/listPreferredItemHeightSmall"
-        android:textAppearance="?android:attr/textAppearanceListItem"
-        android:layout_marginStart="5dip"
-        android:gravity="center_vertical" />
+        android:layout_marginTop="16dp"
+        style="@style/PreferenceCategoryWithButtonStyle"
+        android:gravity="center_vertical"  >
+
+        <TextView
+            android:id="@android:id/title"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/PreferenceCategoryTextStyle"
+            android:textColor="@color/light_active_color"
+            />
+
+        <Switch
+            android:id="@+id/browser_pref_cat_switch_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
 </LinearLayout>

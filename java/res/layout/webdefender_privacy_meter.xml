@@ -28,46 +28,53 @@
     IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/site_security_info"
+    android:id="@+id/webdefender_privacy_meter"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingEnd="?android:attr/scrollbarSize"
     android:minHeight="?android:attr/listPreferredItemHeightSmall"
     android:gravity="center_vertical"
     android:background="?android:attr/selectableItemBackground"
-    android:layout_gravity="fill_horizontal"
-    android:orientation="vertical">
+    android:layout_gravity="center_vertical"
+    android:orientation="horizontal">
 
-    <TextView
-        android:id="@+id/site_security_error"
+    <ImageView
+        android:id="@+id/star1"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawableStart="@drawable/ic_sp_level_severe"
-        android:drawablePadding="36dp"
-        android:minHeight="?android:attr/listPreferredItemHeightSmall"
-        android:textAppearance="?android:attr/textAppearanceListItem"
-        android:layout_marginStart="5dip"
-        android:gravity="center_vertical" />
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:paddingStart="5dp" />
 
-    <TextView
-        android:id="@+id/site_security_warning"
+    <ImageView
+        android:id="@+id/star2"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawableStart="@drawable/ic_sp_level_warning"
-        android:drawablePadding="36dp"
-        android:minHeight="?android:attr/listPreferredItemHeightSmall"
-        android:textAppearance="?android:attr/textAppearanceListItem"
-        android:layout_marginStart="5dip"
-        android:gravity="center_vertical" />
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:paddingStart="5dp"
+        android:src="@drawable/img_deco_intrapanel"/>
 
-    <TextView
-        android:id="@+id/site_security_verbose"
+    <ImageView
+        android:id="@+id/star3"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawableStart="@drawable/ic_sp_level_good"
-        android:drawablePadding="36dp"
-        android:minHeight="?android:attr/listPreferredItemHeightSmall"
-        android:textAppearance="?android:attr/textAppearanceListItem"
-        android:layout_marginStart="5dip"
-        android:gravity="center_vertical" />
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:paddingStart="5dp"
+        android:src="@drawable/img_deco_intrapanel"/>
+
+    <ImageView
+        android:id="@+id/star4"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:paddingStart="5dp"
+        android:src="@drawable/img_deco_intrapanel"/>
+
+    <ImageView
+        android:id="@+id/star5"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:paddingStart="5dp"
+        android:src="@drawable/img_deco_intrapanel"/>
+
 </LinearLayout>

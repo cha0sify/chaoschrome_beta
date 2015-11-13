@@ -28,7 +28,7 @@
     IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/site_security_info"
+    android:id="@+id/webdefender_vectorlist_layout"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingEnd="?android:attr/scrollbarSize"
@@ -39,35 +39,19 @@
     android:orientation="vertical">
 
     <TextView
-        android:id="@+id/site_security_error"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:drawableStart="@drawable/ic_sp_level_severe"
-        android:drawablePadding="36dp"
-        android:minHeight="?android:attr/listPreferredItemHeightSmall"
+        android:paddingStart="?android:attr/listPreferredItemPaddingStart"
         android:textAppearance="?android:attr/textAppearanceListItem"
-        android:layout_marginStart="5dip"
-        android:gravity="center_vertical" />
+        android:text="@string/website_settings_webdefender_tracking_list"/>
 
-    <TextView
-        android:id="@+id/site_security_warning"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawableStart="@drawable/ic_sp_level_warning"
-        android:drawablePadding="36dp"
-        android:minHeight="?android:attr/listPreferredItemHeightSmall"
-        android:textAppearance="?android:attr/textAppearanceListItem"
-        android:layout_marginStart="5dip"
-        android:gravity="center_vertical" />
+    <org.chromium.chrome.browser.preferences.website.WebDefenderVectorsRecyclerView
+        android:id="@+id/webdefender_vectors"
+        android:layout_width="match_parent"
+        android:layout_height="fill_parent"
+        android:minHeight="400dp"
+        android:paddingStart="?android:attr/listPreferredItemPaddingStart"
+        android:scrollbars="vertical">
+    </org.chromium.chrome.browser.preferences.website.WebDefenderVectorsRecyclerView>
 
-    <TextView
-        android:id="@+id/site_security_verbose"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawableStart="@drawable/ic_sp_level_good"
-        android:drawablePadding="36dp"
-        android:minHeight="?android:attr/listPreferredItemHeightSmall"
-        android:textAppearance="?android:attr/textAppearanceListItem"
-        android:layout_marginStart="5dip"
-        android:gravity="center_vertical" />
 </LinearLayout>

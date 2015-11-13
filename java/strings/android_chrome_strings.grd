@@ -554,13 +554,52 @@ Usage statistics include information such as preferences, button clicks, and mem
         WebRefiner is disabled
       </message>
       <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_TITLE" desc="The headline above the WebDefender information for the website">
-        Privacy Defender
+        Smart Protect
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_PRIVACY_METER_TITLE" desc="The title for the WebDefender Privacy Meter">
+        Privacy Meter
       </message>
       <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_ENABLED" desc="The WebDefender settings summary when it is enabled">
-        Privacy Defender is enabled
+        Smart Protect is enabled
       </message>
       <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_DISABLED" desc="The WebDefender settings summary when it is disabled">
-        Privacy Defender is disabled
+        Smart Protect is disabled
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_BRIEF_MESSAGE" desc="The WebDefender brief summary with count">
+        We prevented possible leakage of your privacy related information to <ph name="count">%1$d<ex>25</ex></ph> connected domains.
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_TRACKING_VECTORS" desc="The WebDefender title for listing tracking vectors">
+        Tracking vectors on connected web sites:
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_COOKIE" desc="The WebDefender title for cookie storage">
+        Cookie Storage
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_FINGERPRINT" desc="The WebDefender title for fingerprinting">
+        Fingerprinting
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_HTML5" desc="The WebDefender title for HTML5 storage">
+        HTML5 Storage
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_FONT_ENUM" desc="The WebDefender title for font enumeration">
+        Font Enumeration
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_VECTOR_ALLOW" desc="The WebDefender allow action for a vector">
+        Allow
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_VECTOR_STRIP" desc="The WebDefender strip action for a vector">
+        Strip vectors and connect
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_VECTOR_NOT_CONNECT" desc="The WebDefender do not connect action for a vector">
+        Do not connect
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_VECTOR_SYSTEM_DEFAULT" desc="The WebDefender system default action for a vector">
+        Decide for me
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_TRACKING_LIST" desc="The WebDefender title for listing tracking vector sites">
+        Connected web sites settings:
+      </message>
+      <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_TRACKING_NOT_DETECTED" desc="The WebDefender display status for untracked vectors">
+        not detected
       </message>
       <message name="IDS_WEBSITE_SETTINGS_CATEGORY_WEBREFINER_ENABLED_RECOMMENDED" desc="Summary text explaining that feature should be enabled, e.g. WebRefiner: Enable to block ads, trackers and malware">
         Enable to block Ads, Trackers and Malware (Recommended)
@@ -697,7 +736,7 @@ particular permission.">
 
       <!-- WebDefender prefernces -->
       <message name="IDS_WEBDEFENDER" desc="Title for the WebDefender setting [CHAR-LIMIT=32]">
-        Privacy Defender
+        Smart Protect
       </message>
 
       <!-- WebRefiner prefernces -->

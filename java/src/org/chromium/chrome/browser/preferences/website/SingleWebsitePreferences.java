@@ -4,50 +4,31 @@
 
 package org.chromium.chrome.browser.preferences.website;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.res.ColorStateList;
 import android.content.res.Resources;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
 import android.graphics.PorterDuff;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceScreen;
-import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
 import android.text.format.Formatter;
-import android.view.View;
-import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.ListAdapter;
 import android.widget.ListView;
-import android.widget.TextView;
 
 import org.chromium.base.ApiCompatibilityUtils;
-import org.chromium.base.ApplicationStatus;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ContentSettingsType;
 import org.chromium.chrome.browser.UrlUtilities;
-import org.chromium.chrome.browser.favicon.FaviconHelper;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
 import org.chromium.chrome.browser.search_engines.TemplateUrlService;
-import org.chromium.chrome.browser.widget.TintedImageView;
 
-import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -97,8 +78,8 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
             "protected_media_identifier_permission_list";
     public static final String PREF_PUSH_NOTIFICATIONS_PERMISSION =
             "push_notifications_list";
-    public static final String PREF_WEBREFINER_PERMISSION = "webrefiner_permission_list";
-    public static final String PREF_WEBDEFENDER_PERMISSION = "webdefender_permission_list";
+    public static final String PREF_WEBREFINER_PERMISSION = "webrefiner_permission";
+    public static final String PREF_WEBDEFENDER_PERMISSION = "webdefender_permission";
 
     // All permissions from the permissions preference category must be listed here.
     // TODO(mvanouwerkerk): Use this array in more places to reduce verbosity.
@@ -295,6 +276,8 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
                 && (origin.equals(info.getEmbedderSafe()) || "*".equals(info.getEmbedderSafe()));
     }
 
+    protected void displayExtraSitePermissions(Preference pref) {}
+
     /**
      * Updates the permissions displayed in the UI by fetching them from mSite.
      * Must only be called once mSite is set.
@@ -340,10 +323,8 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
                 setUpListPreference(preference, mSite.getProtectedMediaIdentifierPermission());
             } else if (PREF_PUSH_NOTIFICATIONS_PERMISSION.equals(preference.getKey())) {
                 setUpListPreference(preference, mSite.getPushNotificationPermission());
-            } else if (PREF_WEBREFINER_PERMISSION.equals(preference.getKey())) {
-                setUpBrowserListPreference(preference, mSite.getWebRefinerPermission());
-            } else if (PREF_WEBDEFENDER_PERMISSION.equals(preference.getKey())) {
-                setUpBrowserListPreference(preference, mSite.getWebDefenderPermission());
+            } else {
+                displayExtraSitePermissions(preference);
             }
         }
 
@@ -382,13 +363,6 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
             preferenceScreen.removePreference(heading);
         }
         updateSecurityPreferenceVisibility();
-    }
-
-    protected void setUpBrowserSwitchPreference(Preference preference, ContentSetting value) { }
-
-    protected void setUpBrowserListPreference(Preference preference,
-                                                 ContentSetting value) {
-        setUpListPreference(preference, value);
     }
 
     protected void updateSecurityPreferenceVisibility() { }
@@ -592,10 +566,6 @@ public class SingleWebsitePreferences extends BrowserPreferenceFragment
                 return ContentSettingsType.CONTENT_SETTINGS_TYPE_PROTECTED_MEDIA_IDENTIFIER;
             case PREF_PUSH_NOTIFICATIONS_PERMISSION:
                 return ContentSettingsType.CONTENT_SETTINGS_TYPE_NOTIFICATIONS;
-            case PREF_WEBREFINER_PERMISSION:
-                return ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER;
-            case PREF_WEBDEFENDER_PERMISSION:
-                return ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER;
             default:
                 return 0;
         }

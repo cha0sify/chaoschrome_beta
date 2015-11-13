@@ -30,7 +30,6 @@
 package org.chromium.chrome.browser.preferences.website;
 
 import android.app.Activity;
-import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -45,7 +44,6 @@ import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceScreen;
-import android.preference.SwitchPreference;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
@@ -53,6 +51,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import org.chromium.base.ApplicationStatus;
@@ -65,13 +64,13 @@ import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.ssl.ConnectionSecurityLevel;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.widget.TintedImageView;
+import org.chromium.content.browser.WebDefender;
 import org.chromium.content.browser.WebRefiner;
 
 import java.io.ByteArrayOutputStream;
 import java.util.EnumMap;
 import java.util.Formatter;
 import java.util.Map;
-
 
 public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
 
@@ -90,6 +89,9 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
 
     private SiteSecurityViewFactory mSecurityViews;
     private Preference mSecurityInfoPrefs;
+    private Switch mWebRefinerSwitch;
+    private Switch mWebDefenderSwitch;
+    private WebDefender.ProtectionStatus mWebDefenderStatus;
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
@@ -100,6 +102,10 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
             mSecurityLevel = arguments.getInt(EXTRA_SECURITY_CERT_LEVEL);
             mIsIncognito = arguments.getBoolean(EXTRA_INCOGNITO);
             updateSecurityInfo();
+            WebDefenderPreferenceHandler.StatusParcel parcel = arguments.getParcelable(
+                    WebDefenderDetailsPreferences.EXTRA_WEBDEFENDER_PARCEL);
+            if (parcel != null)
+                mWebDefenderStatus = parcel.getStatus();
         }
         super.onActivityCreated(savedInstanceState);
     }
@@ -130,6 +136,11 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     protected Drawable getEnabledIcon(int contentType) {
         if (mSiteColor == -1) return super.getEnabledIcon(contentType);
         Drawable icon = getResources().getDrawable(ContentSettingsResources.getIcon(contentType));
+
+        if (contentType == ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER ||
+                contentType == ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER)
+            return icon;
+
         icon.mutate();
         icon.setColorFilter(mSiteColor, PorterDuff.Mode.SRC_IN);
         return icon;
@@ -145,123 +156,85 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     }
 
     @Override
-    protected void setUpBrowserListPreference(Preference preference,
-                                                 ContentSetting value) {
+    protected void displayExtraSitePermissions(Preference preference) {
+        super.displayExtraSitePermissions(preference);
 
-        ListPreference listPreference = (ListPreference) preference;
-        int contentType = getContentSettingsTypeFromPreferenceKey(preference.getKey());
-
-        if (value == null) {
-            value = getGlobalDefaultPermission(preference);
-            if (value == null) {
-                if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER == contentType)
-                    preference = findPreference("webrefinder_title");
-                else if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER == contentType)
-                    preference = findPreference("webdefender_title");
-                getPreferenceScreen().removePreference(preference);
-                return;
-            }
-        }
-
-        CharSequence[] keys = new String[2];
-        CharSequence[] descriptions = new String[2];
-        keys[0] = ContentSetting.ALLOW.toString();
-        keys[1] = ContentSetting.BLOCK.toString();
-        descriptions[0] = getResources().getString(
-                ContentSettingsResources.getEnabledSummary(contentType));
-        descriptions[1] = getResources().getString(
-                ContentSettingsResources.getDisabledSummary(contentType));
-        listPreference.setEntryValues(keys);
-        listPreference.setEntries(descriptions);
-
-        if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER == contentType) {
-            if (!WebRefinerPreferenceHandler.isInitialized()) {
-                preference = findPreference("webrefiner_title");
-                getPreferenceScreen().removePreference(preference);
-                return;
-            }
-
-            if (mIsIncognito) {
-                ContentSetting setting = WebRefinerPreferenceHandler.
-                        getSettingForIncognitoOrigin(mSite.getAddress().getOrigin());
-                if (setting != null) {
-                    value = setting;
-                }
-            }
-        } else if (ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER == contentType) {
-            if (!WebDefenderPreferenceHandler.isInitialized()) {
-                preference = findPreference("webdefender_title");
-                getPreferenceScreen().removePreference(preference);
-                return;
-            }
-            if (mIsIncognito) {
-                ContentSetting setting = WebDefenderPreferenceHandler.
-                        getSettingForIncognitoOrigin(mSite.getAddress().getOrigin());
-                if (setting != null) {
-                    value = setting;
-                }
-            }
-        }
-
-        int index = (value == ContentSetting.ALLOW ||
-                value == ContentSetting.ASK ? 0 : 1);
-        listPreference.setValueIndex(index);
-
-        int explanationResourceId = ContentSettingsResources.getExplanation(contentType);
-        if (explanationResourceId != 0) {
-            listPreference.setTitle(explanationResourceId);
-        }
-
-        if (listPreference.isEnabled()) {
-                listPreference.setIcon(getEnabledIcon(contentType));
-        }
         if (PREF_WEBREFINER_PERMISSION.equals(preference.getKey())) {
-            setTextForPreference(preference, value);
+            if (!WebRefinerPreferenceHandler.isInitialized()) {
+                getPreferenceScreen().removePreference(preference);
+                Preference category = findPreference("webrefiner_title");
+                getPreferenceScreen().removePreference(category);
+                return;
+            }
+
+            preference.setOnPreferenceClickListener(this);
+            setTextForPreference(preference,
+                    getWebRefinerPermission() ? ContentSetting.ALLOW : ContentSetting.BLOCK);
+
+            preference.setIcon(
+                    getEnabledIcon(ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER));
         } else if (PREF_WEBDEFENDER_PERMISSION.equals(preference.getKey())) {
-            setTextForPreference(preference, value);
-        } else {
-            preference.setSummary("%s");
+            if (!WebDefenderPreferenceHandler.isInitialized()) {
+                getPreferenceScreen().removePreference(preference);
+                Preference category = findPreference("webdefender_title");
+                getPreferenceScreen().removePreference(category);
+                return;
+            }
+
+            preference.setOnPreferenceClickListener(this);
+            setTextForPreference(preference,
+                    getWebDefenderPermission() ? ContentSetting.ALLOW : ContentSetting.BLOCK);
+
+            preference.setIcon(
+                    getEnabledIcon(ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER));
+        } else if (preference.getKey().equals("webdefender_details")) {
+            preference.setOnPreferenceClickListener(this);
         }
-        updateSummary(preference, contentType, value);
-        listPreference.setOnPreferenceChangeListener(this);
+    }
+
+    @Override
+    protected int getContentSettingsTypeFromPreferenceKey(String preferenceKey) {
+        int type = super.getContentSettingsTypeFromPreferenceKey(preferenceKey);
+        if (type != 0)
+            return type;
+
+        switch (preferenceKey) {
+            case PREF_WEBREFINER_PERMISSION:
+                return ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER;
+            case PREF_WEBDEFENDER_PERMISSION:
+                return ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER;
+            default:
+                return 0;
+        }
     }
 
     private void setTextForPreference(Preference preference, ContentSetting value) {
         if (PREF_WEBREFINER_PERMISSION.equals(preference.getKey())) {
             preference.setTitle(value == ContentSetting.ALLOW
                     ? (mWebRefinerMessages != null) ?
-                    mWebRefinerMessages :
-                    getResources().getString(R.string.website_settings_webrefiner_enabled)
+                    mWebRefinerMessages
+                    : getResources().getString(R.string.website_settings_webrefiner_enabled)
                     : getResources().getString(R.string.website_settings_webrefiner_disabled));
         } else if (PREF_WEBDEFENDER_PERMISSION.equals(preference.getKey())) {
-                preference.setTitle(value == ContentSetting.ALLOW
-                        ? getResources().getString(R.string.website_settings_webdefender_enabled)
-                        : getResources().getString(R.string.website_settings_webdefender_disabled));
+            int count = 0;
+            if (mWebDefenderStatus != null) {
+                count = mWebDefenderStatus.mTrackerDomains.length;
+            }
+
+            preference.setTitle(value == ContentSetting.ALLOW
+                    ? (count > 0) ?
+                    WebDefenderDetailsPreferences.getOverviewMessage(getResources(), count)
+                    : getResources().getString(R.string.website_settings_webdefender_enabled)
+                    : getResources().getString(R.string.website_settings_webdefender_disabled));
             }
         }
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
-        ContentSetting permission = ContentSetting.fromString((String) newValue);
-        createPermissionInfo(preference, permission);
-        if (PREF_WEBREFINER_PERMISSION.equals(preference.getKey())) {
-            requestReloadForOrigin();
-            setTextForPreference(preference, permission);
-            if (mIsIncognito) {
-                WebRefinerPreferenceHandler.addIncognitoOrigin(mSite.getAddress().getOrigin(),
-                        permission);
-            } else {
-                mSite.setWebRefinerPermission(permission);
-            }
-        } else if (PREF_WEBDEFENDER_PERMISSION.equals(preference.getKey())) {
-            setTextForPreference(preference, permission);
-            if (mIsIncognito) {
-                WebDefenderPreferenceHandler.addIncognitoOrigin(mSite.getAddress().getOrigin(),
-                        permission);
-            } else {
-                mSite.setWebDefenderPermission(permission);
-            }
-        } else {
+        if (!PREF_WEBREFINER_PERMISSION.equals(preference.getKey()) &&
+                !PREF_WEBDEFENDER_PERMISSION.equals(preference.getKey())) {
+            ContentSetting permission = ContentSetting.fromString((String) newValue);
+            createPermissionInfo(preference, permission);
             requestReloadForOrigin();
             preference.setSummary("%s");
             super.onPreferenceChange(preference, newValue);
@@ -371,12 +344,10 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     private static class SiteSecurityViewFactory {
         private class SiteSecurityView {
             private TextView mTextView;
-            private View mContainer;
             private String mDisplayText;
 
             public SiteSecurityView(View parent, int resId, String text) {
-                mContainer = parent.findViewById(resId);
-                mTextView = (TextView) mContainer.findViewById(R.id.security_view_text);
+                mTextView = (TextView) parent.findViewById(resId);
                 mTextView.setText(text);
                 mDisplayText = text;
                 updateVisibility();
@@ -384,9 +355,9 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
 
             private void updateVisibility() {
                 if (TextUtils.isEmpty(mDisplayText)) {
-                    mContainer.setVisibility(View.GONE);
+                    mTextView.setVisibility(View.GONE);
                 } else {
-                    mContainer.setVisibility(View.VISIBLE);
+                    mTextView.setVisibility(View.VISIBLE);
                 }
             }
 
@@ -426,17 +397,17 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
         }
 
         public void appendText(ViewType type, String text) {
-            String new_text = mTexts.get(type);
-            if (new_text != null)
-                new_text += " " + text;
+            String newText = mTexts.get(type);
+            if (newText != null)
+                newText += " " + text;
             else
-                new_text = text;
+                newText = text;
 
-            mTexts.put(type, new_text);
+            mTexts.put(type, newText);
 
             SiteSecurityView view = mViews.get(type);
             if (view != null) {
-                view.setText(new_text);
+                view.setText(newText);
             }
 
             mbEmpty = false;
@@ -518,94 +489,172 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
      * @param permission The ContentSetting to initialize it to.
      */
     private void createPermissionInfo(Preference preference, ContentSetting permission) {
-        if (false == doesPermissionInfoExist(preference)) {
-            String preferenceKey = preference.getKey();
-            int contentType = getContentSettingsTypeFromPreferenceKey(preferenceKey);
+        String preferenceKey = preference.getKey();
+        int contentType = getContentSettingsTypeFromPreferenceKey(preferenceKey);
 
-            if (PREF_CAMERA_CAPTURE_PERMISSION.equals(preferenceKey)) {
-                mSite.setCameraInfo(new CameraInfo(mSite.getAddress().getOrigin(),
-                        null,
-                        mIsIncognito));
-            } else if (PREF_COOKIES_PERMISSION.equals(preferenceKey)) {
-                mSite.setCookieInfo(new CookieInfo(mSite.getAddress().getOrigin(),
-                        null,
-                        mIsIncognito));
-            } else if (PREF_FULLSCREEN_PERMISSION.equals(preferenceKey)) {
-                mSite.setFullscreenInfo(new FullscreenInfo(mSite.getAddress().getOrigin(),
-                        null,
-                        mIsIncognito));
-            } else if (PREF_JAVASCRIPT_PERMISSION.equals(preferenceKey)) {
-                mSite.setJavaScriptException(new ContentSettingException(contentType,
-                        mSite.getAddress().getOrigin(),
-                        permission.toString(),
-                        "policy"));
-            } else if (PREF_LOCATION_ACCESS.equals(preferenceKey)) {
-                mSite.setGeolocationInfo(new GeolocationInfo(mSite.getAddress().getOrigin(),
-                        null,
-                        mIsIncognito));
-            } else if (PREF_MIC_CAPTURE_PERMISSION.equals(preferenceKey)) {
-                mSite.setMicrophoneInfo(new MicrophoneInfo(mSite.getAddress().getOrigin(),
-                        null,
-                        mIsIncognito));
-            } else if (PREF_POPUP_PERMISSION.equals(preferenceKey)) {
-                mSite.setPopupException(new ContentSettingException(contentType,
-                        mSite.getAddress().getOrigin(),
-                        permission.toString(),
-                        "policy"));
-            } else if (PREF_PROTECTED_MEDIA_IDENTIFIER_PERMISSION.equals(preferenceKey)) {
-                mSite.setProtectedMediaIdentifierInfo(
-                        new ProtectedMediaIdentifierInfo(mSite.getAddress().getOrigin(),
-                                mSite.getAddress().getOrigin(),
-                                mIsIncognito));
-            } else if (PREF_PUSH_NOTIFICATIONS_PERMISSION.equals(preferenceKey)) {
-                mSite.setPushNotificationInfo(
-                        new PushNotificationInfo(mSite.getAddress().getOrigin(),
-                                null,
-                                mIsIncognito));
-            } else if (PREF_WEBREFINER_PERMISSION.equals(preferenceKey)) {
-                mSite.setWebRefinerInfo(
-                        new WebRefinerInfo(mSite.getAddress().getOrigin(), null, mIsIncognito));
-            } else if (PREF_WEBDEFENDER_PERMISSION.equals(preferenceKey)) {
-                mSite.setWebDefenderInfo(
-                        new WebDefenderInfo(mSiteAddress.getOrigin(), null, mIsIncognito));
+        if (PREF_CAMERA_CAPTURE_PERMISSION.equals(preferenceKey) && mSite.getCameraInfo() == null) {
+            mSite.setCameraInfo(new CameraInfo(mSite.getAddress().getOrigin(),
+                    null,
+                    mIsIncognito));
+        } else if (PREF_COOKIES_PERMISSION.equals(preferenceKey) && mSite.getCookieInfo() == null) {
+            mSite.setCookieInfo(new CookieInfo(mSite.getAddress().getOrigin(),
+                    null,
+                    mIsIncognito));
+        } else if (PREF_FULLSCREEN_PERMISSION.equals(preferenceKey)
+                && mSite.getFullscreenInfo() == null) {
+            mSite.setFullscreenInfo(new FullscreenInfo(mSite.getAddress().getOrigin(),
+                    null,
+                    mIsIncognito));
+        } else if (PREF_JAVASCRIPT_PERMISSION.equals(preferenceKey)
+                && mSite.getJavaScriptPermission() == null) {
+            mSite.setJavaScriptException(new ContentSettingException(contentType,
+                    mSite.getAddress().getOrigin(),
+                    permission.toString(),
+                    "policy"));
+        } else if (PREF_LOCATION_ACCESS.equals(preferenceKey)
+                && mSite.getGeolocationInfo() == null) {
+            mSite.setGeolocationInfo(new GeolocationInfo(mSite.getAddress().getOrigin(),
+                    null,
+                    mIsIncognito));
+        } else if (PREF_MIC_CAPTURE_PERMISSION.equals(preferenceKey)
+                && mSite.getMicrophoneInfo() == null) {
+            mSite.setMicrophoneInfo(new MicrophoneInfo(mSite.getAddress().getOrigin(),
+                    null,
+                    mIsIncognito));
+        } else if (PREF_POPUP_PERMISSION.equals(preferenceKey)
+                && mSite.getPopupException() == null) {
+            mSite.setPopupException(new ContentSettingException(contentType,
+                    mSite.getAddress().getOrigin(),
+                    permission.toString(),
+                    "policy"));
+        } else if (PREF_PROTECTED_MEDIA_IDENTIFIER_PERMISSION.equals(preferenceKey)
+                && mSite.getProtectedMediaIdentifierInfo() == null) {
+            mSite.setProtectedMediaIdentifierInfo(
+                    new ProtectedMediaIdentifierInfo(mSite.getAddress().getOrigin(),
+                            mSite.getAddress().getOrigin(),
+                            mIsIncognito));
+        } else if (PREF_PUSH_NOTIFICATIONS_PERMISSION.equals(preferenceKey)
+                && mSite.getPushNotificationInfo() == null) {
+            mSite.setPushNotificationInfo(
+                    new PushNotificationInfo(mSite.getAddress().getOrigin(),
+                            null,
+                            mIsIncognito));
+        } else if (PREF_WEBREFINER_PERMISSION.equals(preferenceKey)
+                && mSite.getWebRefinerInfo() == null) {
+            mSite.setWebRefinerInfo(
+                    new WebRefinerInfo(mSite.getAddress().getOrigin(), null, mIsIncognito));
+        } else if (PREF_WEBDEFENDER_PERMISSION.equals(preferenceKey)
+                && mSite.getWebDefenderInfo() == null) {
+            mSite.setWebDefenderInfo(
+                    new WebDefenderInfo(mSiteAddress.getOrigin(), null, mIsIncognito));
+        }
+    }
+
+    private boolean getWebRefinerPermission() {
+        ContentSetting setting = null;
+        if (mIsIncognito) {
+            setting = WebRefinerPreferenceHandler.getSettingForIncognitoOrigin(
+                    mSite.getAddress().getOrigin());
+        } else {
+            WebRefinerInfo info = mSite.getWebRefinerInfo();
+            if (info != null) {
+                setting = info.getContentSetting();
             }
         }
-    }
 
-    /**
-     * Check whether the Info object for the given preference for this website already exists.
-     * @param preference The ListPreference.
-     */
-    private boolean doesPermissionInfoExist(Preference preference) {
-        String preferenceKey = preference.getKey();
-        boolean doesExist = false;
+        if (setting != null) {
+            String permission = setting.toString();
+            if (permission.equalsIgnoreCase(ContentSetting.ALLOW.toString()))
+                return true;
 
-        if (PREF_CAMERA_CAPTURE_PERMISSION.equals(preferenceKey)) {
-            doesExist = mSite.getCameraInfo() != null;
-        } else if (PREF_COOKIES_PERMISSION.equals(preferenceKey)) {
-            doesExist = mSite.getCookieInfo() != null;
-        } else if (PREF_FULLSCREEN_PERMISSION.equals(preferenceKey)) {
-            doesExist = mSite.getFullscreenInfo() != null;
-        } else if (PREF_JAVASCRIPT_PERMISSION.equals(preferenceKey)) {
-            doesExist = mSite.getJavaScriptPermission() != null;
-        } else if (PREF_LOCATION_ACCESS.equals(preferenceKey)) {
-            doesExist = mSite.getGeolocationInfo() != null;
-        } else if (PREF_MIC_CAPTURE_PERMISSION.equals(preferenceKey)) {
-            doesExist = mSite.getMicrophoneInfo() != null;
-        } else if (PREF_POPUP_PERMISSION.equals(preferenceKey)) {
-            doesExist = mSite.getPopupException() != null;
-        } else if (PREF_PROTECTED_MEDIA_IDENTIFIER_PERMISSION.equals(preferenceKey)) {
-            doesExist = mSite.getProtectedMediaIdentifierInfo() != null;
-        } else if (PREF_PUSH_NOTIFICATIONS_PERMISSION.equals(preferenceKey)) {
-            doesExist = mSite.getPushNotificationInfo() != null;
-        } else if (PREF_WEBREFINER_PERMISSION.equals(preferenceKey)) {
-            doesExist = mSite.getWebRefinerInfo() != null;
-        } else if (PREF_WEBDEFENDER_PERMISSION.equals(preferenceKey)) {
-            doesExist = mSite.getWebDefenderInfo() != null;
+            return false;
         }
 
-        return doesExist;
+        return PrefServiceBridge.getInstance().isWebRefinerEnabled();
     }
+
+    private void setWebRefinerPermission(boolean value) {
+        Preference preference = findPreference(PREF_WEBREFINER_PERMISSION);
+        ContentSetting permission = (value) ? ContentSetting.ALLOW : ContentSetting.BLOCK;
+        requestReloadForOrigin();
+        setTextForPreference(preference, permission);
+        createPermissionInfo(preference, permission);
+        if (mIsIncognito) {
+            WebRefinerPreferenceHandler.addIncognitoOrigin(mSite.getAddress().getOrigin(),
+                    permission);
+        } else {
+            mSite.setWebRefinerPermission(permission);
+        }
+    }
+
+    private boolean getWebDefenderPermission() {
+        ContentSetting setting = null;
+        if (mIsIncognito) {
+            setting = WebDefenderPreferenceHandler.getSettingForIncognitoOrigin(
+                    mSite.getAddress().getOrigin());
+        } else {
+            WebDefenderInfo info = mSite.getWebDefenderInfo();
+            if (info != null) {
+                setting = info.getContentSetting();
+            }
+        }
+
+        if (setting != null) {
+            String permission = setting.toString();
+            if (permission.equalsIgnoreCase(ContentSetting.ALLOW.toString()))
+                return true;
+
+            return false;
+        }
+
+        return PrefServiceBridge.getInstance().isWebDefenderEnabled();
+    }
+
+    private void setWebDefenderPermission(boolean value) {
+        Preference preference = findPreference(PREF_WEBDEFENDER_PERMISSION);
+        ContentSetting permission = (value) ? ContentSetting.ALLOW : ContentSetting.BLOCK;
+        setTextForPreference(preference, permission);
+        createPermissionInfo(preference, permission);
+        if (mIsIncognito) {
+            WebDefenderPreferenceHandler.addIncognitoOrigin(mSite.getAddress().getOrigin(),
+                    permission);
+        } else {
+            mSite.setWebDefenderPermission(permission);
+        }
+    }
+
+    @Override
+    public boolean onPreferenceClick(Preference preference) {
+        String preferenceKey = preference.getKey();
+
+        if (PREF_WEBREFINER_PERMISSION.equals(preferenceKey)) {
+            boolean currentPermission = getWebRefinerPermission();
+            setWebRefinerPermission(!currentPermission);
+            mWebRefinerSwitch.setChecked(!currentPermission);
+            return true;
+        } else if (PREF_WEBDEFENDER_PERMISSION.equals(preferenceKey)) {
+            boolean currentPermission = getWebDefenderPermission();
+            setWebDefenderPermission(!currentPermission);
+            mWebDefenderSwitch.setChecked(!currentPermission);
+            return true;
+        } else if (preferenceKey.equals("webdefender_details")) {
+            if (preference.getFragment() != null &&
+                    getActivity() instanceof OnPreferenceStartFragmentCallback) {
+                Bundle args = getArguments();
+                if (args != null) {
+                    Bundle extra = preference.getExtras();
+                    extra.putAll(args);
+                }
+
+                return ((OnPreferenceStartFragmentCallback)getActivity()).onPreferenceStartFragment(
+                        this, preference);
+            }
+            return false;
+        }
+
+        return super.onPreferenceClick(preference);
+    }
+
 
     @Override
     public void onChildViewAddedToHierarchy(View parent, View child) {
@@ -617,14 +666,73 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
             mSecurityViews.setResource(SiteSecurityViewFactory.ViewType.INFO,
                     child, R.id.site_security_verbose);
         }
+
+        TextView view = (TextView) child.findViewById(android.R.id.title);
+
+        if (view != null && view.getText().equals(
+               getResources().getText(R.string.website_settings_webdefender_privacy_meter_title))) {
+            View meter = child.findViewById(R.id.webdefender_privacy_meter);
+            if (meter != null) {
+                WebDefenderDetailsPreferences.setupPrivacyMeterDisplay(meter, mWebDefenderStatus);
+            }
+        }
+
+        Switch switchBtn = null;
+        if (child.getId() == R.id.browser_pref_cat_switch) {
+            switchBtn = (Switch) child.findViewById(R.id.browser_pref_cat_switch_btn);
+            if (switchBtn != null) {
+                if (view.getText().equals(
+                        getResources().getText(R.string.website_settings_webrefiner_title))) {
+                    boolean currentSetting = getWebRefinerPermission();
+                    mWebRefinerSwitch = switchBtn;
+                    switchBtn.setChecked(currentSetting);
+                    switchBtn.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            setWebRefinerPermission(mWebRefinerSwitch.isChecked());
+                        }
+                    });
+                } else if (view.getText().equals(
+                        getResources().getText(R.string.website_settings_webdefender_title))) {
+                    boolean currentSetting = getWebDefenderPermission();
+                    switchBtn.setChecked(currentSetting);
+                    mWebDefenderSwitch = switchBtn;
+                    switchBtn.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            setWebDefenderPermission(mWebDefenderSwitch.isChecked());
+                        }
+                    });
+                }
+            }
+        }
+
         if (mSiteColor != -1) {
             if (child.getId() == R.id.browser_pref_cat
-                    || child.getId() == R.id.browser_pref_cat_first) {
-                TextView view = (TextView) child.findViewById(android.R.id.title);
+                    || child.getId() == R.id.browser_pref_cat_first
+                    || child.getId() == R.id.browser_pref_cat_switch) {
                 if (view != null) {
                     view.setTextColor(mSiteColor);
                 }
             }
+
+            if (switchBtn != null) {
+                int[][] states = new int[][] {
+                        new int[] {android.R.attr.state_checked},  // checked
+                        new int[] {-android.R.attr.state_checked}, // unchecked
+                };
+
+                int[] colors = new int[] {
+                        mSiteColor,
+                        Color.GRAY
+                };
+
+                ColorStateList myList = new ColorStateList(states, colors);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    switchBtn.setThumbTintList(myList);
+                }
+            }
+
             Button btn = (Button) child.findViewById(R.id.button_preference);
             if (btn != null) {
                 btn.setBackgroundColor(mSiteColor);
@@ -776,6 +884,14 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                 fragmentArgs.putInt(EXTRA_WEB_REFINER_TRACKER_INFO, trackers);
                 fragmentArgs.putInt(EXTRA_WEB_REFINER_MALWARE_INFO, malware);
             }
+        }
+
+        if (WebDefenderPreferenceHandler.isInitialized()) {
+            WebDefenderPreferenceHandler.StatusParcel parcel =
+                    WebDefenderPreferenceHandler.getStatus(tab.getContentViewCore());
+
+            fragmentArgs.putParcelable(
+                    WebDefenderDetailsPreferences.EXTRA_WEBDEFENDER_PARCEL, parcel);
         }
 
         return fragmentArgs;

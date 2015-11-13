@@ -32,5 +32,11 @@
     <item>@string/crash_dump_only_with_wifi_value</item>
     <item>@string/crash_dump_never_upload_value</item>
   </string-array>
+  <string-array name="webdefender_vector_action">
+    <item>@string/website_settings_webdefender_vector_allow</item>
+    <item>@string/website_settings_webdefender_vector_strip</item>
+    <item>@string/website_settings_webdefender_vector_not_connect</item>
+    <item>@string/website_settings_webdefender_vector_system_default</item>
+  </string-array>
 
 </resources>

@@ -38,9 +38,9 @@ public class ContentSettingsResources {
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_PROTECTED_MEDIA_IDENTIFIER:
                 return R.drawable.permission_protected_media;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBREFINER:
-                return R.drawable.permission_webrefiner;
+                return R.drawable.img_deco_smartprotect_webrefiner;
             case ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER:
-                return R.drawable.permission_webrefiner;
+                return R.drawable.img_deco_smartprotect_webdefender;
             default:
                 return 0;
         }

@@ -29,6 +29,9 @@
 
 package org.chromium.chrome.browser.preferences.website;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.content.browser.ContentViewCore;
 import org.chromium.content.browser.WebDefender;
@@ -36,6 +39,7 @@ import org.chromium.content.browser.WebRefiner;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -46,6 +50,74 @@ import java.util.Set;
 public class WebDefenderPreferenceHandler {
     private static boolean mWebDefenderSetupComplete = false;
     private static HashMap<String, ContentSetting> mIncognitoPermissions;
+
+    public static class StatusParcel implements Parcelable {
+
+        private WebDefender.ProtectionStatus mStatus;
+
+        public StatusParcel(WebDefender.ProtectionStatus status) {
+            mStatus = status;
+        }
+
+        public StatusParcel(Parcel in) {
+            int domainCount = in.readInt();
+            boolean enabled = in.readInt() == 1;
+            List<WebDefender.TrackerDomain> list = new ArrayList<>(domainCount);
+
+            for (int i = 0; i < domainCount; i++) {
+                WebDefender.TrackerDomain tracker = new WebDefender.TrackerDomain(
+                        in.readString(),   // Name
+                        in.readInt(),      // Action
+                        in.readInt(),      // User Defined Action
+                        in.readInt() == 1, // Uses User Defined Action
+                        in.readInt(),      // Tracking Methods
+                        in.readInt() == 1  // Potential Tracker
+                );
+                list.add(tracker);
+            }
+            WebDefender.TrackerDomain array[] =
+                    list.toArray(new WebDefender.TrackerDomain[list.size()]);
+
+            mStatus = new WebDefender.ProtectionStatus(array, enabled);
+        }
+
+        public WebDefender.ProtectionStatus getStatus() {
+            return mStatus;
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            int domainCount = mStatus.mTrackerDomains.length;
+            dest.writeInt(domainCount);
+            dest.writeInt(mStatus.mTrackingProtectionEnabled ? 1 : 0);
+
+            for (int i = 0; i < domainCount; i++) {
+                dest.writeString(mStatus.mTrackerDomains[i].mName);
+                dest.writeInt(mStatus.mTrackerDomains[i].mProtectiveAction);
+                dest.writeInt(mStatus.mTrackerDomains[i].mUserDefinedProtectiveAction);
+                dest.writeInt((mStatus.mTrackerDomains[i].mUsesUserDefinedProtectiveAction) ? 1 :0);
+                dest.writeInt(mStatus.mTrackerDomains[i].mTrackingMethods);
+                dest.writeInt((mStatus.mTrackerDomains[i].mPotentialTracker) ? 1 : 0);
+            }
+        }
+
+        public static final Parcelable.Creator<StatusParcel> CREATOR = new Creator<StatusParcel>() {
+            @Override
+            public StatusParcel createFromParcel(Parcel source) {
+                return new StatusParcel(source);
+            }
+
+            @Override
+            public StatusParcel[] newArray(int size) {
+                return new StatusParcel[size];
+            }
+        };
+    }
 
     /**
      * Sets up webdefender when the browser initializes.
@@ -81,12 +153,14 @@ public class WebDefenderPreferenceHandler {
                             }
                             if (!allowList.isEmpty()) {
                                 WebDefender.getInstance().setPermissionForOrigins(
-                                        allowList.toArray(new String[allowList.size()]), WebRefiner.PERMISSION_ENABLE, false);
+                                        allowList.toArray(new String[allowList.size()]),
+                                        WebRefiner.PERMISSION_ENABLE, false);
                             }
 
                             if (!blockList.isEmpty()) {
                                 WebDefender.getInstance().setPermissionForOrigins(
-                                        blockList.toArray(new String[blockList.size()]), WebRefiner.PERMISSION_DISABLE, false);
+                                        blockList.toArray(new String[blockList.size()]),
+                                        WebRefiner.PERMISSION_DISABLE, false);
                             }
                             mWebDefenderSetupComplete = true;
                         }
@@ -146,5 +220,12 @@ public class WebDefenderPreferenceHandler {
 
     public static void onIncognitoSessionFinish() {
         mIncognitoPermissions = null;
+    }
+
+    public static StatusParcel getStatus(ContentViewCore cvc) {
+        if (!isInitialized()) return null;
+
+        WebDefender.ProtectionStatus status = WebDefender.getInstance().getProtectionStatus(cvc);
+        return new StatusParcel(status);
     }
 }
