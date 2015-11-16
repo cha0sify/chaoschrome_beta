@@ -45,6 +45,7 @@ public class MainPreferences extends BrowserPreferenceFragment implements SignIn
     public static final String PREF_DOCUMENT_MODE = "document_mode";
     public static final String PREF_AUTOFILL_SETTINGS = "autofill_settings";
     public static final String PREF_SAVED_PASSWORDS = "saved_passwords";
+    public static final String PREF_BACKGROUND_AUDIO = "background_audio";
     public static final String PREF_HOMEPAGE = "homepage";
     public static final String PREF_DATA_REDUCTION = "data_reduction";
 
@@ -160,6 +161,10 @@ public class MainPreferences extends BrowserPreferenceFragment implements SignIn
         setOnOffSummary(passwordsPref,
                 PrefServiceBridge.getInstance().isRememberPasswordsEnabled());
         passwordsPref.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
+
+        Preference backgroundAudio = findPreference(PREF_BACKGROUND_AUDIO);
+        setOnOffSummary(backgroundAudio,
+                PrefServiceBridge.getInstance().getBackgroundAudioEnabled());
 
         Preference homepagePref = findPreference(PREF_HOMEPAGE);
         if (HomepageManager.shouldShowHomepageSetting()) {

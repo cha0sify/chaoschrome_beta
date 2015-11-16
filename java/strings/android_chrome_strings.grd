@@ -1610,6 +1610,14 @@ Hit the back button to exit.
         Power saving improvements will be turned on.
       </message>
 
+      <!-- Background audio messages -->
+      <message name="IDS_BACKGROUND_AUDIO_TITLE" desc="The title of a preference which controls whether background audio is enabled or not.">
+        Background audio
+      </message>
+      <message name="IDS_BACKGROUND_AUDIO_RELOAD_TIP_TEXT" desc="Text to describe the Background Audio feature">
+        Enables video content to continue to playing audio when webpage is not in foreground.
+      </message>
+
       <!-- Document mode messages -->
       <message name="IDS_CLOSE_ALL_INCOGNITO_NOTIFICATION" desc="Message on the notification that closes all incognito tabs in document mode">
         Close all incognito tabs

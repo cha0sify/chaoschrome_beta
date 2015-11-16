@@ -1081,6 +1081,20 @@ public final class PrefServiceBridge {
         return nativeGetPowersaveModeEnabled();
     }
 
+    /**
+     * Sets whether the Background Audio should be enabled.
+     */
+    public void setBackgroundAudioEnabled(boolean enabled) {
+        nativeSetBackgroundAudioEnabled(enabled);
+    }
+
+    /**
+     * @return whether the Background Audio is enabled.
+     */
+    public boolean getBackgroundAudioEnabled() {
+        return nativeGetBackgroundAudioEnabled();
+    }
+
     private native boolean nativeGetAcceptCookiesEnabled();
     private native boolean nativeGetAcceptCookiesManaged();
     private native boolean nativeGetBlockThirdPartyCookiesEnabled();
@@ -1183,4 +1197,6 @@ public final class PrefServiceBridge {
     private native boolean nativeGetNightModeEnabled();
     private native void nativeSetPowersaveModeEnabled(boolean enabled);
     private native boolean nativeGetPowersaveModeEnabled();
+    private native void nativeSetBackgroundAudioEnabled(boolean enabled);
+    private native boolean nativeGetBackgroundAudioEnabled();
 }
