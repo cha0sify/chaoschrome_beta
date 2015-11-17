@@ -32,6 +32,7 @@ package org.chromium.chrome.browser.preferences.website;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.content.browser.ContentViewCore;
 import org.chromium.content.browser.WebDefender;
+import org.chromium.content.browser.WebRefiner;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -71,21 +72,21 @@ public class WebDefenderPreferenceHandler {
                                     ContentSetting permission = site.getWebRefinerPermission();
                                     if (permission != null) {
                                         if (permission == ContentSetting.ALLOW) {
-                                            blockList.add(site.getAddress().getOrigin());
-                                        } else if (permission == ContentSetting.BLOCK) {
                                             allowList.add(site.getAddress().getOrigin());
+                                        } else if (permission == ContentSetting.BLOCK) {
+                                            blockList.add(site.getAddress().getOrigin());
                                         }
                                     }
                                 }
                             }
                             if (!allowList.isEmpty()) {
                                 WebDefender.getInstance().setPermissionForOrigins(
-                                        allowList.toArray(new String[allowList.size()]), false);
+                                        allowList.toArray(new String[allowList.size()]), WebRefiner.PERMISSION_ENABLE, false);
                             }
 
                             if (!blockList.isEmpty()) {
                                 WebDefender.getInstance().setPermissionForOrigins(
-                                        blockList.toArray(new String[blockList.size()]), true);
+                                        blockList.toArray(new String[blockList.size()]), WebRefiner.PERMISSION_DISABLE, false);
                             }
                             mWebDefenderSetupComplete = true;
                         }
@@ -110,14 +111,15 @@ public class WebDefenderPreferenceHandler {
         if (!isInitialized()) return;
         String[] origins = new String[1];
         origins[0] = origin;
-        WebDefender.getInstance().useDefaultPermissionForOrigins(origins);
+        WebDefender.getInstance().setPermissionForOrigins(origins, WebRefiner.PERMISSION_USE_DEFAULT, false);
     }
 
     public static void setWebDefenderSettingForOrigin(String origin, boolean enabled) {
         if (!isInitialized()) return;
         String[] origins = new String[1];
         origins[0] = origin;
-        WebDefender.getInstance().setPermissionForOrigins(origins, enabled);
+        int permission = enabled ? WebRefiner.PERMISSION_ENABLE : WebRefiner.PERMISSION_DISABLE;
+        WebDefender.getInstance().setPermissionForOrigins(origins, permission, false);
     }
 
     public static void addIncognitoOrigin(String origin, ContentSetting permission) {
