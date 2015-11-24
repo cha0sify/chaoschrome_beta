@@ -12,14 +12,14 @@
         android:key="all_sites"
         android:title="@string/all_sites"
         android:icon="@drawable/settings_all_sites" />
-    <!-- WebDefender -->
-    <Preference
-        android:fragment="org.chromium.chrome.browser.preferences.website.SingleCategoryPreferences"
-        android:key="webdefender" />
     <!-- WebRefiner -->
     <Preference
         android:fragment="org.chromium.chrome.browser.preferences.website.SingleCategoryPreferences"
         android:key="webrefiner" />
+    <!-- WebDefender -->
+    <Preference
+        android:fragment="org.chromium.chrome.browser.preferences.website.SingleCategoryPreferences"
+        android:key="webdefender" />
     <!-- Cookies -->
     <Preference
         android:key="cookies"

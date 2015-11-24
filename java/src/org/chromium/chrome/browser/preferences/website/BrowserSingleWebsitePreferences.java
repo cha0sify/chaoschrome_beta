@@ -92,6 +92,11 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
     private Switch mWebRefinerSwitch;
     private Switch mWebDefenderSwitch;
     private WebDefender.ProtectionStatus mWebDefenderStatus;
+    private View mPrivacyMeter;
+    private String mSmartProtectName;
+    private String mWebRefinerName;
+    private String mWebDefenderName;
+    private int mSmartProtectColor;
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
@@ -108,6 +113,7 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                 mWebDefenderStatus = parcel.getStatus();
         }
         super.onActivityCreated(savedInstanceState);
+        mSmartProtectColor = getResources().getColor(R.color.smart_protect);
     }
 
     private void updateSecurityInfo() {
@@ -187,6 +193,13 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
 
             preference.setIcon(
                     getEnabledIcon(ContentSettingsType.CONTENT_SETTINGS_TYPE_WEBDEFENDER));
+
+            String title = (mSiteAddress != null)
+                    ? mSiteAddress.getTitle() : mSite.getAddress().getTitle();
+
+            Preference meterPref = findPreference("webdefender_privacy_meter");
+            if (meterPref != null)
+                meterPref.setSummary("on " + title);
         } else if (preference.getKey().equals("webdefender_details")) {
             preference.setOnPreferenceClickListener(this);
         }
@@ -216,14 +229,10 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                     : getResources().getString(R.string.website_settings_webrefiner_enabled)
                     : getResources().getString(R.string.website_settings_webrefiner_disabled));
         } else if (PREF_WEBDEFENDER_PERMISSION.equals(preference.getKey())) {
-            int count = 0;
-            if (mWebDefenderStatus != null) {
-                count = mWebDefenderStatus.mTrackerDomains.length;
-            }
-
             preference.setTitle(value == ContentSetting.ALLOW
-                    ? (count > 0) ?
-                    WebDefenderDetailsPreferences.getOverviewMessage(getResources(), count)
+                    ? (mWebDefenderStatus != null) ?
+                    WebDefenderDetailsPreferences.getOverviewMessage(getResources(),
+                            mWebDefenderStatus)
                     : getResources().getString(R.string.website_settings_webdefender_enabled)
                     : getResources().getString(R.string.website_settings_webdefender_disabled));
             }
@@ -636,6 +645,10 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
             boolean currentPermission = getWebDefenderPermission();
             setWebDefenderPermission(!currentPermission);
             mWebDefenderSwitch.setChecked(!currentPermission);
+            if (mPrivacyMeter != null) {
+                WebDefenderDetailsPreferences.setupPrivacyMeterDisplay(
+                        mPrivacyMeter, !currentPermission, mWebDefenderStatus);
+            }
             return true;
         } else if (preferenceKey.equals("webdefender_details")) {
             if (preference.getFragment() != null &&
@@ -658,6 +671,10 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
 
     @Override
     public void onChildViewAddedToHierarchy(View parent, View child) {
+        int bgColor = Color.TRANSPARENT;
+        int textColor = mSiteColor;
+        int btnColor = mSiteColor;
+        int switchColor = mSiteColor;
         if (child.getId() == R.id.site_security_info) {
             mSecurityViews.setResource(SiteSecurityViewFactory.ViewType.ERROR,
                     child, R.id.site_security_error);
@@ -669,11 +686,38 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
 
         TextView view = (TextView) child.findViewById(android.R.id.title);
 
-        if (view != null && view.getText().equals(
-               getResources().getText(R.string.website_settings_webdefender_privacy_meter_title))) {
-            View meter = child.findViewById(R.id.webdefender_privacy_meter);
-            if (meter != null) {
-                WebDefenderDetailsPreferences.setupPrivacyMeterDisplay(meter, mWebDefenderStatus);
+        if (view != null) {
+            if (view.getText().equals(
+                    getResources().getText(R.string.website_settings_webdefender_privacy_meter_title))) {
+                mPrivacyMeter = child.findViewById(R.id.webdefender_privacy_meter);
+                if (mPrivacyMeter != null) {
+                    WebDefenderDetailsPreferences.setupPrivacyMeterDisplay(
+                            mPrivacyMeter, getWebDefenderPermission(), mWebDefenderStatus);
+                }
+            } else if (view.getText().equals(
+                    getResources().getText(R.string.website_settings_smartprotect_title))) {
+                if (WebDefender.getInstance() != null) {
+                    WebRefiner.FeatureName name = WebDefender.getInstance().getFeatureName();
+                    if (name != null) {
+                        mSmartProtectName = name.mProductName;
+                        mWebDefenderName = name.mLocalName;
+                        view.setText(mSmartProtectName);
+                    }
+                }
+                if (WebRefiner.getInstance() != null) {
+                    WebRefiner.FeatureName name = WebRefiner.getInstance().getFeatureName();
+                    if (name != null) {
+                        if (TextUtils.isEmpty(mSmartProtectName)) {
+                            mSmartProtectName = name.mProductName;
+                            view.setText(mSmartProtectName);
+                        }
+                        mWebRefinerName = name.mLocalName;
+                    }
+                }
+                bgColor = mSmartProtectColor;
+                textColor = Color.WHITE;
+                btnColor = Color.WHITE;
+                switchColor = Color.WHITE;
             }
         }
 
@@ -692,6 +736,9 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                             setWebRefinerPermission(mWebRefinerSwitch.isChecked());
                         }
                     });
+                    textColor = mSmartProtectColor;
+                    btnColor = mSmartProtectColor;
+                    switchColor = mSmartProtectColor;
                 } else if (view.getText().equals(
                         getResources().getText(R.string.website_settings_webdefender_title))) {
                     boolean currentSetting = getWebDefenderPermission();
@@ -701,18 +748,30 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                         @Override
                         public void onClick(View v) {
                             setWebDefenderPermission(mWebDefenderSwitch.isChecked());
+                            if (mPrivacyMeter != null) {
+                                WebDefenderDetailsPreferences.setupPrivacyMeterDisplay(
+                                        mPrivacyMeter, mWebDefenderSwitch.isChecked(),
+                                        mWebDefenderStatus);
+                            }
                         }
                     });
+                    textColor = mSmartProtectColor;
+                    btnColor = mSmartProtectColor;
+                    switchColor = mSmartProtectColor;
                 }
             }
         }
 
-        if (mSiteColor != -1) {
+        if (textColor != -1 || bgColor != -1) {
             if (child.getId() == R.id.browser_pref_cat
                     || child.getId() == R.id.browser_pref_cat_first
                     || child.getId() == R.id.browser_pref_cat_switch) {
                 if (view != null) {
-                    view.setTextColor(mSiteColor);
+                    view.setTextColor(textColor);
+                }
+                View title_bar = child.findViewById(R.id.title_bar);
+                if (title_bar != null) {
+                    title_bar.setBackgroundColor(bgColor);
                 }
             }
 
@@ -723,7 +782,7 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                 };
 
                 int[] colors = new int[] {
-                        mSiteColor,
+                        switchColor,
                         Color.GRAY
                 };
 
@@ -735,11 +794,15 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
 
             Button btn = (Button) child.findViewById(R.id.button_preference);
             if (btn != null) {
-                btn.setBackgroundColor(mSiteColor);
+                if (btn.getText().equals(getResources().getText(R.string.page_info_details_link))) {
+                    btnColor = mSmartProtectColor;
+                }
+
+                btn.setBackgroundColor(btnColor);
             }
             ImageView imageView = (ImageView) child.findViewById(R.id.clear_site_data);
             if (imageView != null && imageView instanceof TintedImageView) {
-                ColorStateList colorList = ColorStateList.valueOf(mSiteColor);
+                ColorStateList colorList = ColorStateList.valueOf(btnColor);
                 ((TintedImageView) imageView).setTint(colorList);
             }
         }
@@ -786,6 +849,10 @@ public class BrowserSingleWebsitePreferences extends SingleWebsitePreferences {
                                 BrandColorUtils.computeActionBarColor(color)
                         ));
                         setStatusBarColor(color);
+                        String title = (mSiteAddress != null)
+                                ? mSiteAddress.getTitle() : mSite.getAddress().getTitle();
+
+                        bar.setTitle("  " + title);
                     }
                 }
             }

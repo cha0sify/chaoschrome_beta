@@ -31,38 +31,21 @@
     android:id="@+id/browser_pref_cat_switch"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:minHeight="48dp"
+    android:orientation="horizontal"
+    style="@style/PreferenceCategoryWithButtonStyle"
+    android:gravity="center_vertical">
 
-    <ImageView
-        android:contentDescription="@null"
-        android:layout_width="fill_parent"
-        android:layout_height="8dp" />
-
-    <ImageView
-        android:contentDescription="@null"
-        android:background="@drawable/img_deco_intrapanel"
-        android:layout_width="fill_parent"
-        android:layout_height="8dp" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
+    <TextView
+        android:id="@android:id/title"
+        android:layout_width="0dp"
+        android:layout_weight="1"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        style="@style/PreferenceCategoryWithButtonStyle"
-        android:gravity="center_vertical"  >
+        android:textAppearance="@style/PreferenceCategoryTextStyle"
+        android:textColor="@color/light_active_color" />
 
-        <TextView
-            android:id="@android:id/title"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:textAppearance="@style/PreferenceCategoryTextStyle"
-            android:textColor="@color/light_active_color"
-            />
-
-        <Switch
-            android:id="@+id/browser_pref_cat_switch_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-    </LinearLayout>
+    <Switch
+        android:id="@+id/browser_pref_cat_switch_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
 </LinearLayout>

@@ -167,4 +167,5 @@
     <color name="FolderTileCount">#fff</color>
 -->
     <color name="accent">#FF1AACA2</color>
+    <color name="smart_protect">#FFAA232A</color>
 </resources>

@@ -77,4 +77,10 @@
         android:paddingStart="5dp"
         android:src="@drawable/img_deco_intrapanel"/>
 
+    <TextView
+        android:id="@+id/count"
+        android:paddingStart="5dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
 </LinearLayout>

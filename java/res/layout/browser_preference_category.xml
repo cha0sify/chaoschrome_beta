@@ -35,19 +35,15 @@
 
     <ImageView
         android:contentDescription="@null"
-        android:layout_width="fill_parent"
-        android:layout_height="8dp" />
-
-    <ImageView
-        android:contentDescription="@null"
         android:background="@drawable/img_deco_intrapanel"
         android:layout_width="fill_parent"
         android:layout_height="8dp" />
 
     <LinearLayout
+        android:id="@+id/title_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:minHeight="48dp"
         style="@style/PreferenceCategoryWithButtonStyle"
         android:gravity="center_vertical"  >
 
@@ -57,7 +53,6 @@
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:textAppearance="@style/PreferenceCategoryTextStyle"
-            android:textColor="@color/light_active_color"
-            />
+            android:textColor="@color/light_active_color" />
     </LinearLayout>
 </LinearLayout>

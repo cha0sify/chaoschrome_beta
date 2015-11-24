@@ -42,6 +42,8 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.PaintDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.Preference;
+import android.preference.PreferenceFragment;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Display;
@@ -53,7 +55,6 @@ import android.widget.TextView;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.document.BrandColorUtils;
-import org.chromium.chrome.browser.favicon.FaviconHelper;
 import org.chromium.chrome.browser.preferences.BrowserPreferenceFragment;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.TextMessagePreference;
@@ -65,10 +66,11 @@ import org.chromium.content.browser.WebDefender;
 public class WebDefenderDetailsPreferences extends BrowserPreferenceFragment {
     public static final String EXTRA_WEBDEFENDER_PARCEL = "extra_webdefender_parcel";
     private static final int BAR_GRAPH_HEIGHT = 100;
-    private int mSiteColor = -1;
     private boolean mIsIncognito = false;
     private int mMaxBarGraphWidth;
     private WebDefender.ProtectionStatus mStatus;
+    private String mTitle;
+    private int mSmartProtectColor;
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
@@ -76,7 +78,6 @@ public class WebDefenderDetailsPreferences extends BrowserPreferenceFragment {
         addPreferencesFromResource(R.xml.webdefender_details_preferences);
         getActivity().setTitle(R.string.website_settings_webdefender_title);
         Bundle arguments = getArguments();
-        String origin = null;
         if (arguments != null) {
             mIsIncognito = arguments.getBoolean(BrowserSingleWebsitePreferences.EXTRA_INCOGNITO);
 
@@ -85,10 +86,10 @@ public class WebDefenderDetailsPreferences extends BrowserPreferenceFragment {
 
             if (extraSite != null && extraOrigin == null) {
                 Website site = (Website) extraSite;
-                origin = site.getAddress().getOrigin();
+                mTitle = site.getAddress().getTitle();
             } else if (extraOrigin != null && extraSite == null) {
                 WebsiteAddress siteAddress = WebsiteAddress.create((String) extraOrigin);
-                origin = siteAddress.getOrigin();
+                mTitle = siteAddress.getTitle();
             }
             WebDefenderPreferenceHandler.StatusParcel parcel =
                     arguments.getParcelable(EXTRA_WEBDEFENDER_PARCEL);
@@ -96,10 +97,10 @@ public class WebDefenderDetailsPreferences extends BrowserPreferenceFragment {
                 mStatus = parcel.getStatus();
         }
 
-        if (origin != null) {
+        if (mTitle != null) {
             TextMessagePreference siteTitle = (TextMessagePreference) findPreference("site_title");
             if (siteTitle != null) {
-                siteTitle.setTitle(origin);
+                siteTitle.setTitle(mTitle);
                 byte[] data = arguments.getByteArray(BrowserSingleWebsitePreferences.EXTRA_FAVICON);
                 if (data != null) {
                     Bitmap bm = BitmapFactory.decodeByteArray(data, 0, data.length);
@@ -114,10 +115,23 @@ public class WebDefenderDetailsPreferences extends BrowserPreferenceFragment {
         TextMessagePreference overview = (TextMessagePreference) findPreference("overview");
 
         if (mStatus != null && mStatus.mTrackerDomains.length != 0)
-            overview.setTitle(getOverviewMessage(getResources(), mStatus.mTrackerDomains.length));
+            overview.setTitle(getOverviewMessage(getResources(), mStatus));
+
+        Preference meter = findPreference("webdefender_privacy_meter");
+        meter.setSummary("on " + mTitle);
+        mSmartProtectColor = getResources().getColor(R.color.smart_protect);
     }
 
-    public static String getOverviewMessage(Resources resources, int count) {
+    public static String getOverviewMessage(Resources resources,
+                                            WebDefender.ProtectionStatus status) {
+        int count = 0;
+        for (int i = 0; i < status.mTrackerDomains.length; i++) {
+            if (status.mTrackerDomains[i].mProtectiveAction !=
+                    WebDefender.TrackerDomain.PROTECTIVE_ACTION_UNBLOCK) {
+                count++;
+            }
+        }
+
         return resources.getString(R.string.website_settings_webdefender_brief_message,count);
     }
 
@@ -135,8 +149,8 @@ public class WebDefenderDetailsPreferences extends BrowserPreferenceFragment {
                         WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
             }
 
-            mSiteColor = BrandColorUtils.computeStatusBarColor(color);
-            activity.getWindow().setStatusBarColor(mSiteColor);
+            int statusBarColor = BrandColorUtils.computeStatusBarColor(color);
+            activity.getWindow().setStatusBarColor(statusBarColor);
         }
     }
 
@@ -150,16 +164,15 @@ public class WebDefenderDetailsPreferences extends BrowserPreferenceFragment {
             Bitmap bitmap = BitmapFactory.decodeResource(getResources(),
                     R.drawable.img_deco_smartprotect_webdefender);
 
-            int color = FaviconHelper.getDominantColorForBitmap(bitmap);
             appendActionBarDisplayOptions(bar,
                     ActionBar.DISPLAY_SHOW_HOME | ActionBar.DISPLAY_SHOW_TITLE);
             bar.setHomeButtonEnabled(true);
             bar.setIcon(new BitmapDrawable(getResources(), bitmap));
             bar.setBackgroundDrawable(new ColorDrawable(
-                    BrandColorUtils.computeActionBarColor(color)
+                    BrandColorUtils.computeActionBarColor(mSmartProtectColor)
             ));
 
-            setStatusBarColor(color);
+            setStatusBarColor(mSmartProtectColor);
         }
 
         Display display = getActivity().getWindowManager().getDefaultDisplay();
@@ -187,7 +200,7 @@ public class WebDefenderDetailsPreferences extends BrowserPreferenceFragment {
 
         int normalizedWidth = mMaxBarGraphWidth * value / maxValue;
 
-        return generateBarDrawable(normalizedWidth, BAR_GRAPH_HEIGHT, Color.RED);
+        return generateBarDrawable(normalizedWidth, BAR_GRAPH_HEIGHT, mSmartProtectColor);
     }
 
     private String getStringForCount(int count) {
@@ -198,29 +211,38 @@ public class WebDefenderDetailsPreferences extends BrowserPreferenceFragment {
         return Integer.toString(count);
     }
 
-    private static void createRatingStar(ImageView imageView, int color) {
-        Drawable drawable = generateBarDrawable(200, 50, color);
+    private static void createRatingStar(ImageView imageView, int height, int color) {
+        Drawable drawable = generateBarDrawable(125, height, color);
         imageView.setImageDrawable(drawable);
     }
 
-    public static void setupPrivacyMeterDisplay(View view,
+    public static void setupPrivacyMeterDisplay(View view, boolean enabled,
                                                 WebDefender.ProtectionStatus status) {
+        int possibleTrackerCount = 0;
         int starRating = 4;
 
         ImageView imageView = (ImageView) view.findViewById(R.id.star1);
-        createRatingStar(imageView, (starRating >= 1) ? Color.GREEN : Color.GRAY);
+        createRatingStar(imageView, 50, (starRating >= 1) ? Color.GREEN : Color.GRAY);
 
         imageView = (ImageView) view.findViewById(R.id.star2);
-        createRatingStar(imageView, (starRating >= 2) ? Color.GREEN : Color.GRAY);
+        createRatingStar(imageView, 50, (starRating >= 2) ? Color.GREEN : Color.GRAY);
 
         imageView = (ImageView) view.findViewById(R.id.star3);
-        createRatingStar(imageView, (starRating >= 3) ? Color.GREEN : Color.GRAY);
+        createRatingStar(imageView, 50, (starRating >= 3) ? Color.GREEN : Color.GRAY);
 
         imageView = (ImageView) view.findViewById(R.id.star4);
-        createRatingStar(imageView, (starRating >= 4) ? Color.GREEN : Color.GRAY);
+        createRatingStar(imageView, 50, (starRating >= 4) ? Color.GREEN : Color.GRAY);
 
         imageView = (ImageView) view.findViewById(R.id.star5);
-        createRatingStar(imageView, (starRating >= 5) ? Color.GREEN : Color.GRAY);
+        createRatingStar(imageView, 50, (starRating >= 5) ? Color.GREEN : Color.GRAY);
+
+        TextView textView = (TextView) view.findViewById(R.id.count);
+        if (enabled) {
+            textView.setVisibility(View.VISIBLE);
+            textView.setText("+10!");
+        } else {
+            textView.setVisibility(View.GONE);
+        }
     }
 
     @Override
@@ -230,19 +252,17 @@ public class WebDefenderDetailsPreferences extends BrowserPreferenceFragment {
                getResources().getText(R.string.website_settings_webdefender_privacy_meter_title))) {
             View meter = child.findViewById(R.id.webdefender_privacy_meter);
             if (meter != null) {
-                WebDefenderDetailsPreferences.setupPrivacyMeterDisplay(meter, mStatus);
+                WebDefenderDetailsPreferences.setupPrivacyMeterDisplay(meter, true, mStatus);
             }
         }
 
 
-        if (mSiteColor != -1) {
-            if (child.getId() == R.id.browser_pref_cat
-                    || child.getId() == R.id.browser_pref_cat_first
-                    || child.getId() == R.id.browser_pref_cat_switch) {
+        if (child.getId() == R.id.browser_pref_cat
+                || child.getId() == R.id.browser_pref_cat_first
+                || child.getId() == R.id.browser_pref_cat_switch) {
 
-                if (title != null) {
-                    title.setTextColor(mSiteColor);
-                }
+            if (title != null) {
+                title.setTextColor(mSmartProtectColor);
             }
         }
 

@@ -32,6 +32,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingEnd="?android:attr/scrollbarSize"
+    android:paddingBottom="8dp"
     android:minHeight="?android:attr/listPreferredItemHeightSmall"
     android:gravity="center_vertical"
     android:background="?android:attr/selectableItemBackground"

@@ -20,17 +20,20 @@
 
     <PreferenceCategory
         android:layout="@layout/browser_preference_category"
-        android:key="site_security_info_title"
-        android:title="@string/website_settings_security_title" >
+        android:key="smartprotect_title"
+        android:title="@string/website_settings_smartprotect_title" />
 
-        <PreferenceScreen
-            android:key="site_security_info"
-            android:selectable="false"
-            android:layout="@layout/browser_website_security_info"/>
+    <PreferenceCategory
+        android:layout="@layout/browser_preference_category_switch_noborder"
+        android:key="webrefiner_title"
+        android:title="@string/website_settings_webrefiner_title" >
+
+        <org.chromium.chrome.browser.preferences.TextMessagePreference
+            android:key="webrefiner_permission" />
     </PreferenceCategory>
 
     <PreferenceCategory
-        android:layout="@layout/browser_preference_category_switch"
+        android:layout="@layout/browser_preference_category_switch_noborder"
         android:key="webdefender_title"
         android:title="@string/website_settings_webdefender_title" >
 
@@ -52,12 +55,14 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-        android:layout="@layout/browser_preference_category_switch"
-        android:key="webrefiner_title"
-        android:title="@string/website_settings_webrefiner_title" >
+        android:layout="@layout/browser_preference_category"
+        android:key="site_security_info_title"
+        android:title="@string/website_settings_security_title" >
 
-        <org.chromium.chrome.browser.preferences.TextMessagePreference
-            android:key="webrefiner_permission" />
+        <PreferenceScreen
+            android:key="site_security_info"
+            android:selectable="false"
+            android:layout="@layout/browser_website_security_info"/>
     </PreferenceCategory>
 
     <PreferenceCategory

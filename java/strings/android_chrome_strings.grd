@@ -544,29 +544,32 @@ Usage statistics include information such as preferences, button clicks, and mem
       <message name="IDS_WEBSITE_SETTINGS_SECURITY_TITLE" desc="The headline above the security information for the website">
         Security Information
       </message>
+      <message name="IDS_WEBSITE_SETTINGS_SMARTPROTECT_TITLE" desc="The headline above the Smart Protect information for the website">
+        Smart Protect
+      </message>
       <message name="IDS_WEBSITE_SETTINGS_WEBREFINER_TITLE" desc="The headline above the WebRefiner information for the website">
-        WebRefiner
+        Web Refiner
       </message>
       <message name="IDS_WEBSITE_SETTINGS_WEBREFINER_ENABLED" desc="The WebRefiner settings summary when it is enabled">
-        WebRefiner is enabled
+        Content blocking is enabled
       </message>
       <message name="IDS_WEBSITE_SETTINGS_WEBREFINER_DISABLED" desc="The WebRefiner settings summary when it is disabled">
-        WebRefiner is disabled
+        Content blocking is disabled
       </message>
       <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_TITLE" desc="The headline above the WebDefender information for the website">
-        Smart Protect
+        Web Defender
       </message>
       <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_PRIVACY_METER_TITLE" desc="The title for the WebDefender Privacy Meter">
         Privacy Meter
       </message>
       <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_ENABLED" desc="The WebDefender settings summary when it is enabled">
-        Smart Protect is enabled
+        Web Defender is enabled
       </message>
       <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_DISABLED" desc="The WebDefender settings summary when it is disabled">
-        Smart Protect is disabled
+        You are not protected against third party tracking domains.
       </message>
       <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_BRIEF_MESSAGE" desc="The WebDefender brief summary with count">
-        We prevented possible leakage of your privacy related information to <ph name="count">%1$d<ex>25</ex></ph> connected domains.
+        We prevented the possible leakage of trackable information to <ph name="count">%1$d<ex>25</ex></ph> connected domains.
       </message>
       <message name="IDS_WEBSITE_SETTINGS_WEBDEFENDER_TRACKING_VECTORS" desc="The WebDefender title for listing tracking vectors">
         Tracking vectors on connected web sites:
@@ -763,13 +766,13 @@ particular permission.">
       </message>
 
       <message name="IDS_WEBREFINER_ONE_MESSAGE" desc="Blocked one type of content">
-        Blocked <ph name="NUMBER_BLOCKED">%s.<ex>2 advertisements</ex></ph>
+        We blocked <ph name="NUMBER_BLOCKED">%s.<ex>2 advertisements</ex></ph>
       </message>
       <message name="IDS_WEBREFINER_TWO_MESSAGE" desc="Blocked two types of contents">
-        Blocked <ph name="NUMBER_BLOCKED_1">%1$s<ex>2 advertisements</ex></ph> and <ph name="NUMBER_BLOCKED_2">%2$s.<ex>1 tracker</ex></ph>
+        We blocked <ph name="NUMBER_BLOCKED_1">%1$s<ex>2 advertisements</ex></ph> and <ph name="NUMBER_BLOCKED_2">%2$s.<ex>1 tracker</ex></ph>
       </message>
       <message name="IDS_WEBREFINER_THREE_MESSAGE" desc="Blocked three types of contents">
-        Blocked <ph name="NUMBER_BLOCKED_1">%1$s<ex>2 advertisements</ex></ph>, <ph name="NUMBER_BLOCKED_2">%2$s<ex>1 tracker</ex></ph> and <ph name="NUMBER_BLOCKED_3">%3$s.<ex>5 malware</ex></ph>
+        We blocked <ph name="NUMBER_BLOCKED_1">%1$s<ex>2 advertisements</ex></ph>, <ph name="NUMBER_BLOCKED_2">%2$s<ex>1 tracker</ex></ph> and <ph name="NUMBER_BLOCKED_3">%3$s.<ex>5 malware</ex></ph>
       </message>
 
       <!-- Protected content preferences -->

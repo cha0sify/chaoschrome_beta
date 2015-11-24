@@ -31,27 +31,15 @@
     android:id="@+id/browser_pref_cat_first"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:minHeight="48dp"
+    style="@style/PreferenceCategoryWithButtonStyle"
+    android:gravity="center_vertical">
 
-    <ImageView
-        android:contentDescription="@null"
-        android:layout_width="fill_parent"
-        android:layout_height="8dp" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
+    <TextView
+        android:id="@android:id/title"
+        android:layout_width="0dp"
+        android:layout_weight="1"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        style="@style/PreferenceCategoryWithButtonStyle"
-        android:gravity="center_vertical"  >
-
-        <TextView
-            android:id="@android:id/title"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:textAppearance="@style/PreferenceCategoryTextStyle"
-            android:textColor="@color/light_active_color"
-            />
-    </LinearLayout>
+        android:textAppearance="@style/PreferenceCategoryTextStyle"
+        android:textColor="@color/light_active_color" />
 </LinearLayout>
