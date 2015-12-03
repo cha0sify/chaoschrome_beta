@@ -31,6 +31,7 @@ package org.chromium.chrome.browser.preferences.website;
 
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.content.browser.ContentViewCore;
+import org.chromium.content.browser.WebDefender;
 import org.chromium.content.browser.WebRefiner;
 
 import java.util.ArrayList;
@@ -67,21 +68,21 @@ public class WebRefinerPreferenceHandler {
                             ContentSetting permission = site.getWebRefinerPermission();
                             if (permission != null) {
                                 if (permission == ContentSetting.ALLOW) {
-                                    blockList.add(site.getAddress().getOrigin());
-                                } else if (permission == ContentSetting.BLOCK) {
                                     allowList.add(site.getAddress().getOrigin());
+                                } else if (permission == ContentSetting.BLOCK) {
+                                    blockList.add(site.getAddress().getOrigin());
                                 }
                             }
                         }
                     }
                     if (!allowList.isEmpty()) {
                         WebRefiner.getInstance().setPermissionForOrigins(
-                                allowList.toArray(new String[allowList.size()]), false);
+                                allowList.toArray(new String[allowList.size()]), WebRefiner.PERMISSION_ENABLE, false);
                     }
 
                     if (!blockList.isEmpty()) {
                         WebRefiner.getInstance().setPermissionForOrigins(
-                                blockList.toArray(new String[blockList.size()]), true);
+                                blockList.toArray(new String[blockList.size()]), WebRefiner.PERMISSION_DISABLE, false);
                     }
                     mWebRefinerSetupComplete = true;
                 }
@@ -101,7 +102,8 @@ public class WebRefinerPreferenceHandler {
         if (!WebRefiner.isInitialized()) return;
         String[] origins = new String[1];
         origins[0] = origin;
-        WebRefiner.getInstance().setPermissionForOrigins(origins, enabled);
+        int permission = enabled ? WebRefiner.PERMISSION_ENABLE : WebRefiner.PERMISSION_DISABLE;
+        WebRefiner.getInstance().setPermissionForOrigins(origins, permission, false);
     }
 
     public static int getBlockedURLCount(ContentViewCore contentViewCore) {
@@ -118,7 +120,7 @@ public class WebRefinerPreferenceHandler {
         if (!WebRefiner.isInitialized()) return;
         String[] origins = new String[1];
         origins[0] = origin;
-        WebRefiner.getInstance().useDefaultPermissionForOrigins(origins);
+        WebRefiner.getInstance().setPermissionForOrigins(origins, WebRefiner.PERMISSION_USE_DEFAULT, false);
     }
 
     public static boolean isInitialized() {

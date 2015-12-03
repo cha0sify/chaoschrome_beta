@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "update": {},
+  "subscriptions": [
+    {
+      "name"            : "Third Party Domain Login Exception List",
+      "category"        : "TP_DOMAIN_LOGIN_EXCEPTIONS",
+      "format"          : "WebDefender 1.0",
+      "url"             : "none",
+      "expiration"      : "4 days"
+    },
+    {
+      "name"            : "Cookie Block List",
+      "category"        : "COOKIE_BLOCK_YELLOW_LIST",
+      "format"          : "WebDefender 1.0",
+      "url"             : "none",
+      "expiration"      : "4 days"
+    }
+  ]
+}

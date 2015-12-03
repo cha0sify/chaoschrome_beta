@@ -51,6 +51,8 @@ import org.chromium.content.browser.test.util.CallbackHelper;
 import org.chromium.content.browser.ContentViewCore;
 import org.chromium.content.browser.test.util.DOMUtils;
 import org.chromium.content.browser.WebRefiner;
+import org.chromium.content.browser.WebRefiner.RuleSet;
+import org.chromium.content.browser.WebDefender;
 import org.chromium.net.test.util.TestWebServer;
 
 import java.io.File;
@@ -85,7 +87,10 @@ public class WebRefinerTest extends ChromeTabbedActivityTestBase {
         WebRefiner wbr = WebRefiner.getInstance();
         assertNotNull(wbr);
         assertTrue(WebRefiner.isInitialized());
-        assertEquals(wbr.getInitializationStatus(), WebRefiner.STATUS_OK);
+
+        WebDefender wbdfndr = WebDefender.getInstance();
+        assertNotNull(wbdfndr);
+        assertTrue(WebDefender.isInitialized());
     }
 
     private static final String TEST_PAGE_CONTENT = "<html>\n" +
@@ -176,7 +181,7 @@ public class WebRefinerTest extends ChromeTabbedActivityTestBase {
             String ruleSetFileName = "rule_set_01.rules";
             assertTrue(writeToFile(RULE_SET_DATA, ruleSetFileName));
 
-            WebRefiner.RuleSet rs = new WebRefiner.RuleSet(new File(mActivity.getApplicationInfo().dataDir, ruleSetFileName).getAbsolutePath(), WebRefiner.RuleSet.CATEGORY_ADS, 1);
+            RuleSet rs = new RuleSet("TestFilters", new File(mActivity.getApplicationInfo().dataDir, ruleSetFileName).getAbsolutePath(), WebRefiner.RuleSet.CATEGORY_ADS, 1);
             wbr.addRuleSet(rs);
 
             String url = webServer.setResponse("/webrefiner_test.html", TEST_PAGE_CONTENT , null);
